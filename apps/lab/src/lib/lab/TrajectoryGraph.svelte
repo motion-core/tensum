@@ -93,9 +93,6 @@
 <Card.Root size="sm" class="h-full min-h-0">
 	<Card.Header>
 		<Card.Title>Analytical trajectory</Card.Title>
-		<Card.Description>
-			D3 scales over {samples.length} closed-form samples · {tooltipNumber.format(duration)} s
-		</Card.Description>
 	</Card.Header>
 	<Card.Content class="min-h-0 flex-1">
 		<div class="grid h-full min-h-0 grid-cols-1 gap-6 sm:grid-cols-2">
