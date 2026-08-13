@@ -1,0 +1,90 @@
+import { describe, expect, it } from 'vitest';
+import { createSpring } from '../src/index.js';
+
+const defaults = {
+  mass: 1,
+  stiffness: 100,
+  damping: 12,
+  settle: { position: 0.1, velocity: 0.1 },
+} as const;
+
+describe('analytical spring', () => {
+  it('reproduces its initial position and velocity', () => {
+    const spring = createSpring({ from: 10, to: 500, velocity: 1200, ...defaults });
+
+    expect(spring.positionAt(0)).toBeCloseTo(10, 10);
+    expect(spring.velocityAt(0)).toBeCloseTo(1200, 10);
+  });
+
+  it('converges to its target with positive damping', () => {
+    const spring = createSpring({ from: 0, to: 500, velocity: 300, ...defaults });
+    const state = spring.stateAt(20);
+
+    expect(state.position).toBeCloseTo(500, 8);
+    expect(state.velocity).toBeCloseTo(0, 8);
+  });
+
+  it('overshoots in an underdamped regime', () => {
+    const spring = createSpring({ from: 0, to: 100, velocity: 0, ...defaults, damping: 4 });
+    const samples = Array.from({ length: 100 }, (_, index) => spring.positionAt(index / 100));
+
+    expect(spring.regime).toBe('underdamped');
+    expect(Math.max(...samples)).toBeGreaterThan(100);
+  });
+
+  it('converges without overshoot at critical damping', () => {
+    const spring = createSpring({ from: 0, to: 100, velocity: 0, ...defaults, damping: 20 });
+    const samples = Array.from({ length: 200 }, (_, index) => spring.positionAt(index / 50));
+
+    expect(spring.regime).toBe('critical');
+    expect(samples.every((position) => position <= 100 + 1e-9)).toBe(true);
+    expect(samples.at(-1)).toBeCloseTo(100, 8);
+  });
+
+  it('converges without overshoot when overdamped', () => {
+    const critical = createSpring({ from: 0, to: 100, velocity: 0, ...defaults, damping: 20 });
+    const overdamped = createSpring({ from: 0, to: 100, velocity: 0, ...defaults, damping: 30 });
+    const samples = Array.from({ length: 200 }, (_, index) => overdamped.positionAt(index / 50));
+
+    expect(overdamped.regime).toBe('overdamped');
+    expect(samples.every((position) => position <= 100 + 1e-9)).toBe(true);
+    expect(overdamped.positionAt(0.5)).toBeLessThan(critical.positionAt(0.5));
+  });
+
+  it('is deterministic regardless of intermediate sampling', () => {
+    const direct = createSpring({ from: 0, to: 500, velocity: 250, ...defaults });
+    const sampled = createSpring({ from: 0, to: 500, velocity: 250, ...defaults });
+
+    for (const time of [0.016, 0.031, 0.22, 0.499]) sampled.stateAt(time);
+
+    expect(sampled.stateAt(0.5)).toEqual(direct.stateAt(0.5));
+  });
+
+  it('is symmetric for positive and negative distances', () => {
+    const positive = createSpring({ from: 0, to: 400, velocity: 0, ...defaults });
+    const negative = createSpring({ from: 0, to: -400, velocity: 0, ...defaults });
+
+    for (const time of [0, 0.1, 0.4, 1, 2]) {
+      expect(negative.positionAt(time)).toBeCloseTo(-positive.positionAt(time), 10);
+      expect(negative.velocityAt(time)).toBeCloseTo(-positive.velocityAt(time), 10);
+    }
+  });
+
+  it('uses initial velocity as physical state', () => {
+    const resting = createSpring({ from: 0, to: 500, velocity: 0, ...defaults });
+    const moving = createSpring({ from: 0, to: 500, velocity: 1500, ...defaults });
+
+    expect(moving.positionAt(0.05)).toBeGreaterThan(resting.positionAt(0.05));
+  });
+
+  it('preserves position and velocity when retargeted', () => {
+    const original = createSpring({ from: 0, to: 600, velocity: 500, ...defaults });
+    const interruptionTime = 0.27;
+    const state = original.stateAt(interruptionTime);
+    const retargeted = original.retarget(100, interruptionTime);
+
+    expect(retargeted.positionAt(0)).toBeCloseTo(state.position, 10);
+    expect(retargeted.velocityAt(0)).toBeCloseTo(state.velocity, 10);
+    expect(retargeted.initialState.target).toBe(100);
+  });
+});
