@@ -1,0 +1,29 @@
+{
+  "name": "@real-spring/gsap-spring",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json",
+    "lint": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@real-spring/spring-core": "workspace:*"
+  },
+  "peerDependencies": {
+    "gsap": "^3.15.0"
+  },
+  "devDependencies": {
+    "gsap": "^3.15.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
+  }
+}
