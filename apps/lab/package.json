@@ -6,6 +6,7 @@
 	"dependencies": {
 		"@real-spring/gsap-spring": "workspace:*",
 		"@real-spring/spring-core": "workspace:*",
+		"d3": "^7.9.0",
 		"gsap": "^3.15.0"
 	},
 	"scripts": {
@@ -30,6 +31,7 @@
 		"@sveltejs/kit": "latest",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@tailwindcss/vite": "^4.3.0",
+		"@types/d3": "^7.4.3",
 		"@types/node": "^22",
 		"bits-ui": "^2.18.1",
 		"clsx": "^2.1.1",
