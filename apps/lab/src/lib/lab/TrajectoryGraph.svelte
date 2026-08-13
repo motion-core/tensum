@@ -1,5 +1,8 @@
 <script lang="ts">
+	import { curveMonotoneX, extent, scaleLinear } from 'd3';
+	import { LineChart } from 'layerchart';
 	import * as Card from '$lib/components/ui/card';
+	import * as Chart from '$lib/components/ui/chart';
 	import type { TrajectorySample } from './model.js';
 
 	let {
@@ -10,89 +13,203 @@
 		target: number;
 	} = $props();
 
-	const width = 760;
-	const height = 180;
-	const inset = 12;
+	type Metric = 'position' | 'velocity';
 
-	function pointsFor(key: 'position' | 'velocity'): string {
-		if (samples.length === 0) return '';
-		const values = samples.map((sample) => sample[key]);
-		const min = Math.min(...values, key === 'position' ? target : 0);
-		const max = Math.max(...values, key === 'position' ? target : 0);
-		const span = Math.max(max - min, 1e-9);
+	const chartConfig = {
+		position: { label: 'Position (px)', color: 'var(--chart-1)' },
+		velocity: { label: 'Velocity (px/s)', color: 'var(--chart-2)' }
+	} satisfies Chart.ChartConfig;
 
-		return samples
-			.map((sample, index) => {
-				const x = inset + (index / Math.max(samples.length - 1, 1)) * (width - inset * 2);
-				const y = height - inset - ((sample[key] - min) / span) * (height - inset * 2);
-				return `${x.toFixed(2)},${y.toFixed(2)}`;
-			})
-			.join(' ');
+	const xScale = scaleLinear();
+	const positionScale = scaleLinear();
+	const velocityScale = scaleLinear();
+	const axisNumber = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
+	const tooltipNumber = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
+
+	const positionSeries = [
+		{
+			key: 'position',
+			label: chartConfig.position.label,
+			value: 'position',
+			color: chartConfig.position.color
+		}
+	];
+
+	const velocitySeries = [
+		{
+			key: 'velocity',
+			label: chartConfig.velocity.label,
+			value: 'velocity',
+			color: chartConfig.velocity.color
+		}
+	];
+
+	let duration = $derived(samples.at(-1)?.time ?? 0);
+	let positionDomain = $derived(domainFor('position'));
+	let velocityDomain = $derived(domainFor('velocity'));
+	let positionAnnotations = $derived([
+		{
+			type: 'line' as const,
+			layer: 'below' as const,
+			y: target,
+			label: `target ${formatAxis(target)} px`,
+			labelPlacement: 'top-right' as const,
+			labelXOffset: 4,
+			labelYOffset: 3,
+			props: {
+				line: {
+					stroke: 'var(--muted-foreground)',
+					strokeWidth: 1,
+					dashArray: '4 4',
+					opacity: 0.7
+				},
+				label: { fill: 'var(--muted-foreground)' }
+			}
+		}
+	]);
+
+	function domainFor(metric: Metric): [number, number] {
+		const values = samples.map((sample) => sample[metric]);
+		values.push(metric === 'position' ? target : 0);
+		const [minimum = 0, maximum = 1] = extent(values);
+
+		if (minimum === maximum) {
+			const padding = Math.max(Math.abs(minimum) * 0.1, 1);
+			return [minimum - padding, maximum + padding];
+		}
+
+		return [minimum, maximum];
 	}
 
-	let positionPoints = $derived(pointsFor('position'));
-	let velocityPoints = $derived(pointsFor('velocity'));
+	function formatAxis(value: unknown): string {
+		return typeof value === 'number' ? axisNumber.format(value) : String(value);
+	}
+
+	function formatTime(value: unknown): string {
+		return typeof value === 'number' ? `${tooltipNumber.format(value)} s` : String(value);
+	}
 </script>
 
 <Card.Root size="sm" class="h-full min-h-0">
 	<Card.Header>
 		<Card.Title>Analytical trajectory</Card.Title>
-		<Card.Description>Position and velocity across the solver-computed duration.</Card.Description>
+		<Card.Description>
+			D3 scales over {samples.length} closed-form samples · {tooltipNumber.format(duration)} s
+		</Card.Description>
 	</Card.Header>
 	<Card.Content class="min-h-0 flex-1">
-		<div class="grid h-full min-h-0 grid-cols-2 gap-3">
-			<figure class="flex min-h-0 flex-col">
-				<figcaption>Position</figcaption>
-				<svg
-					class="min-h-0 w-full flex-1"
-					viewBox={`0 0 ${width} ${height}`}
-					preserveAspectRatio="none"
+		<div class="grid h-full min-h-0 grid-cols-1 gap-6 sm:grid-cols-2">
+			<figure class="flex min-h-36 flex-col sm:min-h-0" aria-labelledby="position-chart-title">
+				<figcaption class="flex items-center justify-between gap-2" id="position-chart-title">
+					<span class="font-medium">Position</span>
+					<span class="flex items-center gap-1.5 text-muted-foreground">
+						<span class="size-2 rounded-full bg-chart-1" aria-hidden="true"></span>
+						px
+					</span>
+				</figcaption>
+
+				<Chart.Container
+					config={chartConfig}
+					class="aspect-auto min-h-0 w-full flex-1"
 					role="img"
-					aria-label="Position over time graph"
+					aria-label="Position in pixels over time in seconds. Dashed line marks the target position."
+					tabindex={0}
 				>
-					<line
-						x1={inset}
-						x2={width - inset}
-						y1={height - inset}
-						y2={height - inset}
-						class="stroke-border"
-					/>
-					<polyline
-						points={positionPoints}
-						fill="none"
-						class="stroke-foreground"
-						stroke-width="3"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					/>
-				</svg>
+					<LineChart
+						data={samples}
+						x="time"
+						{xScale}
+						xDomain={[0, duration]}
+						yScale={positionScale}
+						yDomain={positionDomain}
+						yNice
+						yPadding={[6, 6]}
+						axis
+						grid={{ y: { stroke: 'var(--border)', opacity: 0.7 } }}
+						rule={false}
+						series={positionSeries}
+						annotations={positionAnnotations}
+						padding={{ top: 10, right: 12, bottom: 30, left: 46 }}
+						props={{
+							spline: { curve: curveMonotoneX, strokeWidth: 2 },
+							xAxis: {
+								label: 'Time (s)',
+								labelPlacement: 'end',
+								format: formatAxis,
+								tickSpacing: 72
+							},
+							yAxis: {
+								label: 'Position (px)',
+								format: formatAxis,
+								tickSpacing: 32
+							},
+							highlight: {
+								lines: { stroke: 'var(--muted-foreground)', strokeWidth: 1 },
+								points: { r: 3, stroke: 'var(--card)', strokeWidth: 2 }
+							}
+						}}
+					>
+						{#snippet tooltip()}
+							<Chart.Tooltip indicator="line" labelFormatter={formatTime} />
+						{/snippet}
+					</LineChart>
+				</Chart.Container>
 			</figure>
-			<figure class="flex min-h-0 flex-col">
-				<figcaption>Velocity</figcaption>
-				<svg
-					class="min-h-0 w-full flex-1"
-					viewBox={`0 0 ${width} ${height}`}
-					preserveAspectRatio="none"
+
+			<figure class="flex min-h-36 flex-col sm:min-h-0" aria-labelledby="velocity-chart-title">
+				<figcaption class="flex items-center justify-between gap-2" id="velocity-chart-title">
+					<span class="font-medium">Velocity</span>
+					<span class="flex items-center gap-1.5 text-muted-foreground">
+						<span class="size-2 rounded-full bg-chart-2" aria-hidden="true"></span>
+						px/s
+					</span>
+				</figcaption>
+
+				<Chart.Container
+					config={chartConfig}
+					class="aspect-auto min-h-0 w-full flex-1"
 					role="img"
-					aria-label="Velocity over time graph"
+					aria-label="Velocity in pixels per second over time in seconds. Dashed line marks zero velocity."
+					tabindex={0}
 				>
-					<line
-						x1={inset}
-						x2={width - inset}
-						y1={height / 2}
-						y2={height / 2}
-						class="stroke-border"
-						stroke-dasharray="5 5"
-					/>
-					<polyline
-						points={velocityPoints}
-						fill="none"
-						class="stroke-muted-foreground"
-						stroke-width="3"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					/>
-				</svg>
+					<LineChart
+						data={samples}
+						x="time"
+						{xScale}
+						xDomain={[0, duration]}
+						yScale={velocityScale}
+						yDomain={velocityDomain}
+						yNice
+						yPadding={[6, 6]}
+						axis
+						grid={{ y: { stroke: 'var(--border)', opacity: 0.7 } }}
+						rule={{ stroke: 'var(--muted-foreground)', dashArray: '4 4', opacity: 0.7 }}
+						series={velocitySeries}
+						padding={{ top: 10, right: 12, bottom: 30, left: 52 }}
+						props={{
+							spline: { curve: curveMonotoneX, strokeWidth: 2 },
+							xAxis: {
+								label: 'Time (s)',
+								labelPlacement: 'end',
+								format: formatAxis,
+								tickSpacing: 72
+							},
+							yAxis: {
+								label: 'Velocity (px/s)',
+								format: formatAxis,
+								tickSpacing: 32
+							},
+							highlight: {
+								lines: { stroke: 'var(--muted-foreground)', strokeWidth: 1 },
+								points: { r: 3, stroke: 'var(--card)', strokeWidth: 2 }
+							}
+						}}
+					>
+						{#snippet tooltip()}
+							<Chart.Tooltip indicator="line" labelFormatter={formatTime} />
+						{/snippet}
+					</LineChart>
+				</Chart.Container>
 			</figure>
 		</div>
 	</Card.Content>
