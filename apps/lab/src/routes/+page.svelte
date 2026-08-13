@@ -117,7 +117,7 @@
 </a>
 
 <div class="flex min-h-svh flex-col md:h-svh md:overflow-hidden">
-	<header class="shrink-0 border-b border-border/70 bg-white/80 backdrop-blur-md">
+	<header class="shrink-0 border-b border-border bg-background/80 backdrop-blur-md">
 		<div class="mx-auto flex max-w-[96rem] items-center justify-between gap-3 px-3 py-2">
 			<div class="min-w-0">
 				<div class="flex items-center gap-2">

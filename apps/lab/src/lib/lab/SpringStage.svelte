@@ -23,31 +23,25 @@
 	}
 </script>
 
-<Card.Root size="sm" class="h-full min-h-0 bg-zinc-950 text-white ring-white/10">
+<Card.Root size="sm" class="h-full min-h-0">
 	<Card.Header>
 		<Card.Title>Stage</Card.Title>
-		<Card.Description class="text-zinc-400">
-			One CSS pixel represents one solver unit.
-		</Card.Description>
+		<Card.Description>One CSS pixel represents one solver unit.</Card.Description>
 		<Card.Action>
 			<div class="flex items-center gap-1">
 				<Button
 					variant="ghost"
 					size="icon"
-					class="text-zinc-300 hover:bg-white/10 hover:text-white"
 					aria-label="Scroll stage toward start"
 					onclick={() => scrollStage(-1)}>←</Button
 				>
 				<Button
 					variant="ghost"
 					size="icon"
-					class="text-zinc-300 hover:bg-white/10 hover:text-white"
 					aria-label="Scroll stage toward end"
 					onclick={() => scrollStage(1)}>→</Button
 				>
-				<Badge variant="outline" class="border-white/15 bg-white/5 text-zinc-200">
-					{status}
-				</Badge>
+				<Badge variant="outline">{status}</Badge>
 			</div>
 		</Card.Action>
 	</Card.Header>
@@ -59,24 +53,24 @@
 			aria-label="Spring animation stage"
 		>
 			<div class="relative h-full min-h-32 w-[1064px] overflow-hidden" aria-hidden="true">
-				<div class="absolute inset-x-8 top-1/2 h-px bg-white/15"></div>
-				<div class="inset-block-0 absolute w-px bg-amber-300/70" style:left={`${targetOffset}px`}>
-					<span class="absolute top-0 translate-x-2 whitespace-nowrap text-amber-200 tabular-nums">
+				<div class="absolute inset-x-8 top-1/2 h-px bg-border"></div>
+				<div class="inset-block-0 absolute w-px bg-primary" style:left={`${targetOffset}px`}>
+					<span class="absolute top-0 translate-x-2 whitespace-nowrap text-primary tabular-nums">
 						target {target.toFixed(0)} px
 					</span>
 				</div>
 
 				<div
 					bind:this={element}
-					class="absolute top-1/2 left-8 grid size-10 -translate-y-1/2 place-items-center rounded-md bg-white font-semibold text-zinc-950 shadow-[0_8px_30px_rgba(255,255,255,0.2)] will-change-transform"
+					class="absolute top-1/2 left-8 grid size-10 -translate-y-1/2 place-items-center rounded-md bg-primary font-semibold text-primary-foreground shadow-sm will-change-transform"
 				>
 					x
 				</div>
 
 				{#each rulerMarks as mark (mark)}
 					<div class="absolute top-1/2" style:left={`${mark + 32}px`}>
-						<div class="h-2 w-px bg-white/25"></div>
-						<span class="block -translate-x-1/2 text-zinc-500 tabular-nums">{mark}</span>
+						<div class="h-2 w-px bg-border"></div>
+						<span class="block -translate-x-1/2 text-muted-foreground tabular-nums">{mark}</span>
 					</div>
 				{/each}
 			</div>
