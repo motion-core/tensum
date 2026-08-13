@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { Input } from '$lib/components/ui/input';
 	import { Slider } from '$lib/components/ui/slider';
 
 	let {
@@ -24,28 +23,26 @@
 		onValue: (value: number) => void;
 	} = $props();
 
-	function updateFromInput(event: Event): void {
-		const next = (event.currentTarget as HTMLInputElement).valueAsNumber;
-		if (Number.isFinite(next) && next >= min && next <= max) onValue(next);
-	}
+	let formattedValue = $derived(
+		`${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value)} ${unit}`
+	);
 </script>
 
 <div class="space-y-1">
-	<div class="grid grid-cols-[minmax(0,1fr)_5rem_3rem] items-center gap-2">
+	<div class="flex items-center justify-between gap-2">
 		<label class="truncate font-medium" for={id} title={description}>{label}</label>
-		<Input
-			class="tabular-nums"
-			{id}
-			type="number"
-			{min}
-			{max}
-			{step}
-			{value}
-			aria-describedby={`${id}-description`}
-			oninput={updateFromInput}
-		/>
-		<span class="truncate text-muted-foreground" title={unit}>{unit}</span>
+		<output class="shrink-0 text-muted-foreground tabular-nums" for={id}>{formattedValue}</output>
 		<span class="sr-only" id={`${id}-description`}>{description}</span>
 	</div>
-	<Slider type="single" {min} {max} {step} {value} aria-label={label} onValueChange={onValue} />
+	<Slider
+		type="single"
+		{id}
+		{min}
+		{max}
+		{step}
+		{value}
+		aria-label={label}
+		aria-describedby={`${id}-description`}
+		onValueChange={onValue}
+	/>
 </div>

@@ -54,7 +54,10 @@
 		>
 			<div class="relative h-full min-h-32 w-[1064px] overflow-hidden" aria-hidden="true">
 				<div class="absolute inset-x-8 top-1/2 h-px bg-border"></div>
-				<div class="inset-block-0 absolute w-px bg-primary" style:left={`${targetOffset}px`}>
+				<div
+					class="absolute top-4 h-[calc(50%-1rem)] border-l border-dashed border-primary"
+					style:left={`${targetOffset}px`}
+				>
 					<span class="absolute top-0 translate-x-2 whitespace-nowrap text-primary tabular-nums">
 						target {target.toFixed(0)} px
 					</span>
@@ -62,7 +65,7 @@
 
 				<div
 					bind:this={element}
-					class="absolute top-1/2 left-8 grid size-10 -translate-y-1/2 place-items-center rounded-md bg-primary font-semibold text-primary-foreground shadow-sm will-change-transform"
+					class="absolute bottom-1/2 left-8 mb-1 grid size-10 place-items-center rounded-md bg-primary font-semibold text-primary-foreground shadow-sm will-change-transform"
 				>
 					x
 				</div>
