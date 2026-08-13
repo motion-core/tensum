@@ -1,5 +1,5 @@
-import { createSpring } from '@real-spring/spring-core';
-import type { SpringRegime, SpringSolution } from '@real-spring/spring-core';
+import { createSpring } from '@motion-core/spring';
+import type { SpringRegime, SpringSolution } from '@motion-core/spring';
 
 export interface LabParameters {
 	target: number;

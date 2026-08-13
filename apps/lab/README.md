@@ -1,6 +1,6 @@
-# Real Spring Lab
+# Motion Core Spring Lab
 
-This SvelteKit app is the interactive development surface for `@real-spring/spring-core` and `@real-spring/gsap-spring`.
+This SvelteKit app is the interactive development surface for `@motion-core/spring` and `@motion-core/gsap-spring`.
 
 Run it from the repository root:
 

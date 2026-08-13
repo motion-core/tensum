@@ -6,13 +6,11 @@
 	let {
 		parameters,
 		onChange,
-		onRun,
-		onTarget
+		onRun
 	}: {
 		parameters: LabParameters;
 		onChange: (name: LabParameterName, value: number) => void;
 		onRun: () => void;
-		onTarget: (target: number) => void;
 	} = $props();
 </script>
 
@@ -97,10 +95,5 @@
 		/>
 	</div>
 
-	<div class="mt-auto grid grid-cols-3 gap-1" aria-label="Quick targets">
-		{#each [100, 500, 1000] as target (target)}
-			<Button variant="outline" size="xs" onclick={() => onTarget(target)}>{target} px</Button>
-		{/each}
-	</div>
-	<Button class="w-full" onclick={onRun}>Run spring</Button>
+	<Button class="mt-auto w-full" onclick={onRun}>Run spring</Button>
 </div>

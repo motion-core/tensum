@@ -1,22 +1,39 @@
 <script lang="ts">
+	import type { SpringSolution } from '@motion-core/spring';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
-	import type { AnimationStatus } from './model.js';
+	import type { AnimationStatus, LabTelemetry } from './model.js';
+	import { formatNumber } from './model.js';
 
 	let {
 		element = $bindable(null),
 		target,
-		status
+		status,
+		spring,
+		telemetry
 	}: {
 		element?: HTMLElement | null;
 		target: number;
 		status: AnimationStatus;
+		spring: SpringSolution;
+		telemetry: LabTelemetry;
 	} = $props();
 
 	const rulerMarks = [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
 	let viewport: HTMLElement;
 	let targetOffset = $derived(Math.max(0, Math.min(1000, target)) + 32);
+	let telemetryValues = $derived([
+		{
+			label: 'Distance',
+			value: `${formatNumber(Math.abs(spring.initialState.target - spring.initialState.position), 0)} px`
+		},
+		{ label: 'Damping ratio', value: formatNumber(spring.dampingRatio, 3) },
+		{ label: 'Duration', value: `${formatNumber(spring.getSettlingDuration(), 3)} s` },
+		{ label: 'Position', value: `${formatNumber(telemetry.position, 2)} px` },
+		{ label: 'Velocity', value: `${formatNumber(telemetry.velocity, 2)} px/s` },
+		{ label: 'Elapsed', value: `${formatNumber(telemetry.elapsed, 3)} s` }
+	]);
 
 	function scrollStage(direction: -1 | 1): void {
 		viewport.scrollBy({ left: direction * 240, behavior: 'smooth' });
@@ -41,42 +58,56 @@
 					aria-label="Scroll stage toward end"
 					onclick={() => scrollStage(1)}>→</Button
 				>
+				<Badge variant="secondary">{spring.regime}</Badge>
 				<Badge variant="outline">{status}</Badge>
 			</div>
 		</Card.Action>
 	</Card.Header>
-	<Card.Content class="min-h-0 flex-1 overflow-hidden">
-		<div
-			bind:this={viewport}
-			class="h-full overflow-x-auto"
-			role="region"
-			aria-label="Spring animation stage"
-		>
-			<div class="relative h-full min-h-32 w-[1064px] overflow-hidden" aria-hidden="true">
-				<div class="absolute inset-x-8 top-1/2 h-px bg-border"></div>
-				<div
-					class="absolute top-4 h-[calc(50%-1rem)] border-l border-dashed border-primary"
-					style:left={`${targetOffset}px`}
-				>
-					<span class="absolute top-0 translate-x-2 whitespace-nowrap text-primary tabular-nums">
-						target {target.toFixed(0)} px
-					</span>
-				</div>
+	<Card.Content class="min-h-0 flex-1">
+		<div class="flex h-full min-h-0 flex-col">
+			<div
+				bind:this={viewport}
+				class="min-h-0 flex-1 overflow-x-auto"
+				role="region"
+				aria-label="Spring animation stage"
+			>
+				<div class="relative h-full min-h-32 w-full overflow-hidden" aria-hidden="true">
+					<div class="absolute inset-x-8 top-1/2 h-px bg-border"></div>
+					<div
+						class="absolute top-4 h-[calc(50%-1rem)] border-l border-dashed border-primary"
+						style:left={`${targetOffset}px`}
+					>
+						<span class="absolute top-0 translate-x-2 whitespace-nowrap text-primary tabular-nums">
+							target {target.toFixed(0)} px
+						</span>
+					</div>
 
-				<div
-					bind:this={element}
-					class="absolute bottom-1/2 left-8 mb-1 grid size-10 place-items-center rounded-md bg-primary font-semibold text-primary-foreground shadow-sm will-change-transform"
-				>
-					x
-				</div>
+					<div
+						bind:this={element}
+						class="absolute bottom-1/2 left-8 mb-1 grid size-10 place-items-center rounded-md bg-primary font-semibold text-primary-foreground shadow-sm will-change-transform"
+					>
+						x
+					</div>
 
-				{#each rulerMarks as mark (mark)}
-					<div class="absolute top-1/2" style:left={`${mark + 32}px`}>
-						<div class="h-2 w-px bg-border"></div>
-						<span class="block -translate-x-1/2 text-muted-foreground tabular-nums">{mark}</span>
+					{#each rulerMarks as mark (mark)}
+						<div class="absolute top-1/2" style:left={`${mark + 32}px`}>
+							<div class="h-2 w-px bg-border"></div>
+							<span class="block -translate-x-1/2 text-muted-foreground tabular-nums">
+								{mark}
+							</span>
+						</div>
+					{/each}
+				</div>
+			</div>
+
+			<dl class="grid shrink-0 grid-cols-3 gap-x-3 gap-y-1 pt-2 lg:grid-cols-6">
+				{#each telemetryValues as item (item.label)}
+					<div class="min-w-0">
+						<dt class="truncate text-muted-foreground">{item.label}</dt>
+						<dd class="truncate font-semibold tabular-nums" title={item.value}>{item.value}</dd>
 					</div>
 				{/each}
-			</div>
+			</dl>
 		</div>
 	</Card.Content>
 </Card.Root>

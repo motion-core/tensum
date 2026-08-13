@@ -1,10 +1,10 @@
-import { createSpring } from '@real-spring/spring-core';
+import { createSpring } from '@motion-core/spring';
 import type {
   SpringParameters,
   SpringSettleInput,
   SpringSolution,
   SpringState,
-} from '@real-spring/spring-core';
+} from '@motion-core/spring';
 import { gsap } from 'gsap';
 
 export const SUPPORTED_PROPERTIES = ['x', 'y', 'scale', 'rotation'] as const;

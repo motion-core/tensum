@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { SpringSolution } from '@real-spring/spring-core';
-	import { springTo } from '@real-spring/gsap-spring';
-	import type { SpringController, SpringToSnapshot } from '@real-spring/gsap-spring';
+	import { springTo } from '@motion-core/gsap-spring';
+	import type { SpringController, SpringToSnapshot } from '@motion-core/gsap-spring';
+	import type { SpringSolution } from '@motion-core/spring';
 	import { gsap } from 'gsap';
 	import { onDestroy, onMount } from 'svelte';
 	import { Badge } from '$lib/components/ui/badge';
@@ -9,7 +9,6 @@
 	import { Switch } from '$lib/components/ui/switch';
 	import SpringControls from '$lib/lab/SpringControls.svelte';
 	import SpringStage from '$lib/lab/SpringStage.svelte';
-	import SpringTelemetry from '$lib/lab/SpringTelemetry.svelte';
 	import TrajectoryGraph from '$lib/lab/TrajectoryGraph.svelte';
 	import { DEFAULT_PARAMETERS, createLabSpring, sampleTrajectory } from '$lib/lab/model.js';
 	import type { LabParameterName, LabParameters, LabTelemetry } from '$lib/lab/model.js';
@@ -102,7 +101,7 @@
 </script>
 
 <svelte:head>
-	<title>Real Spring Lab</title>
+	<title>@motion-core/spring</title>
 	<meta
 		name="description"
 		content="An interactive laboratory for deterministic spring physics driven by GSAP time."
@@ -118,17 +117,14 @@
 
 <div class="flex min-h-svh flex-col md:h-svh md:overflow-hidden">
 	<header class="shrink-0 border-b border-border bg-background/80 backdrop-blur-md">
-		<div class="mx-auto flex max-w-[96rem] items-center justify-between gap-3 px-3 py-2">
+		<div class="mx-auto flex max-w-384 items-center justify-between gap-3 px-3 py-2">
 			<div class="min-w-0">
 				<div class="flex items-center gap-2">
 					<h1 class="truncate font-heading text-lg font-semibold tracking-tight">
-						Real Spring Lab
+					    @motion-core/spring
 					</h1>
 					<Badge variant="secondary">experimental</Badge>
 				</div>
-				<p class="truncate text-muted-foreground">
-					Deterministic closed-form motion. Duration is output, not input.
-				</p>
 			</div>
 
 			<div class="flex shrink-0 items-center gap-2">
@@ -143,7 +139,7 @@
 		</div>
 	</header>
 
-	<main class="mx-auto min-h-0 w-full max-w-[96rem] flex-1 p-3" id="main-content">
+	<main class="mx-auto min-h-0 w-full max-w-384 flex-1 p-3" id="main-content">
 		{#if prefersReducedMotion && !inspectMotion}
 			<p class="sr-only" role="status">
 				Motion completes immediately. Enable inspection to run the physical trajectory.
@@ -161,18 +157,18 @@
 						{parameters}
 						onChange={handleParameterChange}
 						onRun={() => runMovement()}
-						onTarget={(target) => runMovement(target, 0)}
 					/>
 				</Card.Content>
 			</Card.Root>
 
-			<div class="grid min-h-0 grid-rows-[minmax(12rem,1fr)_auto_minmax(9rem,0.72fr)] gap-3">
+			<div class="grid min-h-0 grid-rows-[minmax(14rem,1fr)_minmax(12rem,0.72fr)] gap-3">
 				<SpringStage
 					bind:element={stageElement}
 					target={parameters.target}
 					status={telemetry.status}
+					spring={activeSpring}
+					{telemetry}
 				/>
-				<SpringTelemetry spring={activeSpring} {telemetry} />
 				<TrajectoryGraph samples={trajectory} target={parameters.target} />
 			</div>
 		</div>

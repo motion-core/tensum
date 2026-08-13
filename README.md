@@ -1,6 +1,6 @@
-# real-spring
+# Motion Core Spring
 
-`real-spring` is an experimental TypeScript spring engine with a GSAP clock adapter and a compact SvelteKit lab.
+Motion Core Spring is an experimental TypeScript spring engine with a GSAP clock adapter and a compact SvelteKit lab.
 
 The central rule is simple:
 
@@ -18,9 +18,9 @@ gsap-spring
 SvelteKit lab
 ```
 
-- `@real-spring/spring-core` has no browser, Svelte, or GSAP dependency. It validates input, solves the spring, determines settlement, and creates momentum-preserving retargeted springs.
-- `@real-spring/gsap-spring` uses GSAP as a clock and renderer. Its `springTo()` adapter currently supports `x`, `y`, `scale`, and `rotation`.
-- `@real-spring/lab` is a Svelte 5 development instrument built with Tailwind CSS and shadcn-svelte preset `bK05dzlM8`.
+- `@motion-core/spring` has no browser, Svelte, or GSAP dependency. It validates input, solves the spring, determines settlement, and creates momentum-preserving retargeted springs.
+- `@motion-core/gsap-spring` uses GSAP as a clock and renderer. Its `springTo()` adapter currently supports `x`, `y`, `scale`, and `rotation`.
+- `@motion-core/spring-lab` is a Svelte 5 development instrument built with Tailwind CSS and shadcn-svelte preset `bK05dzlM8`.
 
 Internal packages are linked with `workspace:*`.
 
@@ -52,7 +52,7 @@ Velocity is stored in the same physical unit system as position per second. The 
 ## Core API
 
 ```ts
-import { createSpring } from '@real-spring/spring-core';
+import { createSpring } from '@motion-core/spring';
 
 const spring = createSpring({
   from: 0,
@@ -128,7 +128,7 @@ These values come from the spring state and tolerances. There is no `distance ×
 `springTo()` creates one analytical spring per requested property. The longest computed settling duration becomes the private duration of a linear GSAP clock tween. On each update, the adapter reads absolute elapsed time and asks the core for the corresponding state.
 
 ```ts
-import { springTo } from '@real-spring/gsap-spring';
+import { springTo } from '@motion-core/gsap-spring';
 
 const animation = springTo(element, {
   x: 600,

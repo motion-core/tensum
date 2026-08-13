@@ -1,5 +1,5 @@
 {
-  "name": "@real-spring/spring-core",
+  "name": "@motion-core/spring",
   "version": "0.1.0",
   "private": true,
   "type": "module",
