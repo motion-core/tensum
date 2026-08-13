@@ -121,7 +121,7 @@
 			<div class="min-w-0">
 				<div class="flex items-center gap-2">
 					<h1 class="truncate font-heading text-lg font-semibold tracking-tight">
-					    @motion-core/spring
+						@motion-core/spring
 					</h1>
 					<Badge variant="secondary">experimental</Badge>
 				</div>
