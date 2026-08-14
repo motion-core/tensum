@@ -27,6 +27,16 @@ describe('validation', () => {
     expect(() => createSpring({ ...valid, settle: { velocity: Number.NaN } })).toThrow(
       RangeError,
     );
+    expect(() => createSpring({ ...valid, settle: { maxDuration: 0 } })).toThrow(RangeError);
+    expect(() =>
+      createSpring({ ...valid, settle: { maxDuration: Number.POSITIVE_INFINITY } }),
+    ).toThrow(RangeError);
+    expect(() =>
+      createSpring({ ...valid, settle: { refinementIterations: 1.5 } }),
+    ).toThrow(RangeError);
+    expect(() =>
+      createSpring({ ...valid, settle: { refinementIterations: 0 } }),
+    ).toThrow(RangeError);
   });
 
   it('rejects parameters whose derived frequencies are not representable', () => {

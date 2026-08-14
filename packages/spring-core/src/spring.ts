@@ -1,20 +1,14 @@
 import { assertFinite } from './math.js';
-import { getSettlingResult } from './settling.js';
+import { DEFAULT_SETTLING_OPTIONS, getSettlingResult } from './settling.js';
 import { createAnalyticalSolver } from './solver.js';
 import type {
   SpringInitialState,
   SpringOptions,
   SpringParameters,
-  SpringSettleInput,
   SpringSettlingOptions,
   SpringSolution,
   SpringState,
 } from './types.js';
-
-const DEFAULT_SETTLE: Readonly<SpringSettleInput> = {
-  position: 0.1,
-  velocity: 0.1,
-};
 
 export function createSpring(options: SpringOptions): SpringSolution {
   const parameters: SpringParameters = {
@@ -28,8 +22,14 @@ export function createSpring(options: SpringOptions): SpringSolution {
     target: options.to,
   };
   const settling: SpringSettlingOptions = {
-    positionEpsilon: options.settle?.position ?? DEFAULT_SETTLE.position,
-    velocityEpsilon: options.settle?.velocity ?? DEFAULT_SETTLE.velocity,
+    positionEpsilon:
+      options.settle?.position ?? DEFAULT_SETTLING_OPTIONS.positionEpsilon,
+    velocityEpsilon:
+      options.settle?.velocity ?? DEFAULT_SETTLING_OPTIONS.velocityEpsilon,
+    maxDuration: options.settle?.maxDuration ?? DEFAULT_SETTLING_OPTIONS.maxDuration,
+    refinementIterations:
+      options.settle?.refinementIterations ??
+      DEFAULT_SETTLING_OPTIONS.refinementIterations,
   };
   const solver = createAnalyticalSolver(parameters, initialState);
   const settlingResult = getSettlingResult(solver, settling);
@@ -67,6 +67,8 @@ export function createSpring(options: SpringOptions): SpringSolution {
         settle: {
           position: settling.positionEpsilon,
           velocity: settling.velocityEpsilon,
+          maxDuration: settling.maxDuration,
+          refinementIterations: settling.refinementIterations,
         },
       });
     },

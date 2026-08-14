@@ -16,13 +16,15 @@ export interface SpringInitialState extends SpringState {
 export interface SpringSettlingOptions {
   positionEpsilon: number;
   velocityEpsilon: number;
-  maxDuration?: number;
-  refinementIterations?: number;
+  maxDuration: number;
+  refinementIterations: number;
 }
 
 export interface SpringSettleInput {
-  position: number;
-  velocity: number;
+  position?: number;
+  velocity?: number;
+  maxDuration?: number;
+  refinementIterations?: number;
 }
 
 export type SpringRegime = 'underdamped' | 'critical' | 'overdamped';
@@ -31,7 +33,7 @@ export interface SpringOptions extends SpringParameters {
   from: number;
   to: number;
   velocity?: number;
-  settle?: Partial<SpringSettleInput>;
+  settle?: SpringSettleInput;
 }
 
 export interface SettlingResult {

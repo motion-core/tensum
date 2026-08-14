@@ -12,8 +12,8 @@ export const DEFAULT_SETTLING_OPTIONS: Readonly<SpringSettlingOptions> = {
 export function validateSettlingOptions(options: SpringSettlingOptions): void {
   assertFinite('positionEpsilon', options.positionEpsilon);
   assertFinite('velocityEpsilon', options.velocityEpsilon);
-  assertFinite('maxDuration', options.maxDuration ?? 60);
-  assertFinite('refinementIterations', options.refinementIterations ?? 48);
+  assertFinite('maxDuration', options.maxDuration);
+  assertFinite('refinementIterations', options.refinementIterations);
 
   if (options.positionEpsilon <= 0) {
     throw new RangeError('positionEpsilon must be greater than 0');
@@ -21,13 +21,13 @@ export function validateSettlingOptions(options: SpringSettlingOptions): void {
   if (options.velocityEpsilon <= 0) {
     throw new RangeError('velocityEpsilon must be greater than 0');
   }
-  if ((options.maxDuration ?? 60) <= 0) {
+  if (options.maxDuration <= 0) {
     throw new RangeError('maxDuration must be greater than 0');
   }
-  if (!Number.isInteger(options.refinementIterations ?? 48)) {
+  if (!Number.isInteger(options.refinementIterations)) {
     throw new RangeError('refinementIterations must be an integer');
   }
-  if ((options.refinementIterations ?? 48) <= 0) {
+  if (options.refinementIterations <= 0) {
     throw new RangeError('refinementIterations must be greater than 0');
   }
 }
@@ -53,9 +53,7 @@ export function getSettlingResult(
   options: SpringSettlingOptions,
 ): SettlingResult {
   validateSettlingOptions(options);
-  const maxDuration = options.maxDuration ?? DEFAULT_SETTLING_OPTIONS.maxDuration!;
-  const refinementIterations =
-    options.refinementIterations ?? DEFAULT_SETTLING_OPTIONS.refinementIterations!;
+  const { maxDuration, refinementIterations } = options;
 
   const initialBounds = solver.tailBoundsAt(0);
   if (initialBounds.position === 0 && initialBounds.velocity === 0) {

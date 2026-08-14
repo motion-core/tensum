@@ -41,6 +41,60 @@ describe('settling duration', () => {
     expect(spring.getSettlingResult()).toMatchObject({ settled: false, duration: 60 });
   });
 
+  it('honors a public maximum duration for an unsettled spring', () => {
+    const spring = createSpring({
+      from: 0,
+      to: 100,
+      ...parameters,
+      damping: 0,
+      settle: { maxDuration: 2.5 },
+    });
+
+    expect(spring.getSettlingResult()).toEqual({
+      settled: false,
+      duration: 2.5,
+      iterations: 0,
+    });
+  });
+
+  it('resolves and exposes every settling option', () => {
+    const spring = createSpring({
+      from: 0,
+      to: 100,
+      ...parameters,
+      settle: {
+        position: 0.02,
+        velocity: 0.03,
+        maxDuration: 8,
+        refinementIterations: 24,
+      },
+    });
+
+    expect(spring.settling).toEqual({
+      positionEpsilon: 0.02,
+      velocityEpsilon: 0.03,
+      maxDuration: 8,
+      refinementIterations: 24,
+    });
+    expect(Object.isFrozen(spring.settling)).toBe(true);
+  });
+
+  it('preserves the resolved settling configuration when retargeting', () => {
+    const spring = createSpring({
+      from: 0,
+      to: 100,
+      ...parameters,
+      settle: {
+        position: 0.02,
+        velocity: 0.03,
+        maxDuration: 8,
+        refinementIterations: 24,
+      },
+    });
+
+    expect(spring.retarget(200, 0.2).settling).toEqual(spring.settling);
+  });
+
   it('settles immediately when already at rest at the target', () => {
     const spring = createSpring({ from: 100, to: 100, ...parameters });
 
