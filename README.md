@@ -1,55 +1,38 @@
 # Motion Core Spring
 
-Motion Core Spring is an experimental TypeScript spring engine with a GSAP clock adapter and a compact SvelteKit lab.
+Motion Core Spring is a small set of TypeScript packages for analytical spring motion. The solver evaluates position and velocity from absolute time, while optional packages add reactive values, inertia, keyframes, GSAP rendering, CSS `linear()` export, and coupled systems.
 
-The central rule is simple:
+The central rule is:
 
-> Duration is output, not input.
+> Duration is a result of the physical state and settling tolerances, not an input to the solver.
 
-The public spring configuration contains physical state and settling tolerances. It does not contain a duration or an easing curve.
+The packages are ESM-only and require Node.js 18 or newer for development and server-side use. Version `0.x` may still contain breaking API changes.
 
-## Workspace
+## Packages
 
-```text
-spring-core
-    ↓
-gsap-spring
-    ↓
-SvelteKit lab
+| Package | Purpose |
+| --- | --- |
+| `@motion-core/spring` | DOM-free analytical scalar and vector springs, parameter converters, and timing |
+| `@motion-core/spring-runtime` | Reactive values, velocity handoff, keyframes, inertia, and bounds |
+| `@motion-core/gsap-spring` | GSAP clock adapter and `motionSpring` special-property plugin |
+| `@motion-core/spring-lab` | Svelte 5 development lab |
+
+Advanced DOM-free features use explicit subpaths:
+
+- `@motion-core/spring/css` exports adaptive CSS `linear()` sampling.
+- `@motion-core/spring/coupled` exports an RK4 coupled-spring system.
+
+## Install
+
+Install only the layers you need:
+
+```bash
+pnpm add @motion-core/spring
+pnpm add @motion-core/spring-runtime
+pnpm add @motion-core/gsap-spring gsap
 ```
 
-- `@motion-core/spring` has no browser, Svelte, or GSAP dependency. It validates input, solves the spring, determines settlement, and creates momentum-preserving retargeted springs.
-- `@motion-core/gsap-spring` uses GSAP as a clock and renderer. Its `springTo()` adapter currently supports `x`, `y`, `scale`, and `rotation`.
-- `@motion-core/spring-lab` is a Svelte 5 development instrument built with Tailwind CSS and shadcn-svelte preset `bK05dzlM8`.
-
-Internal packages are linked with `workspace:*`.
-
-## Physics
-
-The core solves the damped harmonic oscillator:
-
-```text
-m x'' + c x' + k(x - target) = 0
-```
-
-The implementation works with displacement from equilibrium, `y = x - target`. For mass `m`, stiffness `k`, and damping `c`:
-
-```text
-ω₀ = sqrt(k / m)
-ζ  = c / (2 sqrt(km))
-```
-
-The damping ratio selects one of three closed-form solutions:
-
-- `ζ < 1`: underdamped
-- `ζ ≈ 1`: critically damped
-- `ζ > 1`: overdamped
-
-Critical damping uses a small floating-point tolerance instead of exact equality. Each call to `stateAt(t)` evaluates the analytical solution from its initial conditions and absolute time. Previous samples and frame rate have no effect on the result.
-
-Velocity is stored in the same physical unit system as position per second. The core is unit-agnostic; the lab happens to use pixels and pixels per second.
-
-## Core API
+## Create a spring
 
 ```ts
 import { createSpring } from '@motion-core/spring';
@@ -57,7 +40,7 @@ import { createSpring } from '@motion-core/spring';
 const spring = createSpring({
   from: 0,
   to: 600,
-  velocity: 0,
+  velocity: 1250,
   mass: 1,
   stiffness: 180,
   damping: 24,
@@ -70,68 +53,124 @@ const spring = createSpring({
 spring.positionAt(0.25);
 spring.velocityAt(0.25);
 spring.stateAt(0.25);
-spring.getSettlingDuration();
+spring.getSettlingResult();
 ```
 
-Invalid mass, stiffness, damping, thresholds, state, or time values throw `RangeError`. Failing early is intentional while the API is experimental.
+All time values are seconds. Velocity is position units per second. The solver is unit-agnostic, so a pixel animation uses pixels and pixels per second, while a rotation can use degrees and degrees per second.
 
-Retargeting samples the old spring once, then uses that position and velocity as the new spring's initial state:
+The spring exposes the damping regime, damping ratio, angular frequency, initial state, physical parameters, settling options, and two timing phases:
+
+- `timing.perceptualDuration` is the optional logical completion boundary.
+- `timing.settlingDuration` is the conservative physical-rest boundary.
+- `timing.settled` tells you whether the spring reached its tolerances within `maxDuration`.
+
+An undamped moving spring never settles. The API reports that state explicitly instead of inventing a finite physical duration.
+
+## Choose spring parameters
+
+Use physical parameters directly, derive them from Apple-style response concepts, or use the isolated Motion compatibility profile:
+
+```ts
+import {
+  motionSpringParameters,
+  springParameters,
+  springPresets,
+} from '@motion-core/spring';
+
+const physical = springParameters.fromPhysics({
+  mass: 1,
+  stiffness: 180,
+  damping: 24,
+});
+
+const response = springParameters.fromResponse({
+  response: 0.5,
+  dampingRatio: 0.82,
+});
+
+const snappy = springPresets.snappy({ duration: 0.45 });
+
+const motionCompatible = motionSpringParameters.fromDuration({
+  duration: 0.6,
+  bounce: 0.25,
+});
+```
+
+The canonical converters preserve transparent physical semantics. `motionSpringParameters` is a separately versioned compatibility layer, currently audited against Motion `13.1.0` at commit `adaf7a4e5368d704ea350669f6ac674fb26ff270`.
+
+## Retarget without losing momentum
+
+`retarget()` samples both position and analytical velocity at the interruption time:
 
 ```ts
 const next = spring.retarget(100, 0.25);
 ```
 
-No momentum is discarded unless the caller explicitly starts a new spring with zero velocity.
+For a frame-driven value, use the runtime package. A driver owns scheduling only; the spring still owns the trajectory.
 
-## Settlement
+```ts
+import { createSpringValue } from '@motion-core/spring-runtime';
+import { springPresets } from '@motion-core/spring';
 
-A damped spring approaches equilibrium asymptotically, so exact mathematical rest takes infinite time. The engine needs a visual definition of rest:
+const driver = {
+  now: () => performance.now() / 1000,
+  schedule(callback: (time: number) => void) {
+    const id = requestAnimationFrame((time) => callback(time / 1000));
+    return () => cancelAnimationFrame(id);
+  },
+};
 
-```text
-abs(position - target) <= positionEpsilon
-abs(velocity) <= velocityEpsilon
+const value = createSpringValue(
+  0,
+  { mass: 1, stiffness: 180, damping: 24 },
+  driver,
+);
+
+const unsubscribe = value.on('change', ({ value }) => {
+  element.style.transform = `translateX(${value}px)`;
+});
+
+value.setTarget(600);
+value.setTarget(100, {
+  parameters: springPresets.snappy(),
+  blendDuration: 0.08,
+});
+
+unsubscribe();
+value.destroy();
 ```
 
-Testing only the current sample is unsafe for an underdamped spring. It can cross both thresholds and leave them again on the next oscillation.
+`SpringValue` also emits `logicalComplete`, `settle`, and `unsettled`. Parameter blending uses a deterministic position-and-velocity blend, so a mid-flight tuning change has no state discontinuity.
 
-The current implementation builds analytical upper bounds for all future position error and speed. It expands the search interval until both bounds are below their absolute tolerances, then refines the result with binary search. The default maximum search horizon is 60 seconds. A non-equilibrium spring with zero damping reports `settled: false`.
+## Hand off gesture velocity
 
-This method is deliberately conservative. It may return a slightly later time than a dense visual sampling method, but it cannot mistake a zero crossing for permanent settlement.
+```ts
+import {
+  normalizedVelocity,
+  physicalVelocity,
+  velocityFromSamples,
+} from '@motion-core/spring-runtime';
 
-## Distance and duration
-
-The normalized response of a linear spring is independent of amplitude. Measured settling time can still change with distance when the thresholds are absolute rather than normalized.
-
-With the current baseline parameters:
-
-```text
-mass = 1
-stiffness = 180
-damping = 24
-initial velocity = 0
-position epsilon = 0.1
-velocity epsilon = 0.1
+const pixelsPerSecond = velocityFromSamples(
+  { value: 120, time: 1.0 },
+  { value: 180, time: 1.05 },
+);
+const progressPerSecond = normalizedVelocity(pixelsPerSecond, 0, 600);
+const degreesPerSecond = physicalVelocity(progressPerSecond, 0, 360);
 ```
 
-the solver returns:
+Samples use seconds. The helper rejects non-finite data and non-monotonic timestamps.
 
-| Movement | Settling duration |
-| --- | ---: |
-| `0 → 10` | `0.667197 s` |
-| `0 → 100` | `0.859079 s` |
-| `0 → 1000` | `1.050961 s` |
+## Animate with GSAP
 
-These values come from the spring state and tolerances. There is no `distance × factor` duration rule. Unit tests repeat this comparison instead of hard-coding those exact numbers.
-
-## GSAP adapter
-
-`springTo()` creates one analytical spring per requested property. The longest computed settling duration becomes the private duration of a linear GSAP clock tween. On each update, the adapter reads absolute elapsed time and asks the core for the corresponding state.
+`springTo()` creates one analytical spring per numeric property. GSAP provides the clock, lifecycle, and property writes; it does not calculate the spring curve.
 
 ```ts
 import { springTo } from '@motion-core/gsap-spring';
 
 const animation = springTo(element, {
   x: 600,
+  rotation: '30deg',
   velocity: { x: 1250 },
   spring: {
     mass: 1,
@@ -139,53 +178,106 @@ const animation = springTo(element, {
     damping: 24,
     settle: { position: 0.1, velocity: 0.1 },
   },
+  properties: {
+    rotation: { damping: 30, velocity: 90 },
+  },
+  onSettle: ({ states }) => console.log(states.x),
 });
 
+animation.pause();
+animation.seek(0.2);
+animation.resume();
 animation.retarget({ x: 100 });
 ```
 
-GSAP schedules rendering; it does not calculate the trajectory. Completion writes the exact requested target. Retargeting starts a fresh GSAP clock with the current analytical position and velocity.
+Built-in transform conveniences are `x`, `y`, `scale`, and `rotation`. Add arbitrary numeric GSAP properties through `targets`, or provide `adapters` for values that need custom reads and writes. Target strings accept one numeric value and one unit, such as `24px`, `1.2`, or `30deg`. Unit mismatches throw before animation starts.
 
-The special-property form `gsap.to(target, { realSpring: ... })` has not been implemented yet. `springTo()` is the smaller integration boundary used to validate timing and interruption first.
+Register the special-property plugin when you want standard GSAP composition and context cleanup:
 
-## Lab
+```ts
+import { gsap } from 'gsap';
+import { registerMotionCoreSpringPlugin } from '@motion-core/gsap-spring';
 
-The lab exposes target, mass, stiffness, damping, initial velocity, and both settling thresholds. It shows damping ratio, regime, computed duration, live position, live velocity, elapsed time, and lightweight position/velocity plots.
+registerMotionCoreSpringPlugin(gsap);
 
-Quick actions run identical parameters at 100, 500, and 1000 pixels. The main lab fits a 768×720 viewport without page scrolling. On narrower screens it returns to normal document flow. shadcn card padding and component sizes come from the compact preset rather than page-level overrides.
+gsap.to(element, {
+  motionSpring: {
+    x: 600,
+    parameters: { mass: 1, stiffness: 180, damping: 24 },
+  },
+});
+```
 
-If `prefers-reduced-motion: reduce` is active, animation completes immediately. The inspection switch can temporarily enable the physical trajectory for development work.
+For an unsettled trajectory, choose `stop`, `snap`, `continue`, or `error`. The default is `stop` at `maxDuration`. `continue` uses an infinite GSAP clock and must be stopped or killed by the caller.
 
-## Commands
+## Export CSS `linear()` easing
 
-Install and run the lab:
+```ts
+import { createSpring } from '@motion-core/spring';
+import { springToCSSLinear } from '@motion-core/spring/css';
+
+const spring = createSpring({
+  from: 0,
+  to: 1,
+  mass: 1,
+  stiffness: 180,
+  damping: 18,
+});
+const css = springToCSSLinear(spring, { maxError: 0.001 });
+
+element.animate(
+  [{ transform: 'translateX(0)' }, { transform: 'translateX(600px)' }],
+  { duration: css.duration * 1000, easing: css.easing },
+);
+```
+
+Sampling is adaptive and seeded by angular frequency to avoid aliasing oscillations. `maxError`, `maxDepth`, and `maxSamples` make the approximation budget explicit.
+
+## Inertia, keyframes, vectors, and coupled systems
+
+The runtime includes target modification, snapping, and a velocity-preserving transition to a boundary spring:
+
+```ts
+import { createInertia, snapToGrid } from '@motion-core/spring-runtime';
+
+const inertia = createInertia({
+  from: 120,
+  velocity: 900,
+  min: 0,
+  max: 600,
+  modifyTarget: snapToGrid(20),
+});
+```
+
+`createSpringKeyframes()` joins multiple settled segments. `createVectorSpring()` composes independent scalar axes with shared time. `createCoupledSpringSystem()` is an opt-in numerical RK4 solver for particles connected by springs and anchors.
+
+## Settlement and reduced motion
+
+A damped spring approaches equilibrium asymptotically. Motion Core defines rest as both of these conditions remaining true for the complete future tail:
+
+```text
+abs(position - target) <= positionEpsilon
+abs(velocity) <= velocityEpsilon
+```
+
+The solver uses analytical upper bounds, expands the search interval, and refines the first safe boundary. This avoids false rest at a zero crossing. Absolute tolerances mean a longer travel distance can take longer to settle even when the normalized response is identical.
+
+Reduced-motion policy belongs to the consuming interface. When `prefers-reduced-motion: reduce` is active, jump to the target or use a deliberately non-oscillating alternative instead of accelerating the same spring.
+
+## Architecture
+
+`@motion-core/spring` has no DOM, framework, GSAP, or runtime scheduler dependency. All core sampling is deterministic from initial state and absolute time. The runtime depends only on core. The GSAP adapter depends on core and GSAP. Package exports point to compiled JavaScript with declarations and source maps, and packages declare `sideEffects: false`.
+
+## Development
 
 ```bash
 pnpm install
 pnpm dev
-```
-
-Validate the whole workspace:
-
-```bash
 pnpm test
 pnpm check
 pnpm lint
 pnpm build
+pnpm benchmark
 ```
 
-## Current limits
-
-- Every property is currently an independent scalar spring. Coupled or vector springs are not implemented.
-- `springTo()` supports transform properties only. It does not attempt to cover the full GSAP CSSPlugin surface.
-- Mid-flight retargeting preserves analytical velocity, but automatic inheritance from arbitrary non-spring GSAP tweens or pointer trackers is not available.
-- The settling search uses conservative tail bounds. A future implementation may tighten critical and overdamped bounds without changing the public API.
-- Package exports point to TypeScript source for workspace development. A publishable release needs a finalized build/export policy and API compatibility guarantees.
-
-## Status
-
-All public APIs are experimental. The next useful steps are:
-
-1. add a formal GSAP special-property plugin without changing the solver;
-2. add pointer-velocity capture and transfer into `springTo()`;
-3. benchmark the analytical solver and settlement search across large batches of springs.
+Generated invariant tests use a fixed seed so failures can be reproduced. The benchmark records scalar sampling throughput and allocation-free sampling separately from allocating `stateAt()` calls.
