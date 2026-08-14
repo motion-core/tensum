@@ -1,5 +1,6 @@
 export { createSpringValue } from './spring-value.js';
 export { createSpringKeyframes } from './keyframes.js';
+export { createInertia, snapToGrid } from './inertia.js';
 export {
   normalizedVelocity,
   physicalVelocity,
@@ -11,6 +12,12 @@ export type {
   SpringKeyframeSequence,
   SpringKeyframesOptions,
 } from './keyframes.js';
+export type {
+  InertiaBoundaryTransition,
+  InertiaOptions,
+  InertiaPhase,
+  InertiaSolution,
+} from './inertia.js';
 export type {
   FrameDriver,
   SpringValue,
