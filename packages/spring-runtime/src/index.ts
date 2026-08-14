@@ -10,6 +10,7 @@ export type {
   SpringValueEvent,
   SpringValueListener,
   SpringValueOptions,
+  SpringValueRetargetOptions,
   SpringValueSnapshot,
 } from './spring-value.js';
 export type {

@@ -7,6 +7,7 @@ import type {
   SpringParameters,
   SpringSettleInput,
   SpringSolution,
+  SpringState,
   SpringTimingInput,
 } from '@motion-core/spring';
 
@@ -29,6 +30,11 @@ export interface SpringValueSnapshot {
   animating: boolean;
 }
 
+export interface SpringValueRetargetOptions {
+  parameters?: SpringParameters;
+  blendDuration?: number;
+}
+
 export type SpringValueEvent =
   | 'change'
   | 'logicalComplete'
@@ -41,8 +47,13 @@ export interface SpringValue {
   get(): number;
   getVelocity(): number;
   getTarget(): number;
+  getParameters(): Readonly<SpringParameters>;
   getSnapshot(): Readonly<SpringValueSnapshot>;
-  setTarget(target: number): void;
+  setTarget(target: number, options?: SpringValueRetargetOptions): void;
+  setParameters(
+    parameters: SpringParameters,
+    options?: Pick<SpringValueRetargetOptions, 'blendDuration'>,
+  ): void;
   jump(value: number): void;
   stop(): void;
   on(event: SpringValueEvent, listener: SpringValueListener): () => void;
@@ -51,9 +62,19 @@ export interface SpringValue {
 
 interface ActiveSpring {
   solution: SpringSolution;
+  blendFrom?: SpringSolution;
+  blendDuration: number;
+  logicalDuration: number;
+  settlingBoundary: number;
   startedAt: number;
   logicalComplete: boolean;
   unsettledNotified: boolean;
+}
+
+interface PendingSpringRequest {
+  target: number;
+  parameters: Readonly<SpringParameters>;
+  blendDuration: number;
 }
 
 function assertFinite(name: string, value: number): void {
@@ -69,7 +90,7 @@ export function createSpringValue(
   options: SpringValueOptions = {},
 ): SpringValue {
   assertFinite('initialValue', initialValue);
-  const canonicalParameters = springParameters.fromPhysics(parameters);
+  let currentParameters = springParameters.fromPhysics(parameters);
   const settling = resolveSettlingOptions(options.settle);
   const settleInput: SpringSettleInput = {
     position: settling.positionEpsilon,
@@ -91,7 +112,7 @@ export function createSpringValue(
   let value = initialValue;
   let velocity = 0;
   let target = initialValue;
-  let pendingTarget: number | undefined;
+  let pending: PendingSpringRequest | undefined;
   let active: ActiveSpring | undefined;
   let cancelFrame: (() => void) | undefined;
   let destroyed = false;
@@ -102,8 +123,8 @@ export function createSpringValue(
     Object.freeze({
       value,
       velocity,
-      target: pendingTarget ?? target,
-      animating: active !== undefined || pendingTarget !== undefined,
+      target: pending?.target ?? target,
+      animating: active !== undefined || pending !== undefined,
     });
 
   const emit = (event: SpringValueEvent): void => {
@@ -119,6 +140,24 @@ export function createSpringValue(
     if (changed) emit('change');
   };
 
+  const stateAt = (sampled: ActiveSpring, elapsed: number): SpringState => {
+    const next = sampled.solution.stateAt(elapsed);
+    if (!sampled.blendFrom || elapsed >= sampled.blendDuration) return next;
+
+    const previous = sampled.blendFrom.stateAt(elapsed);
+    const progress = elapsed / sampled.blendDuration;
+    const weight = progress * progress * (3 - 2 * progress);
+    const weightVelocity =
+      (6 * progress * (1 - progress)) / sampled.blendDuration;
+    return {
+      position: previous.position + (next.position - previous.position) * weight,
+      velocity:
+        previous.velocity +
+        (next.velocity - previous.velocity) * weight +
+        (next.position - previous.position) * weightVelocity,
+    };
+  };
+
   const sampleActive = (time: number): void => {
     if (!active) return;
     const sampled = active;
@@ -126,13 +165,13 @@ export function createSpringValue(
     const elapsed = Math.max(0, time - sampled.startedAt);
     const { solution } = sampled;
 
-    if (solution.timing.settled && elapsed >= solution.timing.settlingDuration) {
+    if (solution.timing.settled && elapsed >= sampled.settlingBoundary) {
       active = undefined;
       write(solution.initialState.target, 0);
       if (revision !== sampledRevision) return;
       if (
         !sampled.logicalComplete &&
-        elapsed >= solution.timing.perceptualDuration
+        elapsed >= sampled.logicalDuration
       ) {
         sampled.logicalComplete = true;
         emit('logicalComplete');
@@ -142,13 +181,13 @@ export function createSpringValue(
       return;
     }
 
-    const state = solution.stateAt(elapsed);
+    const state = stateAt(sampled, elapsed);
     write(state.position, state.velocity);
     if (revision !== sampledRevision || active !== sampled) return;
 
     if (
       !sampled.logicalComplete &&
-      elapsed >= solution.timing.perceptualDuration
+      elapsed >= sampled.logicalDuration
     ) {
       sampled.logicalComplete = true;
       emit('logicalComplete');
@@ -157,15 +196,20 @@ export function createSpringValue(
     if (
       !solution.timing.settled &&
       !sampled.unsettledNotified &&
-      elapsed >= solution.timing.settlingDuration
+      elapsed >= sampled.settlingBoundary
     ) {
       sampled.unsettledNotified = true;
       emit('unsettled');
     }
   };
 
-  const createActiveSpring = (time: number, nextTarget: number): void => {
-    target = nextTarget;
+  const createActiveSpring = (
+    time: number,
+    request: PendingSpringRequest,
+    previousParameters: Readonly<SpringParameters>,
+  ): void => {
+    target = request.target;
+    currentParameters = request.parameters;
     if (Object.is(value, target) && velocity === 0) {
       active = undefined;
       emit('settle');
@@ -176,12 +220,37 @@ export function createSpringValue(
       from: value,
       to: target,
       velocity,
-      ...canonicalParameters,
+      ...currentParameters,
       settle: settleInput,
       ...(timingInput === undefined ? {} : { timing: timingInput }),
     });
+    const parametersChanged =
+      previousParameters.mass !== currentParameters.mass ||
+      previousParameters.stiffness !== currentParameters.stiffness ||
+      previousParameters.damping !== currentParameters.damping;
+    const blendFrom =
+      request.blendDuration > 0 && parametersChanged
+        ? createSpring({
+            from: value,
+            to: target,
+            velocity,
+            ...previousParameters,
+            settle: settleInput,
+            ...(timingInput === undefined ? {} : { timing: timingInput }),
+          })
+        : undefined;
     active = {
       solution,
+      ...(blendFrom === undefined ? {} : { blendFrom }),
+      blendDuration: blendFrom ? request.blendDuration : 0,
+      logicalDuration: Math.max(
+        solution.timing.perceptualDuration,
+        blendFrom ? request.blendDuration : 0,
+      ),
+      settlingBoundary: Math.max(
+        solution.timing.settlingDuration,
+        blendFrom ? request.blendDuration : 0,
+      ),
       startedAt: time,
       logicalComplete: false,
       unsettledNotified: false,
@@ -202,18 +271,19 @@ export function createSpringValue(
     if (destroyed) return;
     validateFrameTime(time);
 
-    if (pendingTarget !== undefined) {
+    if (pending !== undefined) {
       // Sample the interrupted trajectory at the exact retarget time before
       // replacing it, preserving analytical rather than frame-difference velocity.
       sampleActive(time);
-      const nextTarget = pendingTarget;
-      pendingTarget = undefined;
-      createActiveSpring(time, nextTarget);
+      const request = pending;
+      const previousParameters = currentParameters;
+      pending = undefined;
+      createActiveSpring(time, request, previousParameters);
     } else {
       sampleActive(time);
     }
 
-    if (active || pendingTarget !== undefined) requestFrame();
+    if (active || pending !== undefined) requestFrame();
   };
 
   requestFrame = (): void => {
@@ -226,11 +296,38 @@ export function createSpringValue(
     validateFrameTime(time);
     sampleActive(time);
     active = undefined;
-    pendingTarget = undefined;
+    pending = undefined;
     cancelFrame?.();
     cancelFrame = undefined;
     write(value, 0);
     target = value;
+  };
+
+  const queueTarget = (
+    nextTarget: number,
+    retargetOptions: SpringValueRetargetOptions = {},
+  ): void => {
+    if (destroyed) return;
+    assertFinite('target', nextTarget);
+    const nextParameters = retargetOptions.parameters
+      ? springParameters.fromPhysics(retargetOptions.parameters)
+      : pending?.parameters ?? currentParameters;
+    const blendDuration =
+      retargetOptions.blendDuration ?? pending?.blendDuration ?? 0;
+    assertFinite('blendDuration', blendDuration);
+    if (blendDuration < 0) {
+      throw new RangeError('blendDuration must be greater than or equal to 0');
+    }
+    const currentRequestTarget = pending?.target ?? target;
+    const currentRequestParameters = pending?.parameters ?? currentParameters;
+    const sameParameters =
+      currentRequestParameters.mass === nextParameters.mass &&
+      currentRequestParameters.stiffness === nextParameters.stiffness &&
+      currentRequestParameters.damping === nextParameters.damping;
+    if (Object.is(nextTarget, currentRequestTarget) && sameParameters) return;
+    revision += 1;
+    pending = { target: nextTarget, parameters: nextParameters, blendDuration };
+    requestFrame();
   };
 
   return Object.freeze({
@@ -241,25 +338,38 @@ export function createSpringValue(
       return velocity;
     },
     getTarget(): number {
-      return pendingTarget ?? target;
+      return pending?.target ?? target;
+    },
+    getParameters(): Readonly<SpringParameters> {
+      return pending?.parameters ?? currentParameters;
     },
     getSnapshot(): Readonly<SpringValueSnapshot> {
       return snapshot();
     },
-    setTarget(nextTarget: number): void {
+    setTarget(
+      nextTarget: number,
+      retargetOptions: SpringValueRetargetOptions = {},
+    ): void {
+      queueTarget(nextTarget, retargetOptions);
+    },
+    setParameters(
+      nextParameters: SpringParameters,
+      retargetOptions: Pick<SpringValueRetargetOptions, 'blendDuration'> = {},
+    ): void {
       if (destroyed) return;
-      assertFinite('target', nextTarget);
-      if (Object.is(nextTarget, pendingTarget ?? target)) return;
-      revision += 1;
-      pendingTarget = nextTarget;
-      requestFrame();
+      queueTarget(pending?.target ?? target, {
+        parameters: nextParameters,
+        ...(retargetOptions.blendDuration === undefined
+          ? {}
+          : { blendDuration: retargetOptions.blendDuration }),
+      });
     },
     jump(nextValue: number): void {
       if (destroyed) return;
       assertFinite('value', nextValue);
       revision += 1;
       active = undefined;
-      pendingTarget = undefined;
+      pending = undefined;
       target = nextValue;
       cancelFrame?.();
       cancelFrame = undefined;

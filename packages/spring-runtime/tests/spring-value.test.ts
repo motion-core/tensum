@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createSpring } from '@motion-core/spring';
 import { createSpringValue } from '../src/index.js';
 import type { FrameDriver } from '../src/index.js';
 
@@ -183,5 +184,116 @@ describe('SpringValue', () => {
 
     expect(value.getTarget()).toBe(200);
     expect(onSettle).not.toHaveBeenCalled();
+  });
+
+  it('retargets with new spring parameters without losing state', () => {
+    const driver = new ManualFrameDriver();
+    const value = createSpringValue(0, parameters, driver);
+    const nextParameters = { mass: 2, stiffness: 90, damping: 18 };
+
+    value.setTarget(300);
+    driver.step(0);
+    driver.step(0.2);
+    const position = value.get();
+    const velocity = value.getVelocity();
+    value.setTarget(100, { parameters: nextParameters });
+    driver.step(0);
+
+    expect(value.get()).toBe(position);
+    expect(value.getVelocity()).toBe(velocity);
+    expect(value.getParameters()).toEqual(nextParameters);
+
+    const expected = createSpring({
+      from: position,
+      to: 100,
+      velocity,
+      ...nextParameters,
+    });
+    driver.step(0.1);
+    expect(value.get()).toBeCloseTo(expected.positionAt(0.1), 12);
+    expect(value.getVelocity()).toBeCloseTo(expected.velocityAt(0.1), 12);
+  });
+
+  it('changes parameters for the current target through setParameters', () => {
+    const driver = new ManualFrameDriver();
+    const value = createSpringValue(0, parameters, driver);
+    const nextParameters = { mass: 1, stiffness: 320, damping: 30 };
+
+    value.setTarget(300);
+    driver.step(0);
+    driver.step(0.1);
+    const before = value.get();
+    value.setParameters(nextParameters);
+    driver.step(0);
+
+    expect(value.get()).toBe(before);
+    expect(value.getTarget()).toBe(300);
+    expect(value.getParameters()).toEqual(nextParameters);
+  });
+
+  it('blends parameter changes with position and velocity continuity', () => {
+    const driver = new ManualFrameDriver();
+    const value = createSpringValue(0, parameters, driver);
+    const nextParameters = { mass: 1, stiffness: 80, damping: 10 };
+    const blendDuration = 0.4;
+    const previous = createSpring({ from: 0, to: 100, velocity: 0, ...parameters });
+    const next = createSpring({
+      from: 0,
+      to: 100,
+      velocity: 0,
+      ...nextParameters,
+    });
+
+    value.setTarget(100, { parameters: nextParameters, blendDuration });
+    driver.step(0);
+    expect(value.get()).toBe(0);
+    expect(value.getVelocity()).toBe(0);
+
+    driver.step(blendDuration / 2);
+    const previousState = previous.stateAt(blendDuration / 2);
+    const nextState = next.stateAt(blendDuration / 2);
+    const weight = 0.5;
+    const weightVelocity = 3.75;
+    expect(value.get()).toBeCloseTo(
+      previousState.position + (nextState.position - previousState.position) * weight,
+      12,
+    );
+    expect(value.getVelocity()).toBeCloseTo(
+      previousState.velocity +
+        (nextState.velocity - previousState.velocity) * weight +
+        (nextState.position - previousState.position) * weightVelocity,
+      12,
+    );
+
+    driver.step(blendDuration / 2);
+    expect(value.get()).toBeCloseTo(next.positionAt(blendDuration), 12);
+    expect(value.getVelocity()).toBeCloseTo(next.velocityAt(blendDuration), 12);
+  });
+
+  it('keeps parameter blending deterministic across frame partitions', () => {
+    const coarseDriver = new ManualFrameDriver();
+    const fineDriver = new ManualFrameDriver();
+    const nextParameters = { mass: 1, stiffness: 80, damping: 10 };
+    const coarse = createSpringValue(0, parameters, coarseDriver);
+    const fine = createSpringValue(0, parameters, fineDriver);
+
+    coarse.setTarget(100, { parameters: nextParameters, blendDuration: 0.4 });
+    fine.setTarget(100, { parameters: nextParameters, blendDuration: 0.4 });
+    coarseDriver.step(0);
+    fineDriver.step(0);
+    coarseDriver.step(0.3);
+    for (let frame = 0; frame < 18; frame += 1) fineDriver.step(1 / 60);
+
+    expect(coarse.get()).toBeCloseTo(fine.get(), 12);
+    expect(coarse.getVelocity()).toBeCloseTo(fine.getVelocity(), 12);
+  });
+
+  it('rejects invalid parameter blend durations', () => {
+    const value = createSpringValue(0, parameters, new ManualFrameDriver());
+
+    expect(() => value.setTarget(100, { blendDuration: -1 })).toThrow(RangeError);
+    expect(() =>
+      value.setTarget(100, { blendDuration: Number.NaN }),
+    ).toThrow(RangeError);
   });
 });
