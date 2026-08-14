@@ -1,5 +1,6 @@
 export { createSpring } from './spring.js';
 export { createSpringModel } from './model.js';
+export { createVectorSpring } from './vector.js';
 export {
   springCharacteristics,
   springParameters,
@@ -53,3 +54,9 @@ export type {
   MotionVisualDurationSpringInput,
 } from './motion-compatibility.js';
 export type { SpringModel } from './model.js';
+export type {
+  MutableVectorSpringState,
+  VectorSpringOptions,
+  VectorSpringSolution,
+  VectorSpringState,
+} from './vector.js';
