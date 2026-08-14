@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createSpring } from '../src/index.js';
+import { createAnalyticalSolver, createSpring } from '../src/index.js';
 
 const defaults = {
   mass: 1,
@@ -49,6 +49,84 @@ describe('analytical spring', () => {
     expect(overdamped.regime).toBe('overdamped');
     expect(samples.every((position) => position <= 100 + 1e-9)).toBe(true);
     expect(overdamped.positionAt(0.5)).toBeLessThan(critical.positionAt(0.5));
+  });
+
+  it('preserves the established trajectory for moderate overdamping', () => {
+    const spring = createSpring({
+      from: 0,
+      to: 100,
+      velocity: 0,
+      mass: 1,
+      stiffness: 100,
+      damping: 30,
+    });
+
+    expect(spring.positionAt(0.5)).toBeCloseTo(82.65953497595359, 12);
+    expect(spring.velocityAt(0.5)).toBeCloseTo(66.2338936587935, 12);
+  });
+
+  it('remains accurate under extreme overdamping', () => {
+    const spring = createSpring({
+      from: 0,
+      to: 1,
+      velocity: 0,
+      mass: 1,
+      stiffness: 1,
+      damping: 1e9,
+    });
+
+    expect(spring.regime).toBe('overdamped');
+    expect(spring.stateAt(0)).toEqual({ position: 0, velocity: 0 });
+    expect(spring.positionAt(1e9)).toBeCloseTo(1 - Math.exp(-1), 10);
+    expect(spring.velocityAt(1e9)).toBeGreaterThan(0);
+  });
+
+  it('is continuous immediately outside the critical damping boundary', () => {
+    const criticalDamping = 2 * Math.sqrt(defaults.mass * defaults.stiffness);
+    const springs = [1 - 2e-7, 1, 1 + 2e-7].map((ratio) =>
+      createSpring({
+        from: -40,
+        to: 120,
+        velocity: 75,
+        ...defaults,
+        damping: criticalDamping * ratio,
+      }),
+    );
+
+    expect(springs.map(({ regime }) => regime)).toEqual([
+      'underdamped',
+      'critical',
+      'overdamped',
+    ]);
+
+    for (const time of [0, 0.01, 0.1, 0.5, 1]) {
+      const states = springs.map((spring) => spring.stateAt(time));
+      expect(states[0]!.position).toBeCloseTo(states[1]!.position, 4);
+      expect(states[2]!.position).toBeCloseTo(states[1]!.position, 4);
+      expect(states[0]!.velocity).toBeCloseTo(states[1]!.velocity, 3);
+      expect(states[2]!.velocity).toBeCloseTo(states[1]!.velocity, 3);
+    }
+  });
+
+  it.each([
+    { mass: 1e-6, stiffness: 1e-6, damping: 2e-8 },
+    { mass: 1e6, stiffness: 1e12, damping: 2e9 },
+    { mass: 1, stiffness: 1, damping: 1e12 },
+  ])('keeps state and tail bounds finite for supported parameter extremes', (parameters) => {
+    const solver = createAnalyticalSolver(parameters, {
+      position: -1e6,
+      target: 1e6,
+      velocity: 1e6,
+    });
+
+    for (const time of [0, 1e-6, 1, 1e6]) {
+      const state = solver.stateAt(time);
+      const bounds = solver.tailBoundsAt(time);
+      expect(Number.isFinite(state.position)).toBe(true);
+      expect(Number.isFinite(state.velocity)).toBe(true);
+      expect(Number.isFinite(bounds.position)).toBe(true);
+      expect(Number.isFinite(bounds.velocity)).toBe(true);
+    }
   });
 
   it('is deterministic regardless of intermediate sampling', () => {

@@ -29,6 +29,16 @@ describe('validation', () => {
     );
   });
 
+  it('rejects parameters whose derived frequencies are not representable', () => {
+    expect(() =>
+      createSpring({
+        ...valid,
+        mass: Number.MIN_VALUE,
+        stiffness: Number.MAX_VALUE,
+      }),
+    ).toThrow(RangeError);
+  });
+
   it('rejects negative or non-finite sample times', () => {
     const spring = createSpring(valid);
     expect(() => spring.stateAt(-0.1)).toThrow(RangeError);

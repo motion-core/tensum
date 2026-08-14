@@ -3,11 +3,19 @@ import type { SpringParameters, SpringRegime } from './types.js';
 export const CRITICAL_DAMPING_TOLERANCE = 1e-7;
 
 export function angularFrequency({ mass, stiffness }: SpringParameters): number {
-  return Math.sqrt(stiffness / mass);
+  return Math.sqrt(stiffness) / Math.sqrt(mass);
 }
 
-export function dampingRatio({ mass, stiffness, damping }: SpringParameters): number {
-  return damping / (2 * Math.sqrt(stiffness * mass));
+export function dampingDecayRate({ mass, damping }: SpringParameters): number {
+  if (damping === 0) return 0;
+
+  // Divide the larger operand first so a representable c / (2m) is not lost
+  // to either an overflowing ratio or an underflowing c / 2 intermediate.
+  return damping > mass ? damping / 2 / mass : damping / mass / 2;
+}
+
+export function dampingRatio(parameters: SpringParameters): number {
+  return dampingDecayRate(parameters) / angularFrequency(parameters);
 }
 
 export function classifyDamping(

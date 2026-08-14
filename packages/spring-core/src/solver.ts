@@ -3,6 +3,7 @@ import {
   assertFinite,
   assertNonNegativeTime,
   classifyDamping,
+  dampingDecayRate,
   dampingRatio,
 } from './math.js';
 import type {
@@ -49,14 +50,25 @@ export function createAnalyticalSolver(
   validateInitialState(initial);
 
   const omega0 = angularFrequency(parameters);
+  const alpha = dampingDecayRate(parameters);
   const zeta = dampingRatio(parameters);
+
+  assertFinite('angularFrequency', omega0);
+  assertFinite('dampingDecayRate', alpha);
+  assertFinite('dampingRatio', zeta);
+  if (omega0 <= 0) {
+    throw new RangeError('spring parameters must produce a positive angularFrequency');
+  }
+
   const regime = classifyDamping(zeta);
   const y0 = initial.position - initial.target;
   const v0 = initial.velocity;
-  const alpha = parameters.damping / (2 * parameters.mass);
+
+  assertFinite('initial displacement', y0);
 
   if (regime === 'underdamped') {
-    const omegaD = Math.sqrt(Math.max(0, omega0 * omega0 - alpha * alpha));
+    const omegaD =
+      omega0 * Math.sqrt(Math.max(0, (1 - zeta) * (1 + zeta)));
     const a = y0;
     const b = (v0 + alpha * y0) / omegaD;
     const velocityCos = -alpha * a + omegaD * b;
@@ -64,12 +76,26 @@ export function createAnalyticalSolver(
     const positionAmplitude = Math.hypot(a, b);
     const velocityAmplitude = Math.hypot(velocityCos, velocitySin);
 
+    for (const [name, value] of [
+      ['dampedAngularFrequency', omegaD],
+      ['positionCoefficient', b],
+      ['velocityCosCoefficient', velocityCos],
+      ['velocitySinCoefficient', velocitySin],
+      ['positionAmplitude', positionAmplitude],
+      ['velocityAmplitude', velocityAmplitude],
+    ] as const) {
+      assertFinite(name, value);
+    }
+
     return {
       angularFrequency: omega0,
       dampingRatio: zeta,
       regime,
       stateAt(time) {
         assertNonNegativeTime(time);
+        if (time === 0) {
+          return { position: initial.position, velocity: initial.velocity };
+        }
         const decay = Math.exp(-alpha * time);
         const phase = omegaD * time;
         const cosine = Math.cos(phase);
@@ -98,12 +124,23 @@ export function createAnalyticalSolver(
     const velocityConstant = b - omega0 * a;
     const velocityLinear = -omega0 * b;
 
+    for (const [name, value] of [
+      ['positionCoefficient', b],
+      ['velocityConstant', velocityConstant],
+      ['velocityLinear', velocityLinear],
+    ] as const) {
+      assertFinite(name, value);
+    }
+
     return {
       angularFrequency: omega0,
       dampingRatio: zeta,
       regime,
       stateAt(time) {
         assertNonNegativeTime(time);
+        if (time === 0) {
+          return { position: initial.position, velocity: initial.velocity };
+        }
         const decay = Math.exp(-omega0 * time);
         return {
           position: initial.target + decay * (a + b * time),
@@ -124,11 +161,31 @@ export function createAnalyticalSolver(
     };
   }
 
-  const rootOffset = Math.sqrt(Math.max(0, alpha * alpha - omega0 * omega0));
-  const rootSlow = -alpha + rootOffset;
-  const rootFast = -alpha - rootOffset;
-  const coefficientSlow = (v0 - rootFast * y0) / (rootSlow - rootFast);
-  const coefficientFast = y0 - coefficientSlow;
+  const normalizedFrequency = omega0 / alpha;
+  const normalizedOffset = Math.sqrt(
+    Math.max(0, (1 - normalizedFrequency) * (1 + normalizedFrequency)),
+  );
+  const rootFastMagnitude = alpha * (1 + normalizedOffset);
+  const rootFast = -rootFastMagnitude;
+  // Vieta's relation avoids subtracting two almost equal values in
+  // -alpha + sqrt(alpha² - omega0²).
+  const rootSlow = -omega0 * (omega0 / rootFastMagnitude);
+  const rootSeparation = rootSlow - rootFast;
+  const coefficientSlow = (v0 - rootFast * y0) / rootSeparation;
+  const coefficientFast = (rootSlow * y0 - v0) / rootSeparation;
+
+  for (const [name, value] of [
+    ['overdampedSlowRoot', rootSlow],
+    ['overdampedFastRoot', rootFast],
+    ['overdampedRootSeparation', rootSeparation],
+    ['slowModeCoefficient', coefficientSlow],
+    ['fastModeCoefficient', coefficientFast],
+  ] as const) {
+    assertFinite(name, value);
+  }
+  if (rootSlow >= 0 || rootFast >= 0 || rootSeparation <= 0) {
+    throw new RangeError('overdamped roots must be distinct negative finite numbers');
+  }
 
   return {
     angularFrequency: omega0,
@@ -136,6 +193,9 @@ export function createAnalyticalSolver(
     regime,
     stateAt(time) {
       assertNonNegativeTime(time);
+      if (time === 0) {
+        return { position: initial.position, velocity: initial.velocity };
+      }
       const slow = coefficientSlow * Math.exp(rootSlow * time);
       const fast = coefficientFast * Math.exp(rootFast * time);
       return {
