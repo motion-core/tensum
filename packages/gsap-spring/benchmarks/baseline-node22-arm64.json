@@ -4,15 +4,19 @@
   "results": [
     {
       "name": "springTo GSAP property + seek",
-      "microsecondsPerOperation": 3.49
+      "microsecondsPerOperation": 4.4
     },
     {
       "name": "springTo custom adapter + seek",
-      "microsecondsPerOperation": 2.92
+      "microsecondsPerOperation": 3.79
     },
     {
       "name": "springTo custom adapter + callback + seek",
-      "microsecondsPerOperation": 2.84
+      "microsecondsPerOperation": 3.41
+    },
+    {
+      "name": "springTo automatic handoff + seek",
+      "microsecondsPerOperation": 7.1
     }
   ]
 }

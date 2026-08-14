@@ -73,6 +73,28 @@ const cases = [
       controller.kill();
     },
   },
+  {
+    name: 'springTo automatic handoff + seek',
+    run: () => {
+      const target = { nested: { progress: 0 } };
+      const first = springTo(target, {
+        targets: { progress: 1 },
+        velocity: { progress: 2 },
+        spring: parameters,
+        adapters: customAdapter,
+      });
+      first.seek(0.1);
+      const second = springTo(target, {
+        targets: { progress: -1 },
+        spring: parameters,
+        adapters: customAdapter,
+      });
+      second.seek(0.15);
+      checksum += target.nested.progress;
+      second.kill();
+      first.kill();
+    },
+  },
 ];
 
 for (let warmup = 0; warmup < 1_000; warmup += 1) {
