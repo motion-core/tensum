@@ -8,6 +8,7 @@ import type {
   SpringSettlingOptions,
   SpringSolution,
   SpringState,
+  SpringTiming,
 } from './types.js';
 
 export function createSpring(options: SpringOptions): SpringSolution {
@@ -33,6 +34,17 @@ export function createSpring(options: SpringOptions): SpringSolution {
   };
   const solver = createAnalyticalSolver(parameters, initialState);
   const settlingResult = getSettlingResult(solver, settling);
+  const perceptualDuration =
+    options.timing?.perceptualDuration ?? (2 * Math.PI) / solver.angularFrequency;
+  assertFinite('perceptualDuration', perceptualDuration);
+  if (perceptualDuration < 0) {
+    throw new RangeError('perceptualDuration must be greater than or equal to 0');
+  }
+  const timing: SpringTiming = {
+    perceptualDuration,
+    settlingDuration: settlingResult.duration,
+    settled: settlingResult.settled,
+  };
 
   const stateAt = (time: number): SpringState => solver.stateAt(time);
 
@@ -43,6 +55,7 @@ export function createSpring(options: SpringOptions): SpringSolution {
     parameters: Object.freeze(parameters),
     initialState: Object.freeze(initialState),
     settling: Object.freeze(settling),
+    timing: Object.freeze(timing),
     positionAt(time: number) {
       return stateAt(time).position;
     },
@@ -70,6 +83,7 @@ export function createSpring(options: SpringOptions): SpringSolution {
           maxDuration: settling.maxDuration,
           refinementIterations: settling.refinementIterations,
         },
+        timing: { perceptualDuration: timing.perceptualDuration },
       });
     },
   });

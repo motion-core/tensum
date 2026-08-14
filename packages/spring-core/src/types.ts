@@ -27,6 +27,16 @@ export interface SpringSettleInput {
   refinementIterations?: number;
 }
 
+export interface SpringTimingInput {
+  perceptualDuration?: number;
+}
+
+export interface SpringTiming {
+  perceptualDuration: number;
+  settlingDuration: number;
+  settled: boolean;
+}
+
 export type SpringRegime = 'underdamped' | 'critical' | 'overdamped';
 
 export interface SpringOptions extends SpringParameters {
@@ -34,6 +44,7 @@ export interface SpringOptions extends SpringParameters {
   to: number;
   velocity?: number;
   settle?: SpringSettleInput;
+  timing?: SpringTimingInput;
 }
 
 export interface SettlingResult {
@@ -49,6 +60,7 @@ export interface SpringSolution {
   readonly parameters: Readonly<SpringParameters>;
   readonly initialState: Readonly<SpringInitialState>;
   readonly settling: Readonly<SpringSettlingOptions>;
+  readonly timing: Readonly<SpringTiming>;
   positionAt(time: number): number;
   velocityAt(time: number): number;
   stateAt(time: number): SpringState;

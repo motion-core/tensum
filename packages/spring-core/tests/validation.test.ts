@@ -54,4 +54,13 @@ describe('validation', () => {
     expect(() => spring.stateAt(-0.1)).toThrow(RangeError);
     expect(() => spring.stateAt(Number.NaN)).toThrow(RangeError);
   });
+
+  it('rejects invalid perceptual durations', () => {
+    expect(() =>
+      createSpring({ ...valid, timing: { perceptualDuration: -1 } }),
+    ).toThrow(RangeError);
+    expect(() =>
+      createSpring({ ...valid, timing: { perceptualDuration: Number.NaN } }),
+    ).toThrow(RangeError);
+  });
 });

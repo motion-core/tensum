@@ -31,6 +31,8 @@ export type {
   SpringSettlingOptions,
   SpringSolution,
   SpringState,
+  SpringTiming,
+  SpringTimingInput,
 } from './types.js';
 export type {
   PerceptualSpringInput,

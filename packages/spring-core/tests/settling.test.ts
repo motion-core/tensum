@@ -95,6 +95,52 @@ describe('settling duration', () => {
     expect(spring.retarget(200, 0.2).settling).toEqual(spring.settling);
   });
 
+  it('exposes distinct perceptual and physical timing', () => {
+    const spring = createSpring({
+      from: 0,
+      to: 100,
+      ...parameters,
+      timing: { perceptualDuration: 0.4 },
+    });
+
+    expect(spring.timing).toEqual({
+      perceptualDuration: 0.4,
+      settlingDuration: spring.getSettlingDuration(),
+      settled: true,
+    });
+    expect(spring.timing.settlingDuration).toBeGreaterThan(
+      spring.timing.perceptualDuration,
+    );
+    expect(Object.isFrozen(spring.timing)).toBe(true);
+    expect(spring.retarget(200, 0.2).timing.perceptualDuration).toBe(0.4);
+  });
+
+  it('derives a default perceptual duration from the undamped response', () => {
+    const spring = createSpring({ from: 0, to: 100, ...parameters });
+
+    expect(spring.timing.perceptualDuration).toBeCloseTo(
+      (2 * Math.PI) / spring.angularFrequency,
+      12,
+    );
+  });
+
+  it('reports physical non-settlement independently from perceptual timing', () => {
+    const spring = createSpring({
+      from: 0,
+      to: 100,
+      ...parameters,
+      damping: 0,
+      timing: { perceptualDuration: 0.5 },
+      settle: { maxDuration: 2 },
+    });
+
+    expect(spring.timing).toEqual({
+      perceptualDuration: 0.5,
+      settlingDuration: 2,
+      settled: false,
+    });
+  });
+
   it('settles immediately when already at rest at the target', () => {
     const spring = createSpring({ from: 100, to: 100, ...parameters });
 
