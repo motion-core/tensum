@@ -199,10 +199,16 @@ const animation = springTo(element, {
 animation.pause();
 animation.seek(0.2);
 animation.resume();
-animation.retarget({ x: 100 });
+
+springTo(element, {
+  x: 100,
+  spring: { mass: 1, stiffness: 180, damping: 24 },
+});
 ```
 
 Built-in transform conveniences are `x`, `y`, `scale`, and `rotation`. Add arbitrary numeric GSAP properties through `targets`, or provide `adapters` for values that need custom reads and writes. Target strings accept one numeric value and one unit, such as `24px`, `1.2`, or `30deg`. Unit mismatches throw before animation starts.
+
+Retargeting is automatic. Starting another Motion Core spring on the same target and property samples the active track at the exact handoff time, transfers its analytical position and velocity, and makes the new track the only writer. A configured initial velocity is used only when no active track exists. The registry is shared by `springTo()` and the `motionSpring` plugin, while unrelated properties remain independent.
 
 Register the special-property plugin when you want standard GSAP composition and context cleanup:
 
@@ -219,6 +225,32 @@ gsap.to(element, {
   },
 });
 ```
+
+Overlapping springs in a timeline use the same automatic handoff:
+
+```ts
+const timeline = gsap.timeline();
+
+timeline
+  .to(element, {
+    motionSpring: {
+      x: 320,
+      parameters: { mass: 1, stiffness: 180, damping: 24 },
+    },
+  })
+  .to(
+    element,
+    {
+      motionSpring: {
+        x: 80,
+        parameters: { mass: 1, stiffness: 240, damping: 26 },
+      },
+    },
+    '<0.2',
+  );
+```
+
+Direct and incremental seeks produce the same handoff. Reversing before the second tween starts, killing it, or reverting its GSAP context restores ownership to the previous track without a position jump.
 
 For an unsettled trajectory, choose `stop`, `snap`, `continue`, or `error`. The default is `stop` at `maxDuration`. `continue` uses an infinite GSAP clock and must be stopped or killed by the caller.
 
