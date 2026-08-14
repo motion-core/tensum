@@ -385,6 +385,33 @@ describe('MotionCoreSpringPlugin', () => {
     expect(target.score).toBeCloseTo(expected.positionAt(0.1), 10);
   });
 
+  it('automatically hands off between springTo controllers and restores on kill', () => {
+    const target = { score: 0 };
+    const first = springTo(target, {
+      targets: { score: 100 },
+      velocity: { score: 250 },
+      spring: parameters,
+    });
+    first.pause();
+    first.seek(0.2);
+    const handoff = first.getSnapshot().states['score']!;
+    const second = springTo(target, {
+      targets: { score: -50 },
+      velocity: { score: -999 },
+      spring: parameters,
+    });
+    second.pause();
+
+    expect(second.springs['score']!.stateAt(0)).toEqual(handoff);
+    second.seek(0.1);
+    const redirectedPosition = target.score;
+    first.seek(0.3);
+    expect(target.score).toBe(redirectedPosition);
+
+    second.tween.kill();
+    expect(target.score).toBeCloseTo(first.springs['score']!.positionAt(0.3), 10);
+  });
+
   it('fires logical and physical callbacks once at each forward crossing', () => {
     const target = { score: 0 };
     const onLogicalComplete = vi.fn();
