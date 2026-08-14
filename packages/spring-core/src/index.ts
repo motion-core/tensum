@@ -5,6 +5,11 @@ export {
   springPresets,
 } from './parameters.js';
 export {
+  MOTION_COMPATIBILITY_COMMIT,
+  MOTION_COMPATIBILITY_VERSION,
+  motionSpringParameters,
+} from './motion-compatibility.js';
+export {
   CRITICAL_DAMPING_TOLERANCE,
   angularFrequency,
   classifyDamping,
@@ -38,3 +43,8 @@ export type {
   SpringPresets,
   VisualSpringInput,
 } from './parameters.js';
+export type {
+  MotionDurationSpringInput,
+  MotionSpringParameterConverters,
+  MotionVisualDurationSpringInput,
+} from './motion-compatibility.js';
