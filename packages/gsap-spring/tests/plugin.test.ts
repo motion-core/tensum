@@ -385,6 +385,35 @@ describe('MotionCoreSpringPlugin', () => {
     expect(target.score).toBeCloseTo(expected.positionAt(0.1), 10);
   });
 
+  it('shares automatic handoff from the timeline plugin to springTo', () => {
+    const target = { score: 0 };
+    const firstSpring = createSpring({
+      from: 0,
+      to: 100,
+      velocity: 250,
+      ...parameters,
+    });
+    const first = gsap.to(target, {
+      paused: true,
+      motionSpring: {
+        values: { score: 100 },
+        velocity: { score: 250 },
+        parameters,
+      },
+    });
+    first.time(0.2, true);
+    const redirected = springTo(target, {
+      targets: { score: -50 },
+      velocity: { score: -999 },
+      spring: parameters,
+    });
+    redirected.pause();
+
+    expect(redirected.springs['score']!.stateAt(0)).toEqual(
+      firstSpring.stateAt(0.2),
+    );
+  });
+
   it('automatically hands off between springTo controllers and restores on kill', () => {
     const target = { score: 0 };
     const first = springTo(target, {
