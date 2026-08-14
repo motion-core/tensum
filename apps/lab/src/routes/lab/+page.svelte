@@ -101,7 +101,7 @@
 </script>
 
 <svelte:head>
-	<title>@motion-core/spring</title>
+	<title>Spring lab — @motion-core/spring</title>
 	<meta
 		name="description"
 		content="An interactive laboratory for deterministic spring physics driven by GSAP time."
