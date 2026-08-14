@@ -1,6 +1,10 @@
 import { assertFinite } from './math.js';
 import type { AnalyticalSolver } from './solver.js';
-import type { SettlingResult, SpringSettlingOptions } from './types.js';
+import type {
+  SettlingResult,
+  SpringSettleInput,
+  SpringSettlingOptions,
+} from './types.js';
 
 export const DEFAULT_SETTLING_OPTIONS: Readonly<SpringSettlingOptions> = {
   positionEpsilon: 0.1,
@@ -8,6 +12,20 @@ export const DEFAULT_SETTLING_OPTIONS: Readonly<SpringSettlingOptions> = {
   maxDuration: 60,
   refinementIterations: 48,
 };
+
+export function resolveSettlingOptions(
+  input: SpringSettleInput = {},
+): Readonly<SpringSettlingOptions> {
+  const options: SpringSettlingOptions = {
+    positionEpsilon: input.position ?? DEFAULT_SETTLING_OPTIONS.positionEpsilon,
+    velocityEpsilon: input.velocity ?? DEFAULT_SETTLING_OPTIONS.velocityEpsilon,
+    maxDuration: input.maxDuration ?? DEFAULT_SETTLING_OPTIONS.maxDuration,
+    refinementIterations:
+      input.refinementIterations ?? DEFAULT_SETTLING_OPTIONS.refinementIterations,
+  };
+  validateSettlingOptions(options);
+  return Object.freeze(options);
+}
 
 export function validateSettlingOptions(options: SpringSettlingOptions): void {
   assertFinite('positionEpsilon', options.positionEpsilon);

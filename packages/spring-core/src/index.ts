@@ -1,4 +1,5 @@
 export { createSpring } from './spring.js';
+export { createSpringModel } from './model.js';
 export {
   springCharacteristics,
   springParameters,
@@ -19,6 +20,7 @@ export { createAnalyticalSolver, validateSpringParameters } from './solver.js';
 export {
   DEFAULT_SETTLING_OPTIONS,
   getSettlingResult,
+  resolveSettlingOptions,
   validateSettlingOptions,
 } from './settling.js';
 export type {
@@ -50,3 +52,4 @@ export type {
   MotionSpringParameterConverters,
   MotionVisualDurationSpringInput,
 } from './motion-compatibility.js';
+export type { SpringModel } from './model.js';

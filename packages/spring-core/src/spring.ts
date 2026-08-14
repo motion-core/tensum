@@ -1,37 +1,28 @@
 import { assertFinite } from './math.js';
-import { DEFAULT_SETTLING_OPTIONS, getSettlingResult } from './settling.js';
+import { getSettlingResult, resolveSettlingOptions } from './settling.js';
 import { createAnalyticalSolver } from './solver.js';
 import type {
   SpringInitialState,
   SpringOptions,
   SpringParameters,
-  SpringSettlingOptions,
+  SpringSettleInput,
   SpringSolution,
   SpringState,
   SpringTiming,
+  SpringTimingInput,
 } from './types.js';
 
-export function createSpring(options: SpringOptions): SpringSolution {
-  const parameters: SpringParameters = {
-    mass: options.mass,
-    stiffness: options.stiffness,
-    damping: options.damping,
-  };
-  const initialState: SpringInitialState = {
-    position: options.from,
-    velocity: options.velocity ?? 0,
-    target: options.to,
-  };
-  const settling: SpringSettlingOptions = {
-    positionEpsilon:
-      options.settle?.position ?? DEFAULT_SETTLING_OPTIONS.positionEpsilon,
-    velocityEpsilon:
-      options.settle?.velocity ?? DEFAULT_SETTLING_OPTIONS.velocityEpsilon,
-    maxDuration: options.settle?.maxDuration ?? DEFAULT_SETTLING_OPTIONS.maxDuration,
-    refinementIterations:
-      options.settle?.refinementIterations ??
-      DEFAULT_SETTLING_OPTIONS.refinementIterations,
-  };
+export interface SpringSolutionOptions {
+  settle?: SpringSettleInput;
+  timing?: SpringTimingInput;
+}
+
+export function createSpringSolution(
+  parameters: SpringParameters,
+  initialState: SpringInitialState,
+  options: SpringSolutionOptions = {},
+): SpringSolution {
+  const settling = resolveSettlingOptions(options.settle);
   const solver = createAnalyticalSolver(parameters, initialState);
   const settlingResult = getSettlingResult(solver, settling);
   const perceptualDuration =
@@ -52,9 +43,9 @@ export function createSpring(options: SpringOptions): SpringSolution {
     dampingRatio: solver.dampingRatio,
     angularFrequency: solver.angularFrequency,
     regime: solver.regime,
-    parameters: Object.freeze(parameters),
-    initialState: Object.freeze(initialState),
-    settling: Object.freeze(settling),
+    parameters: Object.freeze({ ...parameters }),
+    initialState: Object.freeze({ ...initialState }),
+    settling,
     timing: Object.freeze(timing),
     positionAt(time: number) {
       return stateAt(time).position;
@@ -72,11 +63,11 @@ export function createSpring(options: SpringOptions): SpringSolution {
     retarget(target: number, time: number) {
       assertFinite('target', target);
       const current = stateAt(time);
-      return createSpring({
-        from: current.position,
-        to: target,
+      return createSpringSolution(parameters, {
+        position: current.position,
         velocity: current.velocity,
-        ...parameters,
+        target,
+      }, {
         settle: {
           position: settling.positionEpsilon,
           velocity: settling.velocityEpsilon,
@@ -87,4 +78,23 @@ export function createSpring(options: SpringOptions): SpringSolution {
       });
     },
   });
+}
+
+export function createSpring(options: SpringOptions): SpringSolution {
+  return createSpringSolution(
+    {
+      mass: options.mass,
+      stiffness: options.stiffness,
+      damping: options.damping,
+    },
+    {
+      position: options.from,
+      velocity: options.velocity ?? 0,
+      target: options.to,
+    },
+    {
+      ...(options.settle === undefined ? {} : { settle: options.settle }),
+      ...(options.timing === undefined ? {} : { timing: options.timing }),
+    },
+  );
 }
