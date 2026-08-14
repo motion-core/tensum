@@ -11,6 +11,13 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "noEmit": true,
+    "paths": {
+      "@motion-core/gsap-spring": ["./packages/gsap-spring/src/index.ts"],
+      "@motion-core/spring": ["./packages/spring-core/src/index.ts"],
+      "@motion-core/spring/coupled": ["./packages/spring-core/src/coupled.ts"],
+      "@motion-core/spring/css": ["./packages/spring-core/src/css.ts"],
+      "@motion-core/spring-runtime": ["./packages/spring-runtime/src/index.ts"]
+    },
     "resolveJsonModule": true,
     "target": "ES2022"
   }
