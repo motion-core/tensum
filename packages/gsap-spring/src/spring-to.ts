@@ -31,23 +31,26 @@ export interface SpringPropertyOptions extends Partial<SpringParameters> {
   settle?: SpringSettleInput;
 }
 
+export interface SpringTrackConfig {
+  spring: SpringParameters & { settle?: SpringSettleInput };
+  velocity?: number | SpringVelocities;
+  properties?: Readonly<Record<SpringProperty, SpringPropertyOptions>>;
+  adapters?: Readonly<Record<SpringProperty, SpringPropertyAdapter>>;
+  units?: Readonly<Record<SpringProperty, string>>;
+}
+
 export interface SpringToSnapshot {
   elapsed: number;
   duration: number;
   states: SpringStateMap;
 }
 
-export interface SpringToVars {
+export interface SpringToVars extends SpringTrackConfig {
   x?: SpringTargetValue;
   y?: SpringTargetValue;
   scale?: SpringTargetValue;
   rotation?: SpringTargetValue;
   targets?: SpringTargets;
-  spring: SpringParameters & { settle?: SpringSettleInput };
-  velocity?: number | SpringVelocities;
-  properties?: Readonly<Record<SpringProperty, SpringPropertyOptions>>;
-  adapters?: Readonly<Record<SpringProperty, SpringPropertyAdapter>>;
-  units?: Readonly<Record<SpringProperty, string>>;
   unsettled?: UnsettledPolicy;
   onUpdate?: (snapshot: SpringToSnapshot) => void;
   onUnsettled?: (snapshot: SpringToSnapshot) => void;
@@ -79,14 +82,14 @@ interface ActiveProperties {
   unsettledAt: number;
 }
 
-interface RequestedTarget {
+export interface RequestedTarget {
   value: number;
   unit?: string;
 }
 
 type RequestedTargets = Record<SpringProperty, RequestedTarget>;
 
-interface ParsedNumericValue {
+export interface ParsedNumericValue {
   value: number;
   unit?: string;
 }
@@ -94,7 +97,7 @@ interface ParsedNumericValue {
 const NUMERIC_VALUE =
   /^([+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:e[+-]?\d+)?)\s*([a-z%]*)$/i;
 
-function parseNumericValue(
+export function parseNumericValue(
   input: unknown,
   property: SpringProperty,
 ): ParsedNumericValue {
@@ -141,7 +144,7 @@ function resolvedUnit(
   property: SpringProperty,
   requested: RequestedTarget,
   readUnit: string | undefined,
-  vars: SpringToVars,
+  vars: SpringTrackConfig,
 ): string | undefined {
   const adapterUnit = vars.adapters?.[property]?.unit;
   const hasConfiguredUnit = Object.hasOwn(vars.units ?? {}, property);
@@ -161,11 +164,11 @@ function resolvedUnit(
   return unit;
 }
 
-function accessFor(
+export function accessFor(
   target: gsap.TweenTarget,
   property: SpringProperty,
   requested: RequestedTarget,
-  vars: SpringToVars,
+  vars: SpringTrackConfig,
 ): { from: number; unit?: string; write: (value: number) => void } {
   const adapter = vars.adapters?.[property];
   if (adapter) {
@@ -195,16 +198,16 @@ function accessFor(
   };
 }
 
-function velocityFor(
-  velocity: SpringToVars['velocity'],
+export function velocityFor(
+  velocity: SpringTrackConfig['velocity'],
   property: SpringProperty,
 ): number {
   if (typeof velocity === 'number') return velocity;
   return velocity?.[property] ?? 0;
 }
 
-function optionsFor(
-  vars: SpringToVars,
+export function optionsFor(
+  vars: SpringTrackConfig,
   property: SpringProperty,
 ): SpringParameters & { settle?: SpringSettleInput } {
   const propertyOptions = vars.properties?.[property];

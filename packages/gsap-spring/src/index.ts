@@ -1,5 +1,8 @@
-export { realSpringPluginStatus } from './plugin.js';
-export type { SpringPluginStatus } from './plugin.js';
+export {
+  MotionCoreSpringPlugin,
+  registerMotionCoreSpringPlugin,
+} from './plugin.js';
+export type { MotionSpringPluginVars } from './plugin.js';
 export { SUPPORTED_PROPERTIES, springTo } from './spring-to.js';
 export type {
   SpringController,
