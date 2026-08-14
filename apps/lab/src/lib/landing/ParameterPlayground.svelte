@@ -1,36 +1,49 @@
 <script lang="ts">
 	import { springTo } from '@motion-core/gsap-spring';
-	import type { SpringController } from '@motion-core/gsap-spring';
-	import { createSpring, springParameters } from '@motion-core/spring';
+	import type { SpringController, SpringToSnapshot } from '@motion-core/gsap-spring';
+	import { createSpring, springCharacteristics, springParameters } from '@motion-core/spring';
 	import { gsap } from 'gsap';
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
+	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
-	import { Slider } from '$lib/components/ui/slider';
+	import * as Tabs from '$lib/components/ui/tabs';
+	import ParameterField from '$lib/lab/ParameterField.svelte';
 
-	const presets = [
-		{ label: 'Smooth', duration: 0.5, bounce: 0 },
-		{ label: 'Snappy', duration: 0.5, bounce: 0.15 },
-		{ label: 'Bouncy', duration: 0.5, bounce: 0.3 }
+	type InputMode = 'perceptual' | 'physics';
+	type TargetSide = 'left' | 'right';
+
+	const feelPresets = [
+		{ label: 'Gentle', duration: 0.85, bounce: -0.3 },
+		{ label: 'Quick', duration: 0.3, bounce: 0.05 },
+		{ label: 'Elastic', duration: 0.8, bounce: 0.7 }
 	] as const;
 
-	let duration = $state(0.5);
-	let bounce = $state(0.15);
+	let mode = $state<InputMode>('perceptual');
+	let duration = $state(0.3);
+	let bounce = $state(0.05);
+	let mass = $state(1);
+	let stiffness = $state(180);
+	let damping = $state(24);
+	let targetSide = $state<TargetSide>('left');
 	let track = $state<HTMLDivElement | null>(null);
 	let body = $state<HTMLDivElement | null>(null);
 	let trackWidth = $state(0);
-	let atEnd = $state(false);
 	let prefersReducedMotion = $state(false);
-	let controller: SpringController | undefined;
+	let status = $state('ready');
+	let telemetry = $state({ position: 0, velocity: 0 });
+	const controllers: SpringController[] = [];
 
 	let parameters = $derived(
-		springParameters.fromPerceptualDuration({
-			duration,
-			bounce
-		})
+		mode === 'perceptual'
+			? springParameters.fromPerceptualDuration({ duration, bounce })
+			: springParameters.fromPhysics({ mass, stiffness, damping })
 	);
-	let path = $derived(trajectoryPath(duration, bounce));
+	let characteristics = $derived(springCharacteristics(parameters));
+	let settlingDuration = $derived(
+		createSpring({ from: 0, to: 1, ...parameters }).getSettlingDuration()
+	);
 
 	const captureTrack: Attachment<HTMLDivElement> = (node) => {
 		track = node;
@@ -42,45 +55,61 @@
 		return () => (body = null);
 	};
 
-	function trajectoryPath(nextDuration: number, nextBounce: number): string {
-		const solution = createSpring({
-			from: 0,
-			to: 1,
-			...springParameters.fromPerceptualDuration({
-				duration: nextDuration,
-				bounce: nextBounce
-			})
-		});
-		const sampleDuration = Math.max(solution.getSettlingDuration(), nextDuration);
-		return Array.from({ length: 96 }, (_, index) => {
-			const progress = index / 95;
-			const x = progress * 100;
-			const value = solution.positionAt(progress * sampleDuration);
-			const y = 34 - value * 24;
-			return `${index === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`;
-		}).join(' ');
+	function targetFor(side: TargetSide): number {
+		return side === 'left' ? 0 : Math.max(trackWidth - 48, 0);
 	}
 
-	function run(): void {
+	function updateTelemetry(snapshot: SpringToSnapshot): void {
+		const state = snapshot.states.x;
+		if (!state) return;
+		telemetry = { position: state.position, velocity: state.velocity };
+		status = 'moving';
+	}
+
+	function moveTo(side: TargetSide): void {
 		if (!body) return;
-		atEnd = !atEnd;
-		const target = atEnd ? Math.max(trackWidth - 20, 0) : 0;
+		targetSide = side;
+		const target = targetFor(side);
 
 		if (prefersReducedMotion) {
 			gsap.set(body, { x: target });
+			telemetry = { position: target, velocity: 0 };
+			status = 'reduced';
 			return;
 		}
 
-		controller = springTo(body, {
+		const controller = springTo(body, {
 			x: target,
-			spring: parameters
+			spring: parameters,
+			onUpdate: updateTelemetry,
+			onSettle: (snapshot) => {
+				const state = snapshot.states.x;
+				telemetry = {
+					position: state?.position ?? target,
+					velocity: state?.velocity ?? 0
+				};
+				status = 'settled';
+			}
 		});
+		controllers.push(controller);
 	}
 
-	function applyPreset(preset: (typeof presets)[number]): void {
+	async function applyPreset(preset: (typeof feelPresets)[number]): Promise<void> {
+		mode = 'perceptual';
 		duration = preset.duration;
 		bounce = preset.bounce;
-		run();
+		await tick();
+		moveTo(targetSide === 'left' ? 'right' : 'left');
+	}
+
+	function setMode(nextMode: InputMode): void {
+		if (nextMode === mode) return;
+		if (nextMode === 'physics') {
+			mass = parameters.mass;
+			stiffness = parameters.stiffness;
+			damping = parameters.damping;
+		}
+		mode = nextMode;
 	}
 
 	onMount(() => {
@@ -92,7 +121,11 @@
 			const entry = entries[0];
 			if (!entry) return;
 			trackWidth = entry.contentRect.width;
-			if (body) gsap.set(body, { x: atEnd ? Math.max(trackWidth - 20, 0) : 0 });
+			if (body && status !== 'moving') {
+				const target = targetFor(targetSide);
+				gsap.set(body, { x: target });
+				telemetry = { position: target, velocity: 0 };
+			}
 		});
 
 		syncMotionPreference();
@@ -105,143 +138,204 @@
 		};
 	});
 
-	onDestroy(() => controller?.kill());
+	onDestroy(() => {
+		for (const controller of controllers) controller.kill();
+	});
 </script>
 
-<div class="grid gap-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-	<Card.Root>
-		<Card.Header>
-			<Card.Title>Perceptual parameters</Card.Title>
-			<Card.Description>
-				Use duration and bounce, then keep the same analytical solver underneath.
-			</Card.Description>
-		</Card.Header>
-		<Card.Content>
-			<div class="space-y-4">
-				<div class="grid grid-cols-3 gap-2" aria-label="Spring presets">
-					{#each presets as preset (preset.label)}
+<Card.Root size="sm">
+	<Card.Content>
+		<div class="grid gap-4 lg:grid-cols-[10rem_minmax(0,1fr)_13rem]">
+			<section
+				class="order-2 space-y-4 lg:order-1 lg:border-r lg:border-border lg:pr-4"
+				aria-labelledby="model-heading"
+			>
+				<div class="space-y-1">
+					<h3 class="font-heading text-sm font-medium" id="model-heading">Input model</h3>
+					<p class="text-muted-foreground">Describe the feel or provide physical constants.</p>
+				</div>
+
+				<Tabs.Root value={mode} onValueChange={(value) => setMode(value as InputMode)}>
+					<Tabs.List aria-label="Spring input model">
+						<Tabs.Trigger value="perceptual">Feel</Tabs.Trigger>
+						<Tabs.Trigger value="physics">Physics</Tabs.Trigger>
+					</Tabs.List>
+				</Tabs.Root>
+
+				<div class="grid grid-cols-3 gap-2 lg:grid-cols-1" aria-label="Feel presets">
+					{#each feelPresets as preset (preset.label)}
 						<Button
-							variant={duration === preset.duration && bounce === preset.bounce
+							variant={mode === 'perceptual' &&
+							duration === preset.duration &&
+							bounce === preset.bounce
 								? 'secondary'
-								: 'outline'}
+								: 'ghost'}
 							onclick={() => applyPreset(preset)}
 						>
 							{preset.label}
 						</Button>
 					{/each}
 				</div>
+			</section>
 
-				<div class="space-y-2">
-					<div class="flex items-center justify-between gap-3">
-						<label for="landing-duration">Perceptual duration</label>
-						<output class="font-mono text-muted-foreground tabular-nums" for="landing-duration">
-							{duration.toFixed(2)} s
-						</output>
+			<section class="order-1 space-y-4 lg:order-2" aria-labelledby="material-preview-heading">
+				<div class="flex items-start justify-between gap-3">
+					<div class="space-y-1">
+						<h3 class="font-heading text-sm font-medium" id="material-preview-heading">
+							Material preview
+						</h3>
+						<p class="text-muted-foreground">Preset changes run the next target automatically.</p>
 					</div>
-					<Slider
-						type="single"
-						id="landing-duration"
-						min={0.2}
-						max={1.2}
-						step={0.05}
-						value={duration}
-						aria-label="Perceptual duration"
-						onValueChange={(value) => (duration = value)}
-					/>
+					<Badge variant={status === 'moving' ? 'default' : 'secondary'}
+						>{characteristics.regime}</Badge
+					>
 				</div>
 
-				<div class="space-y-2">
-					<div class="flex items-center justify-between gap-3">
-						<label for="landing-bounce">Bounce</label>
-						<output class="font-mono text-muted-foreground tabular-nums" for="landing-bounce">
-							{bounce.toFixed(2)}
-						</output>
-					</div>
-					<Slider
-						type="single"
-						id="landing-bounce"
-						min={-0.5}
-						max={0.8}
-						step={0.05}
-						value={bounce}
-						aria-label="Bounce"
-						onValueChange={(value) => (bounce = value)}
-					/>
-				</div>
-
-				<div class="grid grid-cols-2 gap-3 text-muted-foreground">
-					<div>
-						<p>Stiffness</p>
-						<p class="font-mono text-foreground tabular-nums">{parameters.stiffness.toFixed(1)}</p>
-					</div>
-					<div>
-						<p>Damping</p>
-						<p class="font-mono text-foreground tabular-nums">{parameters.damping.toFixed(1)}</p>
-					</div>
-				</div>
-			</div>
-		</Card.Content>
-	</Card.Root>
-
-	<Card.Root>
-		<Card.Header>
-			<Card.Title>One model, two views</Card.Title>
-			<Card.Description>
-				The trace and the moving value are sampled from the same physical spring.
-			</Card.Description>
-			<Card.Action>
-				<Button variant="outline" onclick={run}>Run spring</Button>
-			</Card.Action>
-		</Card.Header>
-		<Card.Content>
-			<div class="space-y-4">
 				<div
-					class="relative min-h-24 overflow-hidden rounded-md border border-border bg-muted"
+					class="relative min-h-40 overflow-hidden rounded-md border border-border bg-muted"
 					{@attach captureTrack}
 					aria-hidden="true"
 				>
-					<div class="absolute inset-x-3 top-1/2 border-t border-border"></div>
+					<div class="absolute inset-x-6 top-1/2 border-t border-border"></div>
 					<div
-						class="absolute bottom-1/2 mb-1 size-5 rounded-md border border-primary bg-primary shadow-sm"
+						class="absolute bottom-1/2 left-6 h-12 border-l border-dashed border-muted-foreground"
+					></div>
+					<div
+						class="absolute right-6 bottom-1/2 h-12 border-l border-dashed border-muted-foreground"
+					></div>
+					<div
+						class="absolute bottom-1/2 mb-2 h-8 w-12 rounded-md border border-primary bg-primary shadow-sm"
 						{@attach captureBody}
 					></div>
 				</div>
 
-				<div
-					class="overflow-hidden rounded-md border border-border bg-muted"
-					aria-label="Spring position trace"
-				>
-					<svg
-						viewBox="0 0 100 40"
-						class="block aspect-[5/2] w-full"
-						role="img"
-						aria-labelledby="trace-title trace-description"
-					>
-						<title id="trace-title">Spring position over time</title>
-						<desc id="trace-description">
-							An analytical position trace for the selected duration and bounce.
-						</desc>
-						<line
-							x1="0"
-							y1="34"
-							x2="100"
-							y2="34"
-							class="stroke-border"
-							vector-effect="non-scaling-stroke"
-						/>
-						<line
-							x1="0"
-							y1="10"
-							x2="100"
-							y2="10"
-							class="stroke-border"
-							stroke-dasharray="2 3"
-							vector-effect="non-scaling-stroke"
-						/>
-						<path d={path} class="fill-none stroke-primary" vector-effect="non-scaling-stroke" />
-					</svg>
+				<div class="flex flex-wrap items-center justify-between gap-3">
+					<div class="flex gap-2">
+						<Button
+							variant={targetSide === 'left' ? 'secondary' : 'outline'}
+							onclick={() => moveTo('left')}
+						>
+							Move left
+						</Button>
+						<Button
+							variant={targetSide === 'right' ? 'secondary' : 'outline'}
+							onclick={() => moveTo('right')}
+						>
+							Move right
+						</Button>
+					</div>
+					<div class="flex gap-3 font-mono text-muted-foreground tabular-nums">
+						<span>x {telemetry.position.toFixed(1)}</span>
+						<span>v {telemetry.velocity.toFixed(1)}</span>
+					</div>
 				</div>
-			</div>
-		</Card.Content>
-	</Card.Root>
-</div>
+			</section>
+
+			<section
+				class="order-3 space-y-4 lg:border-l lg:border-border lg:pl-4"
+				aria-labelledby="parameter-heading"
+			>
+				<div class="space-y-1">
+					<h3 class="font-heading text-sm font-medium" id="parameter-heading">Parameters</h3>
+					<p class="text-muted-foreground">
+						{mode === 'perceptual'
+							? 'High-level controls resolve to physics.'
+							: 'Direct physical controls.'}
+					</p>
+				</div>
+
+				<div class="grid gap-4">
+					{#if mode === 'perceptual'}
+						<ParameterField
+							id="material-duration"
+							label="Duration"
+							value={duration}
+							min={0.2}
+							max={1.2}
+							step={0.05}
+							unit="s"
+							description="Perceptual duration"
+							onValue={(value) => (duration = value)}
+						/>
+						<ParameterField
+							id="material-bounce"
+							label="Bounce"
+							value={bounce}
+							min={-0.5}
+							max={0.8}
+							step={0.05}
+							unit=""
+							description="Damping character"
+							onValue={(value) => (bounce = value)}
+						/>
+					{:else}
+						<ParameterField
+							id="material-mass"
+							label="Mass"
+							value={mass}
+							min={0.25}
+							max={3}
+							step={0.05}
+							unit=""
+							description="Resistance to acceleration"
+							onValue={(value) => (mass = value)}
+						/>
+						<ParameterField
+							id="material-stiffness"
+							label="Stiffness"
+							value={stiffness}
+							min={40}
+							max={500}
+							step={5}
+							unit=""
+							description="Restoring force"
+							onValue={(value) => (stiffness = value)}
+						/>
+						<ParameterField
+							id="material-damping"
+							label="Damping"
+							value={damping}
+							min={1}
+							max={60}
+							step={1}
+							unit=""
+							description="Energy loss"
+							onValue={(value) => (damping = value)}
+						/>
+					{/if}
+				</div>
+
+				<div class="grid grid-cols-2 gap-3 text-muted-foreground">
+					{#if mode === 'perceptual'}
+						<div>
+							<p>Mass</p>
+							<p class="font-mono text-foreground tabular-nums">{parameters.mass.toFixed(2)}</p>
+						</div>
+					{/if}
+					<div>
+						<p>Damping ratio</p>
+						<p class="font-mono text-foreground tabular-nums">
+							{characteristics.dampingRatio.toFixed(3)}
+						</p>
+					</div>
+					<div>
+						<p>Settling</p>
+						<p class="font-mono text-foreground tabular-nums">{settlingDuration.toFixed(3)} s</p>
+					</div>
+					{#if mode === 'perceptual'}
+						<div>
+							<p>Stiffness</p>
+							<p class="font-mono text-foreground tabular-nums">
+								{parameters.stiffness.toFixed(1)}
+							</p>
+						</div>
+						<div>
+							<p>Damping</p>
+							<p class="font-mono text-foreground tabular-nums">{parameters.damping.toFixed(1)}</p>
+						</div>
+					{/if}
+				</div>
+			</section>
+		</div>
+	</Card.Content>
+</Card.Root>
