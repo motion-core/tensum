@@ -1,4 +1,5 @@
 export { createSpringValue } from './spring-value.js';
+export { createAdditiveSpringValue } from './additive-spring-value.js';
 export { createSpringKeyframes } from './keyframes.js';
 export { createInertia, snapToGrid } from './inertia.js';
 export {
@@ -6,6 +7,14 @@ export {
   physicalVelocity,
   velocityFromSamples,
 } from './velocity.js';
+export type {
+  AdditiveSpringContributionOptions,
+  AdditiveSpringEvent,
+  AdditiveSpringListener,
+  AdditiveSpringOptions,
+  AdditiveSpringSnapshot,
+  AdditiveSpringValue,
+} from './additive-spring-value.js';
 export type {
   SpringKeyframe,
   SpringKeyframeSegment,
