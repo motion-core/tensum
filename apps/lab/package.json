@@ -42,7 +42,7 @@
 		"layerchart": "^2.2.0",
 		"prettier": "^3.8.3",
 		"prettier-plugin-svelte": "^4.1.0",
-		"prettier-plugin-tailwindcss": "^0.8.0",
+		"prettier-plugin-tailwindcss": "^0.8.1",
 		"shadcn-svelte": "^1.5.0",
 		"svelte": "^5.56.1",
 		"svelte-check": "^4.6.0",
