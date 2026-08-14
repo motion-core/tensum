@@ -20,6 +20,12 @@ const mocks = vi.hoisted(() => {
     tween: {
       kill: ReturnType<typeof vi.fn>;
       totalTime: ReturnType<typeof vi.fn>;
+      time: ReturnType<typeof vi.fn>;
+      play: ReturnType<typeof vi.fn>;
+      pause: ReturnType<typeof vi.fn>;
+      resume: ReturnType<typeof vi.fn>;
+      reverse: ReturnType<typeof vi.fn>;
+      paused: ReturnType<typeof vi.fn>;
     };
   }> = [];
 
@@ -35,7 +41,36 @@ const mocks = vi.hoisted(() => {
         },
       ),
       to: vi.fn((clock: MockClock, vars: MockTweenVars) => {
-        const tween = { kill: vi.fn(), totalTime: vi.fn(() => clock.elapsed) };
+        let isPaused = false;
+        const tween = {
+          kill: vi.fn(),
+          totalTime: vi.fn((value?: number) => {
+            if (value === undefined) return clock.elapsed;
+            clock.elapsed = value;
+            vars.onUpdate?.();
+            return tween;
+          }),
+          time: vi.fn((value?: number) => {
+            if (value === undefined) return clock.elapsed;
+            clock.elapsed = value;
+            vars.onUpdate?.();
+            return tween;
+          }),
+          play: vi.fn(() => {
+            isPaused = false;
+            return tween;
+          }),
+          pause: vi.fn(() => {
+            isPaused = true;
+            return tween;
+          }),
+          resume: vi.fn(() => {
+            isPaused = false;
+            return tween;
+          }),
+          reverse: vi.fn(() => tween),
+          paused: vi.fn(() => isPaused),
+        };
         calls.push({ clock, vars, tween });
         return tween;
       }),
@@ -263,6 +298,63 @@ describe('springTo', () => {
     expect(mocks.calls).toHaveLength(2);
     expect(controller.springs.x!.positionAt(0)).toBeCloseTo(before.position, 10);
     expect(controller.springs.x!.velocityAt(0)).toBeCloseTo(before.velocity, 10);
+  });
+
+  it('exposes GSAP playback controls and analytical seek', () => {
+    const target = { x: 0 };
+    const controller = springTo(target, { x: 500, spring });
+    const call = mocks.calls[0]!;
+
+    controller.pause();
+    controller.resume();
+    controller.play();
+    controller.stop();
+    controller.seek(0.2);
+    controller.playbackReverse();
+
+    expect(call.tween.pause).toHaveBeenCalledTimes(2);
+    expect(call.tween.resume).toHaveBeenCalledOnce();
+    expect(call.tween.play).toHaveBeenCalledOnce();
+    expect(call.tween.time).toHaveBeenCalledWith(0.2, false);
+    expect(call.tween.reverse).toHaveBeenCalledOnce();
+    expect(target.x).toBeCloseTo(controller.springs.x!.positionAt(0.2), 10);
+    expect(() => controller.seek(-1)).toThrow(RangeError);
+  });
+
+  it('preserves a paused controller across retargeting', () => {
+    const controller = springTo({ x: 0 }, { x: 500, spring });
+    const first = mocks.calls[0]!;
+    controller.pause();
+
+    controller.retarget({ x: 100 });
+    const second = mocks.calls[1]!;
+
+    expect(first.tween.kill).toHaveBeenCalledOnce();
+    expect(second.tween.pause).toHaveBeenCalledOnce();
+  });
+
+  it('separates logical completion, physical settlement, and driver completion', () => {
+    const events: string[] = [];
+    const controller = springTo(
+      { x: 0 },
+      {
+        x: 500,
+        spring,
+        onLogicalComplete: () => events.push('logical'),
+        onSettle: () => events.push('settle'),
+        onComplete: () => events.push('complete'),
+      },
+    );
+    const call = mocks.calls[0]!;
+
+    call.clock.elapsed = controller.springs.x!.timing.perceptualDuration;
+    call.vars.onUpdate?.();
+    expect(events).toEqual(['logical']);
+
+    call.vars.onComplete?.();
+    expect(events).toEqual(['logical', 'settle', 'complete']);
+    call.vars.onComplete?.();
+    expect(events).toEqual(['logical', 'settle', 'complete']);
   });
 
   it('rejects calls without a supported target property', () => {

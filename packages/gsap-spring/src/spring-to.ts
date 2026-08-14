@@ -53,6 +53,8 @@ export interface SpringToVars extends SpringTrackConfig {
   targets?: SpringTargets;
   unsettled?: UnsettledPolicy;
   onUpdate?: (snapshot: SpringToSnapshot) => void;
+  onLogicalComplete?: (snapshot: SpringToSnapshot) => void;
+  onSettle?: (snapshot: SpringToSnapshot) => void;
   onUnsettled?: (snapshot: SpringToSnapshot) => void;
   onComplete?: () => void;
 }
@@ -62,6 +64,12 @@ export interface SpringController {
   readonly springs: SpringSolutionMap;
   readonly tween: gsap.core.Tween;
   getSnapshot(): SpringToSnapshot;
+  play(): void;
+  pause(): void;
+  resume(): void;
+  stop(): void;
+  seek(time: number): void;
+  playbackReverse(): void;
   retarget(targets: SpringTargets): void;
   kill(): void;
 }
@@ -78,6 +86,7 @@ interface ActiveProperty {
 interface ActiveProperties {
   entries: Record<SpringProperty, ActiveProperty>;
   finiteDuration: number;
+  logicalDuration: number;
   hasUnsettled: boolean;
   unsettledAt: number;
 }
@@ -241,9 +250,12 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
   let tween: gsap.core.Tween;
   let duration = 0;
   let finiteDuration = 0;
+  let logicalDuration = 0;
   let hasUnsettled = false;
   let unsettledAt = 0;
   let didComplete = false;
+  let didLogicalComplete = false;
+  let didSettle = false;
   let didNotifyUnsettled = false;
   let killed = false;
 
@@ -283,6 +295,10 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
     return {
       entries: next,
       finiteDuration: Math.max(...entries.map((entry) => entry.duration), 0),
+      logicalDuration: Math.max(
+        ...entries.map((entry) => entry.spring.timing.perceptualDuration),
+        0,
+      ),
       hasUnsettled: entries.some((entry) => !entry.settling.settled),
       unsettledAt: Math.max(
         ...entries
@@ -300,6 +316,9 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
 
     active = next.entries;
     finiteDuration = next.finiteDuration;
+    logicalDuration = next.hasUnsettled
+      ? next.logicalDuration
+      : Math.min(next.logicalDuration, next.finiteDuration);
     hasUnsettled = next.hasUnsettled;
     unsettledAt = next.unsettledAt;
     duration =
@@ -346,6 +365,22 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
     vars.onUnsettled?.(snapshot);
   };
 
+  const notifyTiming = (snapshot: SpringToSnapshot): void => {
+    if (killed) return;
+    if (snapshot.elapsed < logicalDuration) didLogicalComplete = false;
+    if (snapshot.elapsed < finiteDuration) didSettle = false;
+    if (snapshot.elapsed < unsettledAt) didNotifyUnsettled = false;
+
+    if (!didLogicalComplete && snapshot.elapsed >= logicalDuration) {
+      didLogicalComplete = true;
+      vars.onLogicalComplete?.(snapshot);
+    }
+    if (!hasUnsettled && !didSettle && snapshot.elapsed >= finiteDuration) {
+      didSettle = true;
+      vars.onSettle?.(snapshot);
+    }
+  };
+
   const render = (): SpringToSnapshot => {
     const snapshot = snapshotAt(clock.elapsed);
     for (const [property, entry] of Object.entries(active)) {
@@ -353,6 +388,7 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
       if (state) entry.write(state.position);
     }
     vars.onUpdate?.(snapshot);
+    notifyTiming(snapshot);
     notifyUnsettled(snapshot);
     return snapshot;
   };
@@ -368,6 +404,8 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
   const startClock = (): gsap.core.Tween => {
     clock.elapsed = 0;
     didComplete = false;
+    didLogicalComplete = false;
+    didSettle = false;
     didNotifyUnsettled = false;
 
     if (finiteDuration === 0) {
@@ -417,8 +455,33 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
     getSnapshot() {
       return snapshotAt(clock.elapsed);
     },
+    play() {
+      if (!killed) tween.play();
+    },
+    pause() {
+      if (!killed) tween.pause();
+    },
+    resume() {
+      if (!killed) tween.resume();
+    },
+    stop() {
+      if (!killed) tween.pause();
+    },
+    seek(time) {
+      if (killed) return;
+      if (!Number.isFinite(time) || time < 0) {
+        throw new RangeError('seek time must be a finite number greater than or equal to 0');
+      }
+      const resolvedTime = Number.isFinite(duration) ? Math.min(time, duration) : time;
+      if (Number.isFinite(duration)) tween.time(resolvedTime, false);
+      else tween.totalTime(resolvedTime, false);
+    },
+    playbackReverse() {
+      if (!killed) tween.reverse();
+    },
     retarget(targets) {
       if (killed) return;
+      const wasPaused = tween.paused();
       const current = snapshotAt(clock.elapsed).states;
       const requested = Object.fromEntries(
         Object.entries(targets).map(([property, value]) => [
@@ -449,6 +512,7 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
       tween.kill();
       activate(next);
       tween = startClock();
+      if (wasPaused) tween.pause();
     },
     kill() {
       if (killed) return;
