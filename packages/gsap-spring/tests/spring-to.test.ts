@@ -4,6 +4,7 @@ interface MockTweenVars {
   elapsed?: number;
   duration?: number;
   ease?: string;
+  repeat?: number;
   onUpdate?: () => void;
   onComplete?: () => void;
 }
@@ -16,7 +17,10 @@ const mocks = vi.hoisted(() => {
   const calls: Array<{
     clock: MockClock;
     vars: MockTweenVars;
-    tween: { kill: ReturnType<typeof vi.fn> };
+    tween: {
+      kill: ReturnType<typeof vi.fn>;
+      totalTime: ReturnType<typeof vi.fn>;
+    };
   }> = [];
 
   return {
@@ -27,7 +31,7 @@ const mocks = vi.hoisted(() => {
         target[property] = value;
       }),
       to: vi.fn((clock: MockClock, vars: MockTweenVars) => {
-        const tween = { kill: vi.fn() };
+        const tween = { kill: vi.fn(), totalTime: vi.fn(() => clock.elapsed) };
         calls.push({ clock, vars, tween });
         return tween;
       }),
@@ -100,5 +104,88 @@ describe('springTo', () => {
 
   it('rejects calls without a supported target property', () => {
     expect(() => springTo({}, { spring })).toThrow(TypeError);
+  });
+
+  it('stops an unsettled spring without snapping by default', () => {
+    const target = { x: 0 };
+    const onUnsettled = vi.fn();
+    const onComplete = vi.fn();
+    const controller = springTo(target, {
+      x: 100,
+      spring: { ...spring, damping: 0, settle: { maxDuration: 2 } },
+      onUnsettled,
+      onComplete,
+    });
+    const call = mocks.calls[0]!;
+
+    expect(controller.duration).toBe(2);
+    call.vars.onComplete?.();
+    const stoppedPosition = controller.springs.x!.positionAt(2);
+    expect(target.x).toBeCloseTo(stoppedPosition, 10);
+    expect(target.x).not.toBe(100);
+    expect(onUnsettled).toHaveBeenCalledOnce();
+    expect(onComplete).toHaveBeenCalledOnce();
+
+    call.vars.onComplete?.();
+    expect(onUnsettled).toHaveBeenCalledOnce();
+    expect(onComplete).toHaveBeenCalledOnce();
+  });
+
+  it('snaps an unsettled spring only when explicitly requested', () => {
+    const target = { x: 0 };
+    const controller = springTo(target, {
+      x: 100,
+      spring: { ...spring, damping: 0, settle: { maxDuration: 2 } },
+      unsettled: 'snap',
+    });
+
+    mocks.calls[0]!.vars.onComplete?.();
+    expect(controller.springs.x!.getSettlingResult().settled).toBe(false);
+    expect(target.x).toBe(100);
+  });
+
+  it('continues sampling an unsettled spring until it is killed', () => {
+    const target = { x: 0 };
+    const onUnsettled = vi.fn();
+    const onComplete = vi.fn();
+    const controller = springTo(target, {
+      x: 100,
+      spring: { ...spring, damping: 0, settle: { maxDuration: 2 } },
+      unsettled: 'continue',
+      onUnsettled,
+      onComplete,
+    });
+    const call = mocks.calls[0]!;
+
+    expect(controller.duration).toBe(Number.POSITIVE_INFINITY);
+    expect(call.vars.duration).toBe(1);
+    expect(call.vars.repeat).toBe(-1);
+    call.tween.totalTime.mockReturnValue(2.5);
+    call.vars.onUpdate?.();
+    expect(target.x).toBeCloseTo(controller.springs.x!.positionAt(2.5), 10);
+    expect(onUnsettled).toHaveBeenCalledOnce();
+    expect(onComplete).not.toHaveBeenCalled();
+
+    call.tween.totalTime.mockReturnValue(4.5);
+    call.vars.onUpdate?.();
+    expect(onUnsettled).toHaveBeenCalledOnce();
+
+    controller.kill();
+    controller.kill();
+    expect(call.tween.kill).toHaveBeenCalledOnce();
+  });
+
+  it('rejects an unsettled spring before creating a GSAP tween in error mode', () => {
+    expect(() =>
+      springTo(
+        { x: 0 },
+        {
+          x: 100,
+          spring: { ...spring, damping: 0, settle: { maxDuration: 2 } },
+          unsettled: 'error',
+        },
+      ),
+    ).toThrow(RangeError);
+    expect(mocks.gsap.to).not.toHaveBeenCalled();
   });
 });

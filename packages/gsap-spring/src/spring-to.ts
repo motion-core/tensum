@@ -1,5 +1,6 @@
 import { createSpring } from '@motion-core/spring';
 import type {
+  SettlingResult,
   SpringParameters,
   SpringSettleInput,
   SpringSolution,
@@ -11,6 +12,7 @@ export const SUPPORTED_PROPERTIES = ['x', 'y', 'scale', 'rotation'] as const;
 export type SpringProperty = (typeof SUPPORTED_PROPERTIES)[number];
 export type SpringTargets = Partial<Record<SpringProperty, number>>;
 export type SpringVelocities = Partial<Record<SpringProperty, number>>;
+export type UnsettledPolicy = 'continue' | 'stop' | 'snap' | 'error';
 
 export interface SpringToSnapshot {
   elapsed: number;
@@ -19,9 +21,11 @@ export interface SpringToSnapshot {
 }
 
 export interface SpringToVars extends SpringTargets {
-  spring: SpringParameters & { settle?: Partial<SpringSettleInput> };
+  spring: SpringParameters & { settle?: SpringSettleInput };
   velocity?: number | SpringVelocities;
+  unsettled?: UnsettledPolicy;
   onUpdate?: (snapshot: SpringToSnapshot) => void;
+  onUnsettled?: (snapshot: SpringToSnapshot) => void;
   onComplete?: () => void;
 }
 
@@ -37,8 +41,16 @@ export interface SpringController {
 interface ActiveProperty {
   target: number;
   duration: number;
+  settling: SettlingResult;
   spring: SpringSolution;
   write: (value: number) => void;
+}
+
+interface ActiveProperties {
+  entries: Partial<Record<SpringProperty, ActiveProperty>>;
+  finiteDuration: number;
+  hasUnsettled: boolean;
+  unsettledAt: number;
 }
 
 function getTargetProperties(vars: SpringTargets): SpringProperty[] {
@@ -81,15 +93,22 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
     throw new TypeError('springTo requires at least one of x, y, scale, or rotation');
   }
 
+  const unsettledPolicy = vars.unsettled ?? 'stop';
   const clock = { elapsed: 0 };
   let active: Partial<Record<SpringProperty, ActiveProperty>> = {};
   let tween: gsap.core.Tween;
   let duration = 0;
+  let finiteDuration = 0;
+  let hasUnsettled = false;
+  let unsettledAt = 0;
+  let didComplete = false;
+  let didNotifyUnsettled = false;
+  let killed = false;
 
   const buildProperties = (
     targets: SpringTargets,
     inherited?: Partial<Record<SpringProperty, SpringState>>,
-  ): void => {
+  ): ActiveProperties => {
     const next: Partial<Record<SpringProperty, ActiveProperty>> = {};
 
     for (const property of getTargetProperties(targets)) {
@@ -102,11 +121,13 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
         velocity,
         ...vars.spring,
       });
-      const propertyDuration = spring.getSettlingDuration();
+      const settling = spring.getSettlingResult();
+      const propertyDuration = settling.duration;
       const setter = gsap.quickSetter(target, property, unitFor(property));
       next[property] = {
         target: to,
         duration: propertyDuration,
+        settling,
         spring,
         write(value) {
           setter(value);
@@ -114,8 +135,33 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
       };
     }
 
-    active = next;
-    duration = Math.max(...Object.values(active).map((entry) => entry.duration), 0);
+    const entries = Object.values(next);
+    return {
+      entries: next,
+      finiteDuration: Math.max(...entries.map((entry) => entry.duration), 0),
+      hasUnsettled: entries.some((entry) => !entry.settling.settled),
+      unsettledAt: Math.max(
+        ...entries
+          .filter((entry) => !entry.settling.settled)
+          .map((entry) => entry.duration),
+        0,
+      ),
+    };
+  };
+
+  const activate = (next: ActiveProperties): void => {
+    if (unsettledPolicy === 'error' && next.hasUnsettled) {
+      throw new RangeError('springTo cannot start an unsettled spring in error mode');
+    }
+
+    active = next.entries;
+    finiteDuration = next.finiteDuration;
+    hasUnsettled = next.hasUnsettled;
+    unsettledAt = next.unsettledAt;
+    duration =
+      unsettledPolicy === 'continue' && hasUnsettled
+        ? Number.POSITIVE_INFINITY
+        : finiteDuration;
   };
 
   const snapshotAt = (elapsed: number): SpringToSnapshot => {
@@ -123,16 +169,42 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
     for (const property of SUPPORTED_PROPERTIES) {
       const entry = active[property];
       if (!entry) continue;
-      if (elapsed >= entry.duration) {
+      if (entry.settling.settled && elapsed >= entry.duration) {
         states[property] = { position: entry.target, velocity: 0 };
+      } else if (!entry.settling.settled && elapsed >= entry.duration) {
+        if (unsettledPolicy === 'snap') {
+          states[property] = { position: entry.target, velocity: 0 };
+        } else if (unsettledPolicy === 'continue') {
+          states[property] = entry.spring.stateAt(elapsed);
+        } else {
+          states[property] = entry.spring.stateAt(entry.duration);
+        }
       } else {
         states[property] = entry.spring.stateAt(elapsed);
       }
     }
-    return { elapsed: Math.min(elapsed, duration), duration, states };
+    return {
+      elapsed: Number.isFinite(duration) ? Math.min(elapsed, duration) : elapsed,
+      duration,
+      states,
+    };
   };
 
-  const render = (): void => {
+  const notifyUnsettled = (snapshot: SpringToSnapshot): void => {
+    if (
+      killed ||
+      didNotifyUnsettled ||
+      !hasUnsettled ||
+      snapshot.elapsed < unsettledAt
+    ) {
+      return;
+    }
+
+    didNotifyUnsettled = true;
+    vars.onUnsettled?.(snapshot);
+  };
+
+  const render = (): SpringToSnapshot => {
     const snapshot = snapshotAt(clock.elapsed);
     for (const property of SUPPORTED_PROPERTIES) {
       const entry = active[property];
@@ -140,30 +212,53 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
       if (entry && state) entry.write(state.position);
     }
     vars.onUpdate?.(snapshot);
+    notifyUnsettled(snapshot);
+    return snapshot;
   };
 
   const complete = (): void => {
-    clock.elapsed = duration;
+    if (killed || didComplete) return;
+    clock.elapsed = finiteDuration;
     render();
+    didComplete = true;
     vars.onComplete?.();
   };
 
   const startClock = (): gsap.core.Tween => {
     clock.elapsed = 0;
-    if (duration === 0) {
+    didComplete = false;
+    didNotifyUnsettled = false;
+
+    if (finiteDuration === 0) {
       render();
       return gsap.to(clock, { elapsed: 0, duration: 0, onComplete: complete });
     }
+
+    if (unsettledPolicy === 'continue' && hasUnsettled) {
+      let runningTween: gsap.core.Tween;
+      runningTween = gsap.to(clock, {
+        elapsed: 1,
+        duration: 1,
+        repeat: -1,
+        ease: 'none',
+        onUpdate() {
+          clock.elapsed = runningTween.totalTime();
+          render();
+        },
+      });
+      return runningTween;
+    }
+
     return gsap.to(clock, {
-      elapsed: duration,
-      duration,
+      elapsed: finiteDuration,
+      duration: finiteDuration,
       ease: 'none',
       onUpdate: render,
       onComplete: complete,
     });
   };
 
-  buildProperties(requestedTargets);
+  activate(buildProperties(requestedTargets));
   tween = startClock();
 
   const controller: SpringController = {
@@ -182,6 +277,7 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
       return snapshotAt(clock.elapsed);
     },
     retarget(targets) {
+      if (killed) return;
       const current = snapshotAt(clock.elapsed).states;
       const mergedTargets: SpringTargets = {};
       for (const property of SUPPORTED_PROPERTIES) {
@@ -191,11 +287,18 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
         else if (entry) mergedTargets[property] = entry.target;
       }
 
+      const next = buildProperties(mergedTargets, current);
+      if (unsettledPolicy === 'error' && next.hasUnsettled) {
+        throw new RangeError('springTo cannot retarget to an unsettled spring in error mode');
+      }
+
       tween.kill();
-      buildProperties(mergedTargets, current);
+      activate(next);
       tween = startClock();
     },
     kill() {
+      if (killed) return;
+      killed = true;
       tween.kill();
     },
   };

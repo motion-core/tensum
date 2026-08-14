@@ -8,4 +8,5 @@ export type {
   SpringToSnapshot,
   SpringToVars,
   SpringVelocities,
+  UnsettledPolicy,
 } from './spring-to.js';
