@@ -23,6 +23,7 @@
     "access": "public"
   },
   "scripts": {
+    "benchmark": "pnpm build && node benchmarks/adapter.mjs",
     "build": "tsc -p tsconfig.build.json",
     "check": "tsc -p tsconfig.json",
     "lint": "tsc -p tsconfig.json",

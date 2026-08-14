@@ -1,0 +1,18 @@
+{
+  "runtime": "node v22.21.1 darwin arm64",
+  "recordedAt": "2026-08-14",
+  "results": [
+    {
+      "name": "springTo GSAP property + seek",
+      "microsecondsPerOperation": 3.49
+    },
+    {
+      "name": "springTo custom adapter + seek",
+      "microsecondsPerOperation": 2.92
+    },
+    {
+      "name": "springTo custom adapter + callback + seek",
+      "microsecondsPerOperation": 2.84
+    }
+  ]
+}
