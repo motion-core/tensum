@@ -27,7 +27,7 @@
 		"@hugeicons/core-free-icons": "^4.2.3",
 		"@hugeicons/svelte": "^1.1.4",
 		"@internationalized/date": "^3.12.3",
-		"@sveltejs/adapter-auto": "^7.0.1",
+		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "latest",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@tailwindcss/vite": "^4.3.0",
