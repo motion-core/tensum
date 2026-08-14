@@ -1,18 +1,32 @@
 {
   "name": "@motion-core/spring-runtime",
   "version": "0.1.0",
-  "private": true,
+  "description": "Reactive spring values, gestures, keyframes, and inertia for Motion Core",
+  "private": false,
   "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "import": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "check": "tsc -p tsconfig.json",
     "lint": "tsc -p tsconfig.json",
+    "prepack": "pnpm build",
     "test": "vitest run"
   },
   "dependencies": {
