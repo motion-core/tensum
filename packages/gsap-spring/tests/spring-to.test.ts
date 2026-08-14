@@ -87,6 +87,78 @@ describe('springTo', () => {
     );
   });
 
+  it('merges physical and settling overrides per property', () => {
+    const target = { x: 0, rotation: 0, scale: 1 };
+    const controller = springTo(target, {
+      x: 500,
+      rotation: 90,
+      scale: 1.2,
+      spring: {
+        ...spring,
+        settle: {
+          position: 0.1,
+          velocity: 0.1,
+          maxDuration: 12,
+          refinementIterations: 32,
+        },
+      },
+      properties: {
+        rotation: {
+          damping: 30,
+          settle: { position: 0.05 },
+        },
+        scale: {
+          stiffness: 240,
+          settle: { position: 0.001, velocity: 0.001 },
+        },
+      },
+    });
+
+    expect(controller.springs.x!.settling).toEqual({
+      positionEpsilon: 0.1,
+      velocityEpsilon: 0.1,
+      maxDuration: 12,
+      refinementIterations: 32,
+    });
+    expect(controller.springs.rotation!.parameters.damping).toBe(30);
+    expect(controller.springs.rotation!.settling).toEqual({
+      positionEpsilon: 0.05,
+      velocityEpsilon: 0.1,
+      maxDuration: 12,
+      refinementIterations: 32,
+    });
+    expect(controller.springs.scale!.parameters.stiffness).toBe(240);
+    expect(controller.springs.scale!.settling).toEqual({
+      positionEpsilon: 0.001,
+      velocityEpsilon: 0.001,
+      maxDuration: 12,
+      refinementIterations: 32,
+    });
+    expect(controller.duration).toBe(
+      Math.max(
+        controller.springs.x!.getSettlingDuration(),
+        controller.springs.rotation!.getSettlingDuration(),
+        controller.springs.scale!.getSettlingDuration(),
+      ),
+    );
+  });
+
+  it('prefers property velocity over a shared initial velocity', () => {
+    const controller = springTo(
+      { x: 0, y: 0 },
+      {
+        x: 100,
+        y: 100,
+        spring,
+        velocity: 50,
+        properties: { y: { velocity: 250 } },
+      },
+    );
+
+    expect(controller.springs.x!.velocityAt(0)).toBe(50);
+    expect(controller.springs.y!.velocityAt(0)).toBe(250);
+  });
+
   it('retargets from the current position and velocity', () => {
     const target = { x: 0 };
     const controller = springTo(target, { x: 600, velocity: { x: 500 }, spring });

@@ -4,6 +4,7 @@ export { SUPPORTED_PROPERTIES, springTo } from './spring-to.js';
 export type {
   SpringController,
   SpringProperty,
+  SpringPropertyOptions,
   SpringTargets,
   SpringToSnapshot,
   SpringToVars,

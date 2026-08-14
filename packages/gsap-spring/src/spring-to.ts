@@ -14,6 +14,11 @@ export type SpringTargets = Partial<Record<SpringProperty, number>>;
 export type SpringVelocities = Partial<Record<SpringProperty, number>>;
 export type UnsettledPolicy = 'continue' | 'stop' | 'snap' | 'error';
 
+export interface SpringPropertyOptions extends Partial<SpringParameters> {
+  velocity?: number;
+  settle?: SpringSettleInput;
+}
+
 export interface SpringToSnapshot {
   elapsed: number;
   duration: number;
@@ -23,6 +28,7 @@ export interface SpringToSnapshot {
 export interface SpringToVars extends SpringTargets {
   spring: SpringParameters & { settle?: SpringSettleInput };
   velocity?: number | SpringVelocities;
+  properties?: Partial<Record<SpringProperty, SpringPropertyOptions>>;
   unsettled?: UnsettledPolicy;
   onUpdate?: (snapshot: SpringToSnapshot) => void;
   onUnsettled?: (snapshot: SpringToSnapshot) => void;
@@ -74,6 +80,24 @@ function velocityFor(
   return velocity?.[property] ?? 0;
 }
 
+function optionsFor(
+  vars: SpringToVars,
+  property: SpringProperty,
+): SpringParameters & { settle?: SpringSettleInput } {
+  const propertyOptions = vars.properties?.[property];
+  const commonSettle = vars.spring.settle;
+  const propertySettle = propertyOptions?.settle;
+
+  return {
+    mass: propertyOptions?.mass ?? vars.spring.mass,
+    stiffness: propertyOptions?.stiffness ?? vars.spring.stiffness,
+    damping: propertyOptions?.damping ?? vars.spring.damping,
+    ...(commonSettle || propertySettle
+      ? { settle: { ...commonSettle, ...propertySettle } }
+      : {}),
+  };
+}
+
 function unitFor(property: SpringProperty): string | undefined {
   if (property === 'x' || property === 'y') return 'px';
   if (property === 'rotation') return 'deg';
@@ -114,12 +138,15 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
     for (const property of getTargetProperties(targets)) {
       const to = targets[property]!;
       const from = inherited?.[property]?.position ?? readNumericProperty(target, property);
-      const velocity = inherited?.[property]?.velocity ?? velocityFor(vars.velocity, property);
+      const velocity =
+        inherited?.[property]?.velocity ??
+        vars.properties?.[property]?.velocity ??
+        velocityFor(vars.velocity, property);
       const spring = createSpring({
         from,
         to,
         velocity,
-        ...vars.spring,
+        ...optionsFor(vars, property),
       });
       const settling = spring.getSettlingResult();
       const propertyDuration = settling.duration;
