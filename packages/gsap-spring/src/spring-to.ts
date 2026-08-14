@@ -7,6 +7,12 @@ import type {
   SpringState,
 } from '@motion-core/spring';
 import { gsap } from 'gsap';
+import {
+  activeTrackState,
+  registerActiveTrack,
+} from './active-tracks.js';
+import type { ActiveTrackRegistration } from './active-tracks.js';
+import { localTimeAt } from './gsap-time.js';
 
 export const SUPPORTED_PROPERTIES = ['x', 'y', 'scale', 'rotation'] as const;
 export type BuiltInSpringProperty = (typeof SUPPORTED_PROPERTIES)[number];
@@ -70,7 +76,6 @@ export interface SpringController {
   stop(): void;
   seek(time: number): void;
   playbackReverse(): void;
-  retarget(targets: SpringTargets): void;
   kill(): void;
 }
 
@@ -80,6 +85,8 @@ interface ActiveProperty {
   duration: number;
   settling: SettlingResult;
   spring: SpringSolution;
+  registration?: ActiveTrackRegistration;
+  lastTime: number;
   write: (value: number) => void;
 }
 
@@ -250,27 +257,36 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
   let tween: gsap.core.Tween;
   let duration = 0;
   let finiteDuration = 0;
-  let logicalDuration = 0;
   let hasUnsettled = false;
-  let unsettledAt = 0;
   let didComplete = false;
   let didLogicalComplete = false;
   let didSettle = false;
   let didNotifyUnsettled = false;
   let killed = false;
 
-  const buildProperties = (
-    targets: RequestedTargets,
-    inherited?: Readonly<Record<SpringProperty, SpringState>>,
-  ): ActiveProperties => {
+  const buildProperties = (targets: RequestedTargets): ActiveProperties => {
     const next: Record<SpringProperty, ActiveProperty> = {};
 
     for (const [property, requested] of Object.entries(targets)) {
       const to = requested.value;
-      const access = accessFor(target, property, requested, vars);
-      const from = inherited?.[property]?.position ?? access.from;
+      const inherited = activeTrackState(target, property);
+      const resolvedRequest =
+        requested.unit === undefined && inherited?.unit !== undefined
+          ? { ...requested, unit: inherited.unit }
+          : requested;
+      const access = accessFor(target, property, resolvedRequest, vars);
+      if (
+        inherited?.unit !== undefined &&
+        access.unit !== undefined &&
+        inherited.unit !== access.unit
+      ) {
+        throw new TypeError(
+          `Unit mismatch for ${property}: expected ${inherited.unit}, received ${access.unit}`,
+        );
+      }
+      const from = inherited?.position ?? access.from;
       const velocity =
-        inherited?.[property]?.velocity ??
+        inherited?.velocity ??
         vars.properties?.[property]?.velocity ??
         velocityFor(vars.velocity, property);
       const spring = createSpring({
@@ -287,6 +303,7 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
         duration: propertyDuration,
         settling,
         spring,
+        lastTime: 0,
         write: access.write,
       };
     }
@@ -316,33 +333,34 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
 
     active = next.entries;
     finiteDuration = next.finiteDuration;
-    logicalDuration = next.hasUnsettled
-      ? next.logicalDuration
-      : Math.min(next.logicalDuration, next.finiteDuration);
     hasUnsettled = next.hasUnsettled;
-    unsettledAt = next.unsettledAt;
     duration =
       unsettledPolicy === 'continue' && hasUnsettled
         ? Number.POSITIVE_INFINITY
         : finiteDuration;
   };
 
-  const snapshotAt = (elapsed: number): SpringToSnapshot => {
-    const states: Record<SpringProperty, SpringState> = {};
-    for (const [property, entry] of Object.entries(active)) {
-      if (entry.settling.settled && elapsed >= entry.duration) {
-        states[property] = { position: entry.target, velocity: 0 };
-      } else if (!entry.settling.settled && elapsed >= entry.duration) {
-        if (unsettledPolicy === 'snap') {
-          states[property] = { position: entry.target, velocity: 0 };
-        } else if (unsettledPolicy === 'continue') {
-          states[property] = entry.spring.stateAt(elapsed);
-        } else {
-          states[property] = entry.spring.stateAt(entry.duration);
-        }
-      } else {
-        states[property] = entry.spring.stateAt(elapsed);
+  const stateFor = (entry: ActiveProperty, elapsed: number): SpringState => {
+    if (entry.settling.settled && elapsed >= entry.duration) {
+      return { position: entry.target, velocity: 0 };
+    }
+    if (!entry.settling.settled && elapsed >= entry.duration) {
+      if (unsettledPolicy === 'snap') {
+        return { position: entry.target, velocity: 0 };
       }
+      if (unsettledPolicy === 'continue') return entry.spring.stateAt(elapsed);
+      return entry.spring.stateAt(entry.duration);
+    }
+    return entry.spring.stateAt(elapsed);
+  };
+
+  const snapshotAt = (
+    elapsed: number,
+    entries: Readonly<Record<SpringProperty, ActiveProperty>> = active,
+  ): SpringToSnapshot => {
+    const states: Record<SpringProperty, SpringState> = {};
+    for (const [property, entry] of Object.entries(entries)) {
+      states[property] = stateFor(entry, elapsed);
     }
     return {
       elapsed: Number.isFinite(duration) ? Math.min(elapsed, duration) : elapsed,
@@ -351,12 +369,35 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
     };
   };
 
-  const notifyUnsettled = (snapshot: SpringToSnapshot): void => {
+  const timingFor = (
+    entries: Readonly<Record<SpringProperty, ActiveProperty>>,
+  ): Omit<ActiveProperties, 'entries'> => {
+    const values = Object.values(entries);
+    return {
+      finiteDuration: Math.max(...values.map((entry) => entry.duration), 0),
+      logicalDuration: Math.max(
+        ...values.map((entry) => entry.spring.timing.perceptualDuration),
+        0,
+      ),
+      hasUnsettled: values.some((entry) => !entry.settling.settled),
+      unsettledAt: Math.max(
+        ...values
+          .filter((entry) => !entry.settling.settled)
+          .map((entry) => entry.duration),
+        0,
+      ),
+    };
+  };
+
+  const notifyUnsettled = (
+    snapshot: SpringToSnapshot,
+    timing: Omit<ActiveProperties, 'entries'>,
+  ): void => {
     if (
       killed ||
       didNotifyUnsettled ||
-      !hasUnsettled ||
-      snapshot.elapsed < unsettledAt
+      !timing.hasUnsettled ||
+      snapshot.elapsed < timing.unsettledAt
     ) {
       return;
     }
@@ -365,40 +406,87 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
     vars.onUnsettled?.(snapshot);
   };
 
-  const notifyTiming = (snapshot: SpringToSnapshot): void => {
+  const notifyTiming = (
+    snapshot: SpringToSnapshot,
+    timing: Omit<ActiveProperties, 'entries'>,
+  ): void => {
     if (killed) return;
-    if (snapshot.elapsed < logicalDuration) didLogicalComplete = false;
-    if (snapshot.elapsed < finiteDuration) didSettle = false;
-    if (snapshot.elapsed < unsettledAt) didNotifyUnsettled = false;
+    const resolvedLogicalDuration = timing.hasUnsettled
+      ? timing.logicalDuration
+      : Math.min(timing.logicalDuration, timing.finiteDuration);
+    if (snapshot.elapsed < resolvedLogicalDuration) didLogicalComplete = false;
+    if (snapshot.elapsed < timing.finiteDuration) didSettle = false;
+    if (snapshot.elapsed < timing.unsettledAt) didNotifyUnsettled = false;
 
-    if (!didLogicalComplete && snapshot.elapsed >= logicalDuration) {
+    if (!didLogicalComplete && snapshot.elapsed >= resolvedLogicalDuration) {
       didLogicalComplete = true;
       vars.onLogicalComplete?.(snapshot);
     }
-    if (!hasUnsettled && !didSettle && snapshot.elapsed >= finiteDuration) {
+    if (
+      !timing.hasUnsettled &&
+      !didSettle &&
+      snapshot.elapsed >= timing.finiteDuration
+    ) {
       didSettle = true;
       vars.onSettle?.(snapshot);
     }
   };
 
   const render = (): SpringToSnapshot => {
-    const snapshot = snapshotAt(clock.elapsed);
+    const owners: Record<SpringProperty, ActiveProperty> = {};
     for (const [property, entry] of Object.entries(active)) {
+      const registration = entry.registration;
+      if (!registration) continue;
+      if (
+        clock.elapsed <= 0 &&
+        entry.lastTime > 0 &&
+        registration.isActive()
+      ) {
+        const restored = registration.release();
+        entry.lastTime = clock.elapsed;
+        if (!restored) entry.write(stateFor(entry, 0).position);
+        continue;
+      }
+      if (clock.elapsed > 0 && !registration.isActive()) registration.activate();
+      entry.lastTime = clock.elapsed;
+      if (registration.isOwner()) owners[property] = entry;
+    }
+
+    const snapshot = snapshotAt(clock.elapsed, owners);
+    for (const [property, entry] of Object.entries(owners)) {
       const state = snapshot.states[property];
       if (state) entry.write(state.position);
     }
+    if (Object.keys(owners).length === 0) return snapshot;
+    const timing = timingFor(owners);
     vars.onUpdate?.(snapshot);
-    notifyTiming(snapshot);
-    notifyUnsettled(snapshot);
+    notifyTiming(snapshot, timing);
+    notifyUnsettled(snapshot, timing);
     return snapshot;
   };
 
   const complete = (): void => {
     if (killed || didComplete) return;
     clock.elapsed = finiteDuration;
-    render();
+    const snapshot = render();
+    if (Object.keys(snapshot.states).length === 0) return;
     didComplete = true;
     vars.onComplete?.();
+  };
+
+  const releaseRegistrations = (): void => {
+    for (const entry of Object.values(active)) entry.registration?.release();
+  };
+
+  const withInterruptCleanup = (
+    runningTween: gsap.core.Tween,
+  ): gsap.core.Tween => {
+    const previousInterrupt = runningTween.eventCallback('onInterrupt');
+    runningTween.eventCallback('onInterrupt', () => {
+      releaseRegistrations();
+      previousInterrupt?.();
+    });
+    return runningTween;
   };
 
   const startClock = (): gsap.core.Tween => {
@@ -410,7 +498,9 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
 
     if (finiteDuration === 0) {
       render();
-      return gsap.to(clock, { elapsed: 0, duration: 0, onComplete: complete });
+      return withInterruptCleanup(
+        gsap.to(clock, { elapsed: 0, duration: 0, onComplete: complete }),
+      );
     }
 
     if (unsettledPolicy === 'continue' && hasUnsettled) {
@@ -425,19 +515,35 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
           render();
         },
       });
-      return runningTween;
+      return withInterruptCleanup(runningTween);
     }
 
-    return gsap.to(clock, {
-      elapsed: finiteDuration,
-      duration: finiteDuration,
-      ease: 'none',
-      onUpdate: render,
-      onComplete: complete,
-    });
+    return withInterruptCleanup(
+      gsap.to(clock, {
+        elapsed: finiteDuration,
+        duration: finiteDuration,
+        ease: 'none',
+        onUpdate: render,
+        onComplete: complete,
+      }),
+    );
   };
 
   activate(buildProperties(requestedTargets));
+  for (const [property, entry] of Object.entries(active)) {
+    entry.registration = registerActiveTrack(target, property, {
+      state: (globalTime) => ({
+        ...stateFor(
+          entry,
+          globalTime === undefined ? clock.elapsed : localTimeAt(tween, globalTime),
+        ),
+        ...(entry.unit === undefined ? {} : { unit: entry.unit }),
+      }),
+      restore: () => {
+        entry.write(stateFor(entry, clock.elapsed).position);
+      },
+    });
+  }
   tween = startClock();
 
   const controller: SpringController = {
@@ -479,44 +585,10 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
     playbackReverse() {
       if (!killed) tween.reverse();
     },
-    retarget(targets) {
-      if (killed) return;
-      const wasPaused = tween.paused();
-      const current = snapshotAt(clock.elapsed).states;
-      const requested = Object.fromEntries(
-        Object.entries(targets).map(([property, value]) => [
-          property,
-          parseNumericValue(value, property),
-        ]),
-      );
-      const mergedTargets: RequestedTargets = {};
-      for (const [property, entry] of Object.entries(active)) {
-        const nextTarget = requested[property];
-        mergedTargets[property] = nextTarget
-          ? nextTarget.unit === undefined && entry.unit !== undefined
-            ? { ...nextTarget, unit: entry.unit }
-            : nextTarget
-          : entry.unit === undefined
-            ? { value: entry.target }
-            : { value: entry.target, unit: entry.unit };
-      }
-      for (const [property, value] of Object.entries(requested)) {
-        if (!mergedTargets[property]) mergedTargets[property] = value;
-      }
-
-      const next = buildProperties(mergedTargets, current);
-      if (unsettledPolicy === 'error' && next.hasUnsettled) {
-        throw new RangeError('springTo cannot retarget to an unsettled spring in error mode');
-      }
-
-      tween.kill();
-      activate(next);
-      tween = startClock();
-      if (wasPaused) tween.pause();
-    },
     kill() {
       if (killed) return;
       killed = true;
+      releaseRegistrations();
       tween.kill();
     },
   };

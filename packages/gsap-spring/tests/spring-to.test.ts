@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => {
       resume: ReturnType<typeof vi.fn>;
       reverse: ReturnType<typeof vi.fn>;
       paused: ReturnType<typeof vi.fn>;
+      eventCallback: ReturnType<typeof vi.fn>;
     };
   }> = [];
 
@@ -42,8 +43,11 @@ const mocks = vi.hoisted(() => {
       ),
       to: vi.fn((clock: MockClock, vars: MockTweenVars) => {
         let isPaused = false;
+        let onInterrupt: (() => void) | undefined;
         const tween = {
-          kill: vi.fn(),
+          kill: vi.fn(() => {
+            onInterrupt?.();
+          }),
           totalTime: vi.fn((value?: number) => {
             if (value === undefined) return clock.elapsed;
             clock.elapsed = value;
@@ -70,6 +74,14 @@ const mocks = vi.hoisted(() => {
           }),
           reverse: vi.fn(() => tween),
           paused: vi.fn(() => isPaused),
+          eventCallback: vi.fn(
+            (type: string, callback?: () => void) => {
+              if (type !== 'onInterrupt') return undefined;
+              if (callback === undefined) return onInterrupt;
+              onInterrupt = callback;
+              return tween;
+            },
+          ),
         };
         calls.push({ clock, vars, tween });
         return tween;
@@ -236,11 +248,17 @@ describe('springTo', () => {
       10,
     );
 
-    controller.retarget({ '--distance': 200 });
+    const next = springTo(target, {
+      targets: { '--distance': 200 },
+      spring,
+    });
     expect(mocks.gsap.quickSetter).toHaveBeenLastCalledWith(
       target,
       '--distance',
       'px',
+    );
+    expect(next.springs['--distance']!.stateAt(0)).toEqual(
+      controller.getSnapshot().states['--distance'],
     );
   });
 
@@ -283,21 +301,47 @@ describe('springTo', () => {
         { targets: { width: '100deg' }, spring },
       ),
     ).toThrow(TypeError);
+
+    const target: Record<string, unknown> = { '--distance': '0px' };
+    springTo(target, {
+      targets: { '--distance': '100px' },
+      spring,
+    });
+    mocks.calls.at(-1)!.clock.elapsed = 0.1;
+    mocks.calls.at(-1)!.vars.onUpdate?.();
+    expect(() =>
+      springTo(target, {
+        targets: { '--distance': '20deg' },
+        spring,
+      }),
+    ).toThrow(TypeError);
   });
 
-  it('retargets from the current position and velocity', () => {
+  it('automatically retargets from the active analytical state', () => {
     const target = { x: 0 };
     const controller = springTo(target, { x: 600, velocity: { x: 500 }, spring });
+    expect('retarget' in controller).toBe(false);
     const first = mocks.calls[0]!;
 
     first.clock.elapsed = 0.23;
     const before = controller.getSnapshot().states.x!;
-    controller.retarget({ x: 100 });
+    const redirected = springTo(target, {
+      x: 100,
+      velocity: { x: -999 },
+      spring,
+    });
 
-    expect(first.tween.kill).toHaveBeenCalledOnce();
     expect(mocks.calls).toHaveLength(2);
-    expect(controller.springs.x!.positionAt(0)).toBeCloseTo(before.position, 10);
-    expect(controller.springs.x!.velocityAt(0)).toBeCloseTo(before.velocity, 10);
+    expect(redirected.springs.x!.positionAt(0)).toBeCloseTo(before.position, 10);
+    expect(redirected.springs.x!.velocityAt(0)).toBeCloseTo(before.velocity, 10);
+
+    const second = mocks.calls[1]!;
+    second.clock.elapsed = 0.1;
+    second.vars.onUpdate?.();
+    const redirectedPosition = target.x;
+    first.clock.elapsed = 0.4;
+    first.vars.onUpdate?.();
+    expect(target.x).toBe(redirectedPosition);
   });
 
   it('exposes GSAP playback controls and analytical seek', () => {
@@ -321,16 +365,19 @@ describe('springTo', () => {
     expect(() => controller.seek(-1)).toThrow(RangeError);
   });
 
-  it('preserves a paused controller across retargeting', () => {
-    const controller = springTo({ x: 0 }, { x: 500, spring });
+  it('hands off from a paused active controller without resuming it', () => {
+    const target = { x: 0 };
+    const controller = springTo(target, { x: 500, spring });
     const first = mocks.calls[0]!;
     controller.pause();
+    first.clock.elapsed = 0.2;
+    const current = controller.getSnapshot().states.x!;
 
-    controller.retarget({ x: 100 });
-    const second = mocks.calls[1]!;
+    const redirected = springTo(target, { x: 100, spring });
 
-    expect(first.tween.kill).toHaveBeenCalledOnce();
-    expect(second.tween.pause).toHaveBeenCalledOnce();
+    expect(first.tween.pause).toHaveBeenCalledOnce();
+    expect(first.tween.play).not.toHaveBeenCalled();
+    expect(redirected.springs.x!.stateAt(0)).toEqual(current);
   });
 
   it('separates logical completion, physical settlement, and driver completion', () => {

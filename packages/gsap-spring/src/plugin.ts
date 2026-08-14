@@ -8,6 +8,12 @@ import type {
 } from '@motion-core/spring';
 import { gsap } from 'gsap';
 import {
+  activeTrackState,
+  registerActiveTrack,
+} from './active-tracks.js';
+import type { ActiveTrackRegistration } from './active-tracks.js';
+import { globalTimeAt, localTimeAt } from './gsap-time.js';
+import {
   SUPPORTED_PROPERTIES,
   accessFor,
   optionsFor,
@@ -48,9 +54,12 @@ export interface MotionSpringPluginVars {
 interface PluginTrack {
   property: SpringProperty;
   target: number;
+  unit?: string;
   duration: number;
   settling: SettlingResult;
   spring: SpringSolution;
+  registration?: ActiveTrackRegistration;
+  lastTime: number;
   write(value: number): void;
 }
 
@@ -79,6 +88,11 @@ interface TweenTimingState {
 }
 
 const tweenTiming = new WeakMap<gsap.core.Tween, TweenTimingState>();
+const GSAP_TIME_PRECISION = 1e7;
+
+function gsapSafeDuration(duration: number): number {
+  return Math.ceil(duration * GSAP_TIME_PRECISION) / GSAP_TIME_PRECISION;
+}
 
 function pluginTargetsFrom(vars: MotionSpringPluginVars): Record<string, RequestedTarget> {
   const requested: Record<string, RequestedTarget> = {};
@@ -118,12 +132,50 @@ function stateFor(
   return track.spring.stateAt(time);
 }
 
+function currentTime(scope: MotionSpringPluginScope): number {
+  return scope.policy === 'continue' && scope.hasUnsettled
+    ? scope.tween.totalTime()
+    : scope.tween.time();
+}
+
+function timingFor(
+  tracks: readonly PluginTrack[],
+  policy: UnsettledPolicy,
+): {
+  finiteDuration: number;
+  hasUnsettled: boolean;
+  logicalDuration: number;
+  unsettledAt: number;
+} {
+  const finiteDuration = Math.max(...tracks.map((track) => track.duration), 0);
+  const hasUnsettled = tracks.some((track) => !track.settling.settled);
+  const requestedLogicalDuration = Math.max(
+    ...tracks.map((track) => track.spring.timing.perceptualDuration),
+    0,
+  );
+  return {
+    finiteDuration,
+    hasUnsettled,
+    logicalDuration:
+      policy === 'continue' && hasUnsettled
+        ? requestedLogicalDuration
+        : Math.min(requestedLogicalDuration, finiteDuration),
+    unsettledAt: Math.max(
+      ...tracks
+        .filter((track) => !track.settling.settled)
+        .map((track) => track.duration),
+      0,
+    ),
+  };
+}
+
 function snapshotAt(
   scope: MotionSpringPluginScope,
   time: number,
+  tracks: readonly PluginTrack[] = scope.tracks,
 ): SpringToSnapshot {
   const states: Record<string, SpringState> = {};
-  for (const track of scope.tracks) {
+  for (const track of tracks) {
     states[track.property] = stateFor(track, time, scope.policy);
   }
   return {
@@ -135,32 +187,50 @@ function snapshotAt(
 
 function renderAt(scope: MotionSpringPluginScope, time: number): void {
   if (scope.killed) return;
-  const snapshot = snapshotAt(scope, time);
+  const owners: PluginTrack[] = [];
   for (const track of scope.tracks) {
+    const registration = track.registration;
+    if (!registration) continue;
+    if (time <= 0 && track.lastTime > 0 && registration.isActive()) {
+      const restored = registration.release();
+      track.lastTime = time;
+      if (!restored) track.write(stateFor(track, 0, scope.policy).position);
+      continue;
+    }
+    if (time > 0 && !registration.isActive()) registration.activate();
+    track.lastTime = time;
+    if (registration.isOwner()) owners.push(track);
+  }
+  if (owners.length === 0) return;
+
+  const snapshot = snapshotAt(scope, time, owners);
+  for (const track of owners) {
     const state = snapshot.states[track.property];
     if (state) track.write(state.position);
   }
 
-  if (time < scope.logicalDuration) scope.didLogicalComplete = false;
-  if (time < scope.finiteDuration) scope.didSettle = false;
-  if (time < scope.unsettledAt) scope.didNotifyUnsettled = false;
+  const timing = timingFor(owners, scope.policy);
 
-  if (!scope.didLogicalComplete && time >= scope.logicalDuration) {
+  if (time < timing.logicalDuration) scope.didLogicalComplete = false;
+  if (time < timing.finiteDuration) scope.didSettle = false;
+  if (time < timing.unsettledAt) scope.didNotifyUnsettled = false;
+
+  if (!scope.didLogicalComplete && time >= timing.logicalDuration) {
     scope.didLogicalComplete = true;
     scope.callbacks.onLogicalComplete?.(snapshot);
   }
   if (
-    !scope.hasUnsettled &&
+    !timing.hasUnsettled &&
     !scope.didSettle &&
-    time >= scope.finiteDuration
+    time >= timing.finiteDuration
   ) {
     scope.didSettle = true;
     scope.callbacks.onSettle?.(snapshot);
   }
   if (
-    scope.hasUnsettled &&
+    timing.hasUnsettled &&
     !scope.didNotifyUnsettled &&
-    time >= scope.unsettledAt
+    time >= timing.unsettledAt
   ) {
     scope.didNotifyUnsettled = true;
     scope.callbacks.onUnsettled?.(snapshot);
@@ -181,7 +251,9 @@ function configureTweenDuration(
     tween.duration(1);
     tween.repeat(-1);
   } else {
-    tween.duration(state.duration);
+    // GSAP stores time at seven decimal places. Rounding upward prevents its
+    // completion boundary from landing microscopically before physical rest.
+    tween.duration(gsapSafeDuration(state.duration));
   }
 }
 
@@ -205,13 +277,29 @@ const pluginDefinition = {
     }
 
     const config = trackConfigFrom(value);
+    const handoffTime = globalTimeAt(tween, 0);
     const tracks: PluginTrack[] = [];
     for (const [property, destination] of Object.entries(requested)) {
-      const access = accessFor(target, property, destination, config);
+      const inherited = activeTrackState(target, property, handoffTime);
+      const resolvedDestination =
+        destination.unit === undefined && inherited?.unit !== undefined
+          ? { ...destination, unit: inherited.unit }
+          : destination;
+      const access = accessFor(target, property, resolvedDestination, config);
+      if (
+        inherited?.unit !== undefined &&
+        access.unit !== undefined &&
+        inherited.unit !== access.unit
+      ) {
+        throw new TypeError(
+          `Unit mismatch for ${property}: expected ${inherited.unit}, received ${access.unit}`,
+        );
+      }
       const spring = createSpring({
-        from: access.from,
+        from: inherited?.position ?? access.from,
         to: destination.value,
         velocity:
+          inherited?.velocity ??
           value.properties?.[property]?.velocity ??
           velocityFor(value.velocity, property),
         ...optionsFor(config, property),
@@ -220,9 +308,11 @@ const pluginDefinition = {
       tracks.push({
         property,
         target: destination.value,
+        ...(access.unit === undefined ? {} : { unit: access.unit }),
         duration: settling.duration,
         settling,
         spring,
+        lastTime: 0,
         write: access.write,
       });
       this._props.push(property);
@@ -270,6 +360,32 @@ const pluginDefinition = {
         : { onUnsettled: value.onUnsettled }),
     };
 
+    for (const track of tracks) {
+      track.registration = registerActiveTrack(target, track.property, {
+        state: (globalTime) => ({
+          ...stateFor(
+            track,
+            globalTime === undefined
+              ? currentTime(this)
+              : localTimeAt(this.tween, globalTime),
+            this.policy,
+          ),
+          ...(track.unit === undefined ? {} : { unit: track.unit }),
+        }),
+        restore: () => {
+          track.write(stateFor(track, currentTime(this), this.policy).position);
+        },
+      });
+    }
+    const previousInterrupt = tween.eventCallback('onInterrupt');
+    tween.eventCallback('onInterrupt', () => {
+      for (const track of this.tracks) track.registration?.release();
+      previousInterrupt?.apply(
+        tween.vars.callbackScope ?? tween,
+        tween.vars.onInterruptParams ?? [],
+      );
+    });
+
     configureTweenDuration(tween, finiteDuration, infinite);
     return true;
   },
@@ -278,17 +394,17 @@ const pluginDefinition = {
     data: gsap.PluginScope,
   ): void {
     const scope = data as MotionSpringPluginScope;
-    const time =
-      scope.policy === 'continue' && scope.hasUnsettled
-        ? scope.tween.totalTime()
-        : scope.tween.time();
-    renderAt(scope, time);
+    renderAt(scope, currentTime(scope));
   },
   kill(this: MotionSpringPluginScope, property?: string): void {
     if (!property || property === 'motionSpring') {
+      for (const track of this.tracks) track.registration?.release();
       this.killed = true;
       this.tracks.length = 0;
       return;
+    }
+    for (const track of this.tracks) {
+      if (track.property === property) track.registration?.release();
     }
     this.tracks = this.tracks.filter((track) => track.property !== property);
     this._props = this._props.filter((tracked) => tracked !== property);
