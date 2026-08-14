@@ -31,11 +31,14 @@ Driver timestamps are seconds and must be monotonic. Retargeting samples the cur
 
 The package also exports:
 
+- `createAdditiveSpringValue()` for explicitly additive, overlapping spring effects;
 - `velocityFromSamples()`, `normalizedVelocity()`, and `physicalVelocity()` for gesture handoff;
 - `createSpringKeyframes()` for sequential spring segments;
 - `createInertia()` for targeted decay with optional min/max boundary springs;
 - `snapToGrid()` as an inertia target modifier.
 
 `SpringValue` events are `change`, `logicalComplete`, `settle`, and `unsettled`. Call `destroy()` when the owner is disposed.
+
+Use `createSpringValue()` for persistent replacement semantics. Use `createAdditiveSpringValue()` when `animateBy()` contributions should coexist and sum. The separate factories keep interruption behavior explicit.
 
 The package is ESM-only and requires `@motion-core/spring`.

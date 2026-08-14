@@ -142,6 +142,18 @@ value.destroy();
 
 `SpringValue` also emits `logicalComplete`, `settle`, and `unsettled`. Parameter blending uses a deterministic position-and-velocity blend, so a mid-flight tuning change has no state discontinuity.
 
+Replacement and additive semantics are separate APIs. Use `createSpringValue()` when a new target replaces the active target. Use `createAdditiveSpringValue()` when independent effects should overlap and sum:
+
+```ts
+import { createAdditiveSpringValue } from '@motion-core/spring-runtime';
+
+const offset = createAdditiveSpringValue(0, springPresets.smooth(), driver);
+offset.animateBy(40);
+offset.animateBy(-12, { parameters: springPresets.bouncy() });
+```
+
+Each contribution owns its analytical position and velocity. Settled contributions are folded into the base value without a discontinuity. `cancel(id)` removes one effect while preserving the current position; `stop()` freezes the complete composition.
+
 ## Hand off gesture velocity
 
 ```ts
