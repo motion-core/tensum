@@ -12,7 +12,7 @@ export function dampingRatio({ mass, stiffness, damping }: SpringParameters): nu
 
 export function classifyDamping(
   ratio: number,
-  tolerance = CRITICAL_DAMPING_TOLERANCE,
+  tolerance: number = CRITICAL_DAMPING_TOLERANCE,
 ): SpringRegime {
   if (Math.abs(ratio - 1) <= tolerance) return 'critical';
   return ratio < 1 ? 'underdamped' : 'overdamped';
