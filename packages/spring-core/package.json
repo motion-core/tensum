@@ -11,6 +11,10 @@
     "./css": {
       "types": "./src/css.ts",
       "import": "./src/css.ts"
+    },
+    "./coupled": {
+      "types": "./src/coupled.ts",
+      "import": "./src/coupled.ts"
     }
   },
   "scripts": {
