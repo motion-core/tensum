@@ -19,6 +19,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "benchmark": "pnpm build && node benchmarks/spring.mjs",
     "check": "tsc -p tsconfig.json",
     "lint": "tsc -p tsconfig.json",
     "test": "vitest run"

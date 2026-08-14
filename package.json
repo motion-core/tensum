@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "pnpm --filter @motion-core/spring-lab dev",
     "build": "pnpm -r --if-present build",
+    "benchmark": "pnpm --filter @motion-core/spring benchmark",
     "check": "pnpm -r --if-present check",
     "test": "pnpm -r --if-present test",
     "lint": "pnpm -r --if-present lint",

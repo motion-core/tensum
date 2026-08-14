@@ -1,0 +1,50 @@
+{
+  "runtime": "node v22.21.1 darwin arm64",
+  "recordedAt": "2026-08-14",
+  "results": [
+    {
+      "name": "stateAt underdamped",
+      "nanosecondsPerOperation": 33.36
+    },
+    {
+      "name": "stateAt critical",
+      "nanosecondsPerOperation": 23.4
+    },
+    {
+      "name": "stateAt overdamped",
+      "nanosecondsPerOperation": 26.4
+    },
+    {
+      "name": "create + settling",
+      "nanosecondsPerOperation": 2185.32
+    },
+    {
+      "name": "parallel stateAt x1",
+      "nanosecondsPerOperation": 24.02
+    },
+    {
+      "name": "parallel stateAt x100",
+      "nanosecondsPerOperation": 45.24
+    },
+    {
+      "name": "parallel stateAt x1000",
+      "nanosecondsPerOperation": 49.05
+    },
+    {
+      "name": "parallel stateAt x10000",
+      "nanosecondsPerOperation": 65.74
+    },
+    {
+      "name": "retarget",
+      "nanosecondsPerOperation": 1989.69
+    },
+    {
+      "name": "vector stateAt allocation",
+      "nanosecondsPerOperation": 313.22
+    },
+    {
+      "name": "vector stateAtInto reuse",
+      "nanosecondsPerOperation": 113.89
+    }
+  ]
+}
