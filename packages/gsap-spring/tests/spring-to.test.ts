@@ -26,10 +26,14 @@ const mocks = vi.hoisted(() => {
   return {
     calls,
     gsap: {
-      getProperty: vi.fn((target: Record<string, number>, property: string) => target[property]),
-      quickSetter: vi.fn((target: Record<string, number>, property: string) => (value: number) => {
-        target[property] = value;
-      }),
+      getProperty: vi.fn(
+        (target: Record<string, unknown>, property: string) => target[property],
+      ),
+      quickSetter: vi.fn(
+        (target: Record<string, unknown>, property: string) => (value: number) => {
+          target[property] = value;
+        },
+      ),
       to: vi.fn((clock: MockClock, vars: MockTweenVars) => {
         const tween = { kill: vi.fn(), totalTime: vi.fn(() => clock.elapsed) };
         calls.push({ clock, vars, tween });
@@ -157,6 +161,93 @@ describe('springTo', () => {
 
     expect(controller.springs.x!.velocityAt(0)).toBe(50);
     expect(controller.springs.y!.velocityAt(0)).toBe(250);
+  });
+
+  it('supports arbitrary numeric object properties with one clock', () => {
+    const target = { opacity: 0, score: 10 };
+    const controller = springTo(target, {
+      targets: { opacity: 1, score: 100 },
+      spring,
+      properties: { opacity: { settle: { position: 0.001 } } },
+    });
+    const call = mocks.calls[0]!;
+
+    call.clock.elapsed = 0.2;
+    call.vars.onUpdate?.();
+    expect(target.opacity).toBeCloseTo(
+      controller.springs['opacity']!.positionAt(0.2),
+      10,
+    );
+    expect(target.score).toBeCloseTo(
+      controller.springs['score']!.positionAt(0.2),
+      10,
+    );
+    expect(controller.springs['opacity']!.settling.positionEpsilon).toBe(0.001);
+  });
+
+  it('parses and preserves a single CSS unit', () => {
+    const target: Record<string, unknown> = { '--distance': '0px' };
+    const controller = springTo(target, {
+      targets: { '--distance': '100px' },
+      spring,
+    });
+    const call = mocks.calls[0]!;
+
+    expect(mocks.gsap.quickSetter).toHaveBeenCalledWith(target, '--distance', 'px');
+    call.clock.elapsed = 0.2;
+    call.vars.onUpdate?.();
+    expect(target['--distance']).toBeCloseTo(
+      controller.springs['--distance']!.positionAt(0.2),
+      10,
+    );
+
+    controller.retarget({ '--distance': 200 });
+    expect(mocks.gsap.quickSetter).toHaveBeenLastCalledWith(
+      target,
+      '--distance',
+      'px',
+    );
+  });
+
+  it('uses explicit read and write adapters without touching GSAP properties', () => {
+    const target = { nested: { progress: 0 } };
+    const controller = springTo(target, {
+      targets: { progress: 1 },
+      spring,
+      adapters: {
+        progress: {
+          read: () => target.nested.progress,
+          write: (_target, value) => {
+            target.nested.progress = value;
+          },
+        },
+      },
+    });
+    const call = mocks.calls[0]!;
+
+    call.clock.elapsed = 0.2;
+    call.vars.onUpdate?.();
+    expect(target.nested.progress).toBeCloseTo(
+      controller.springs['progress']!.positionAt(0.2),
+      10,
+    );
+    expect(mocks.gsap.getProperty).not.toHaveBeenCalled();
+    expect(mocks.gsap.quickSetter).not.toHaveBeenCalled();
+  });
+
+  it('rejects complex strings and incompatible units', () => {
+    expect(() =>
+      springTo(
+        { color: '#000' },
+        { targets: { color: '#fff' }, spring },
+      ),
+    ).toThrow(TypeError);
+    expect(() =>
+      springTo(
+        { width: '0px' },
+        { targets: { width: '100deg' }, spring },
+      ),
+    ).toThrow(TypeError);
   });
 
   it('retargets from the current position and velocity', () => {

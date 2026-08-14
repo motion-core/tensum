@@ -9,10 +9,22 @@ import type {
 import { gsap } from 'gsap';
 
 export const SUPPORTED_PROPERTIES = ['x', 'y', 'scale', 'rotation'] as const;
-export type SpringProperty = (typeof SUPPORTED_PROPERTIES)[number];
-export type SpringTargets = Partial<Record<SpringProperty, number>>;
-export type SpringVelocities = Partial<Record<SpringProperty, number>>;
+export type BuiltInSpringProperty = (typeof SUPPORTED_PROPERTIES)[number];
+export type SpringProperty = string;
+export type SpringTargetValue = number | string;
+export type SpringTargets = Readonly<Record<SpringProperty, SpringTargetValue>>;
+export type SpringVelocities = Readonly<Record<SpringProperty, number>>;
 export type UnsettledPolicy = 'continue' | 'stop' | 'snap' | 'error';
+export type SpringStateMap = Readonly<Record<SpringProperty, SpringState>> &
+  Readonly<Partial<Record<BuiltInSpringProperty, SpringState>>>;
+export type SpringSolutionMap = Readonly<Record<SpringProperty, SpringSolution>> &
+  Readonly<Partial<Record<BuiltInSpringProperty, SpringSolution>>>;
+
+export interface SpringPropertyAdapter {
+  read(target: gsap.TweenTarget): number;
+  write(target: gsap.TweenTarget, value: number): void;
+  unit?: string;
+}
 
 export interface SpringPropertyOptions extends Partial<SpringParameters> {
   velocity?: number;
@@ -22,13 +34,20 @@ export interface SpringPropertyOptions extends Partial<SpringParameters> {
 export interface SpringToSnapshot {
   elapsed: number;
   duration: number;
-  states: Partial<Record<SpringProperty, SpringState>>;
+  states: SpringStateMap;
 }
 
-export interface SpringToVars extends SpringTargets {
+export interface SpringToVars {
+  x?: SpringTargetValue;
+  y?: SpringTargetValue;
+  scale?: SpringTargetValue;
+  rotation?: SpringTargetValue;
+  targets?: SpringTargets;
   spring: SpringParameters & { settle?: SpringSettleInput };
   velocity?: number | SpringVelocities;
-  properties?: Partial<Record<SpringProperty, SpringPropertyOptions>>;
+  properties?: Readonly<Record<SpringProperty, SpringPropertyOptions>>;
+  adapters?: Readonly<Record<SpringProperty, SpringPropertyAdapter>>;
+  units?: Readonly<Record<SpringProperty, string>>;
   unsettled?: UnsettledPolicy;
   onUpdate?: (snapshot: SpringToSnapshot) => void;
   onUnsettled?: (snapshot: SpringToSnapshot) => void;
@@ -37,7 +56,7 @@ export interface SpringToVars extends SpringTargets {
 
 export interface SpringController {
   readonly duration: number;
-  readonly springs: Readonly<Partial<Record<SpringProperty, SpringSolution>>>;
+  readonly springs: SpringSolutionMap;
   readonly tween: gsap.core.Tween;
   getSnapshot(): SpringToSnapshot;
   retarget(targets: SpringTargets): void;
@@ -46,6 +65,7 @@ export interface SpringController {
 
 interface ActiveProperty {
   target: number;
+  unit?: string;
   duration: number;
   settling: SettlingResult;
   spring: SpringSolution;
@@ -53,23 +73,126 @@ interface ActiveProperty {
 }
 
 interface ActiveProperties {
-  entries: Partial<Record<SpringProperty, ActiveProperty>>;
+  entries: Record<SpringProperty, ActiveProperty>;
   finiteDuration: number;
   hasUnsettled: boolean;
   unsettledAt: number;
 }
 
-function getTargetProperties(vars: SpringTargets): SpringProperty[] {
-  return SUPPORTED_PROPERTIES.filter((property) => Number.isFinite(vars[property]));
+interface RequestedTarget {
+  value: number;
+  unit?: string;
 }
 
-function readNumericProperty(target: gsap.TweenTarget, property: SpringProperty): number {
-  const raw = gsap.getProperty(target, property);
-  const value = typeof raw === 'number' ? raw : Number.parseFloat(String(raw));
-  if (!Number.isFinite(value)) {
-    throw new TypeError(`Cannot read a numeric starting value for ${property}`);
+type RequestedTargets = Record<SpringProperty, RequestedTarget>;
+
+interface ParsedNumericValue {
+  value: number;
+  unit?: string;
+}
+
+const NUMERIC_VALUE =
+  /^([+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:e[+-]?\d+)?)\s*([a-z%]*)$/i;
+
+function parseNumericValue(
+  input: unknown,
+  property: SpringProperty,
+): ParsedNumericValue {
+  if (typeof input === 'number') {
+    if (!Number.isFinite(input)) {
+      throw new TypeError(`${property} must be a finite numeric value`);
+    }
+    return { value: input };
   }
-  return value;
+  if (typeof input !== 'string') {
+    throw new TypeError(`${property} must be a number or a single-unit numeric string`);
+  }
+  const match = NUMERIC_VALUE.exec(input.trim());
+  if (!match) {
+    throw new TypeError(`${property} must be a number or a single-unit numeric string`);
+  }
+  const value = Number(match[1]);
+  if (!Number.isFinite(value)) {
+    throw new TypeError(`${property} must contain a finite numeric value`);
+  }
+  const unit = match[2];
+  return unit ? { value, unit } : { value };
+}
+
+function requestedTargetsFrom(vars: SpringToVars): RequestedTargets {
+  const requested: RequestedTargets = {};
+  for (const property of SUPPORTED_PROPERTIES) {
+    const value = vars[property];
+    if (value !== undefined) requested[property] = parseNumericValue(value, property);
+  }
+  for (const [property, value] of Object.entries(vars.targets ?? {})) {
+    requested[property] = parseNumericValue(value, property);
+  }
+  return requested;
+}
+
+function defaultUnitFor(property: SpringProperty): string | undefined {
+  if (property === 'x' || property === 'y') return 'px';
+  if (property === 'rotation') return 'deg';
+  return undefined;
+}
+
+function resolvedUnit(
+  property: SpringProperty,
+  requested: RequestedTarget,
+  readUnit: string | undefined,
+  vars: SpringToVars,
+): string | undefined {
+  const adapterUnit = vars.adapters?.[property]?.unit;
+  const hasConfiguredUnit = Object.hasOwn(vars.units ?? {}, property);
+  const configuredUnit = hasConfiguredUnit ? vars.units?.[property] || undefined : undefined;
+  const unit =
+    requested.unit ??
+    adapterUnit ??
+    configuredUnit ??
+    (hasConfiguredUnit ? undefined : defaultUnitFor(property)) ??
+    readUnit;
+
+  for (const candidate of [requested.unit, adapterUnit, configuredUnit, readUnit]) {
+    if (candidate !== undefined && unit !== undefined && candidate !== unit) {
+      throw new TypeError(`Unit mismatch for ${property}: expected ${unit}, received ${candidate}`);
+    }
+  }
+  return unit;
+}
+
+function accessFor(
+  target: gsap.TweenTarget,
+  property: SpringProperty,
+  requested: RequestedTarget,
+  vars: SpringToVars,
+): { from: number; unit?: string; write: (value: number) => void } {
+  const adapter = vars.adapters?.[property];
+  if (adapter) {
+    const from = adapter.read(target);
+    if (!Number.isFinite(from)) {
+      throw new TypeError(`Adapter for ${property} returned a non-finite value`);
+    }
+    const unit = resolvedUnit(property, requested, undefined, vars);
+    return {
+      from,
+      ...(unit === undefined ? {} : { unit }),
+      write(value: number): void {
+        adapter.write(target, value);
+      },
+    };
+  }
+
+  const raw = parseNumericValue(gsap.getProperty(target, property), property);
+  const unit = resolvedUnit(property, requested, raw.unit, vars);
+  const setter = gsap.quickSetter(target, property, unit);
+  return {
+    from: raw.value,
+    ...(unit === undefined ? {} : { unit }),
+    write(value: number): void {
+      setter(value);
+    },
+  };
 }
 
 function velocityFor(
@@ -98,28 +221,20 @@ function optionsFor(
   };
 }
 
-function unitFor(property: SpringProperty): string | undefined {
-  if (property === 'x' || property === 'y') return 'px';
-  if (property === 'rotation') return 'deg';
-  return undefined;
-}
-
 /**
- * Animates supported transform properties with GSAP as a clock only. Position
- * and velocity always come from closed-form spring samples at absolute time.
+ * Animates numeric properties with GSAP as a clock only. Position and velocity
+ * always come from closed-form spring samples at absolute time.
  */
 export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringController {
-  const requestedTargets: SpringTargets = Object.fromEntries(
-    getTargetProperties(vars).map((property) => [property, vars[property]]),
-  );
+  const requestedTargets = requestedTargetsFrom(vars);
 
   if (Object.keys(requestedTargets).length === 0) {
-    throw new TypeError('springTo requires at least one of x, y, scale, or rotation');
+    throw new TypeError('springTo requires at least one numeric target property');
   }
 
   const unsettledPolicy = vars.unsettled ?? 'stop';
   const clock = { elapsed: 0 };
-  let active: Partial<Record<SpringProperty, ActiveProperty>> = {};
+  let active: Record<SpringProperty, ActiveProperty> = {};
   let tween: gsap.core.Tween;
   let duration = 0;
   let finiteDuration = 0;
@@ -130,14 +245,15 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
   let killed = false;
 
   const buildProperties = (
-    targets: SpringTargets,
-    inherited?: Partial<Record<SpringProperty, SpringState>>,
+    targets: RequestedTargets,
+    inherited?: Readonly<Record<SpringProperty, SpringState>>,
   ): ActiveProperties => {
-    const next: Partial<Record<SpringProperty, ActiveProperty>> = {};
+    const next: Record<SpringProperty, ActiveProperty> = {};
 
-    for (const property of getTargetProperties(targets)) {
-      const to = targets[property]!;
-      const from = inherited?.[property]?.position ?? readNumericProperty(target, property);
+    for (const [property, requested] of Object.entries(targets)) {
+      const to = requested.value;
+      const access = accessFor(target, property, requested, vars);
+      const from = inherited?.[property]?.position ?? access.from;
       const velocity =
         inherited?.[property]?.velocity ??
         vars.properties?.[property]?.velocity ??
@@ -150,15 +266,13 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
       });
       const settling = spring.getSettlingResult();
       const propertyDuration = settling.duration;
-      const setter = gsap.quickSetter(target, property, unitFor(property));
       next[property] = {
         target: to,
+        ...(access.unit === undefined ? {} : { unit: access.unit }),
         duration: propertyDuration,
         settling,
         spring,
-        write(value) {
-          setter(value);
-        },
+        write: access.write,
       };
     }
 
@@ -192,10 +306,8 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
   };
 
   const snapshotAt = (elapsed: number): SpringToSnapshot => {
-    const states: SpringToSnapshot['states'] = {};
-    for (const property of SUPPORTED_PROPERTIES) {
-      const entry = active[property];
-      if (!entry) continue;
+    const states: Record<SpringProperty, SpringState> = {};
+    for (const [property, entry] of Object.entries(active)) {
       if (entry.settling.settled && elapsed >= entry.duration) {
         states[property] = { position: entry.target, velocity: 0 };
       } else if (!entry.settling.settled && elapsed >= entry.duration) {
@@ -213,7 +325,7 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
     return {
       elapsed: Number.isFinite(duration) ? Math.min(elapsed, duration) : elapsed,
       duration,
-      states,
+      states: states as SpringStateMap,
     };
   };
 
@@ -233,10 +345,9 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
 
   const render = (): SpringToSnapshot => {
     const snapshot = snapshotAt(clock.elapsed);
-    for (const property of SUPPORTED_PROPERTIES) {
-      const entry = active[property];
+    for (const [property, entry] of Object.entries(active)) {
       const state = snapshot.states[property];
-      if (entry && state) entry.write(state.position);
+      if (state) entry.write(state.position);
     }
     vars.onUpdate?.(snapshot);
     notifyUnsettled(snapshot);
@@ -306,12 +417,25 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
     retarget(targets) {
       if (killed) return;
       const current = snapshotAt(clock.elapsed).states;
-      const mergedTargets: SpringTargets = {};
-      for (const property of SUPPORTED_PROPERTIES) {
-        const entry = active[property];
-        const requested = targets[property];
-        if (requested !== undefined) mergedTargets[property] = requested;
-        else if (entry) mergedTargets[property] = entry.target;
+      const requested = Object.fromEntries(
+        Object.entries(targets).map(([property, value]) => [
+          property,
+          parseNumericValue(value, property),
+        ]),
+      );
+      const mergedTargets: RequestedTargets = {};
+      for (const [property, entry] of Object.entries(active)) {
+        const nextTarget = requested[property];
+        mergedTargets[property] = nextTarget
+          ? nextTarget.unit === undefined && entry.unit !== undefined
+            ? { ...nextTarget, unit: entry.unit }
+            : nextTarget
+          : entry.unit === undefined
+            ? { value: entry.target }
+            : { value: entry.target, unit: entry.unit };
+      }
+      for (const [property, value] of Object.entries(requested)) {
+        if (!mergedTargets[property]) mergedTargets[property] = value;
       }
 
       const next = buildProperties(mergedTargets, current);
