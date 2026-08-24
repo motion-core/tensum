@@ -225,12 +225,26 @@ const pluginVars: MotionSpringPluginVars = {
   parameters,
 };
 const tweenVars: gsap.TweenVars = { motionSpring: pluginVars };
-const effectTweenVars: MotionSpringEffectTweenVars = { paused: true, repeat: 1 };
+const effectTweenVars: MotionSpringEffectTweenVars = {
+  paused: true,
+  stagger: 0.06,
+  repeat: 1,
+  repeatDelay: 0.1,
+  yoyo: true,
+};
+const invalidEffectTweenVars: MotionSpringEffectTweenVars = {
+  // @ts-expect-error The effect derives and owns its GSAP duration.
+  duration: 1,
+};
 const effectVars: MotionSpringEffectVars = {
   x: 100,
   from: { x: 0 },
   parameters,
   tween: effectTweenVars,
+  unsettled: 'stop',
+  onLogicalComplete: (snapshot) => {
+    void snapshot.states.x;
+  },
 };
 const adapter: SpringPropertyAdapter = {
   read: (target) => Number((target as { progress: number }).progress),
@@ -262,6 +276,7 @@ const coupled: CoupledSpringSystem = createCoupledSpringSystem({
 });
 
 void tweenVars;
+void invalidEffectTweenVars;
 void effectTween;
 void effectTimeline;
 void controller;

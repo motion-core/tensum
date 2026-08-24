@@ -78,11 +78,17 @@ export interface SpringToVars extends SpringTrackConfig {
   scale?: SpringTargetValue;
   rotation?: SpringTargetValue;
   targets?: SpringTargets;
+  /** Behavior when a track reaches `maxDuration` without settling. */
   unsettled?: UnsettledPolicy;
+  /** Runs for each rendered update while this controller owns any track. */
   onUpdate?: (snapshot: SpringToSnapshot) => void;
+  /** Runs at each forward logical-completion crossing. */
   onLogicalComplete?: (snapshot: SpringToSnapshot) => void;
+  /** Runs at each forward physical-settlement crossing. */
   onSettle?: (snapshot: SpringToSnapshot) => void;
+  /** Runs at each forward `maxDuration` crossing for an unsettled track. */
   onUnsettled?: (snapshot: SpringToSnapshot) => void;
+  /** Runs after the finite GSAP driver completes. */
   onComplete?: () => void;
 }
 
