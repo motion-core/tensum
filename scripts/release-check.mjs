@@ -22,6 +22,7 @@ const steps = [
   ['Build all workspaces', pnpm, ['build']],
   ['Type-check all workspaces', pnpm, ['check']],
   ['Run all tests', pnpm, ['test']],
+  ['Run Chromium integration tests', pnpm, ['test:browser']],
   ['Lint all workspaces', pnpm, ['lint']],
   [
     'Validate the package manifest',

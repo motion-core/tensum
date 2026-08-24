@@ -4,6 +4,7 @@ node_modules/
 build/
 dist/
 coverage/
+.vitest-attachments/
 .env
 .env.*
 !.env.example

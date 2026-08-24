@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install Chromium
+        run: pnpm --filter @motion-core/spring exec playwright install --with-deps chromium
+
       - name: Run the local release gate
         run: pnpm release:check
 
