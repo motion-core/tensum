@@ -102,8 +102,8 @@
 	<header class="flex h-10 items-center border-b border-border px-3">
 		<h2 class="font-heading text-sm font-medium" id="trajectory-heading">Analytical trajectory</h2>
 	</header>
-	<div class="grid min-h-0 grid-cols-1 gap-6 p-3 sm:min-h-56 sm:grid-cols-2">
-		<figure class="flex min-h-36 flex-col sm:min-h-0" aria-labelledby="position-chart-title">
+	<div class="grid min-h-0 grid-cols-1 sm:min-h-56 sm:grid-cols-2">
+		<figure class="flex min-h-36 flex-col p-3 sm:min-h-0" aria-labelledby="position-chart-title">
 			<figcaption class="flex items-center justify-between gap-2 text-sm" id="position-chart-title">
 				<span class="font-medium">Position</span>
 				<span class="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -160,7 +160,10 @@
 			</Chart.Container>
 		</figure>
 
-		<figure class="flex min-h-36 flex-col sm:min-h-0" aria-labelledby="velocity-chart-title">
+		<figure
+			class="flex min-h-36 flex-col border-t border-border p-3 sm:min-h-0 sm:border-s sm:border-t-0"
+			aria-labelledby="velocity-chart-title"
+		>
 			<figcaption class="flex items-center justify-between gap-2 text-sm" id="velocity-chart-title">
 				<span class="font-medium">Velocity</span>
 				<span class="flex items-center gap-1.5 text-xs text-muted-foreground">
