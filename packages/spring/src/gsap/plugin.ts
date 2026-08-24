@@ -9,6 +9,7 @@ import type {
 import { gsap } from 'gsap';
 import {
   activeTrackState,
+  reconcileActiveTrackHandoff,
   registerActiveTrack,
 } from './active-tracks.js';
 import type { ActiveTrackRegistration } from './active-tracks.js';
@@ -145,7 +146,7 @@ const preparedMotionSprings = new WeakMap<
 >();
 
 function pluginTargetsFrom(vars: MotionSpringPluginVars): Record<string, RequestedTarget> {
-  const requested: Record<string, RequestedTarget> = {};
+  const requested = Object.create(null) as Record<string, RequestedTarget>;
   for (const property of SUPPORTED_PROPERTIES) {
     const value = vars[property];
     if (value !== undefined) requested[property] = parseNumericValue(value, property);
@@ -185,23 +186,34 @@ function preflightTarget(
   }
 
   const config = trackConfigFrom(vars);
-  const tracks: Record<SpringProperty, PreparedTrack> = {};
+  const tracks = Object.create(null) as Record<SpringProperty, PreparedTrack>;
   for (const [property, destination] of Object.entries(requested)) {
     const explicit = explicitStateFrom(from, property);
-    const inherited = explicit === undefined ? activeTrackState(target, property) : undefined;
-    const initialUnit = explicit?.unit ?? inherited?.unit;
+    let inherited =
+      explicit === undefined ? activeTrackState(target, property) : undefined;
+    const initialUnit =
+      explicit?.unit ?? (inherited?.terminal ? undefined : inherited?.unit);
     const resolvedDestination =
       destination.unit === undefined && initialUnit !== undefined
         ? { ...destination, unit: initialUnit }
         : destination;
     const access = accessFor(target, property, resolvedDestination, config);
+    if (explicit === undefined) {
+      inherited = reconcileActiveTrackHandoff(
+        target,
+        property,
+        inherited,
+        access.from,
+      );
+    }
+    const handoffUnit = explicit?.unit ?? inherited?.unit;
     if (
-      initialUnit !== undefined &&
+      handoffUnit !== undefined &&
       access.unit !== undefined &&
-      initialUnit !== access.unit
+      handoffUnit !== access.unit
     ) {
       throw new TypeError(
-        `Unit mismatch for ${property}: expected ${initialUnit}, received ${access.unit}`,
+        `Unit mismatch for ${property}: expected ${handoffUnit}, received ${access.unit}`,
       );
     }
     const spring = createSpring({
@@ -456,11 +468,12 @@ const pluginDefinition = {
     const tracks: PluginTrack[] = [];
     for (const [property, destination] of Object.entries(requested)) {
       const prepared = preparedTarget?.tracks[property];
-      const inherited =
+      let inherited =
         prepared === undefined
           ? activeTrackState(target, property, handoffTime)
           : undefined;
-      const inheritedUnit = prepared?.unit ?? inherited?.unit;
+      const inheritedUnit =
+        prepared?.unit ?? (inherited?.terminal ? undefined : inherited?.unit);
       if (
         prepared !== undefined &&
         (destination.value !== prepared.target ||
@@ -484,14 +497,23 @@ const pluginDefinition = {
               : destination,
             config,
           );
+      if (prepared === undefined) {
+        inherited = reconcileActiveTrackHandoff(
+          target,
+          property,
+          inherited,
+          access.from,
+        );
+      }
+      const handoffUnit = prepared?.unit ?? inherited?.unit;
       if (
         prepared === undefined &&
-        inheritedUnit !== undefined &&
+        handoffUnit !== undefined &&
         access.unit !== undefined &&
-        inheritedUnit !== access.unit
+        handoffUnit !== access.unit
       ) {
         throw new TypeError(
-          `Unit mismatch for ${property}: expected ${inheritedUnit}, received ${access.unit}`,
+          `Unit mismatch for ${property}: expected ${handoffUnit}, received ${access.unit}`,
         );
       }
       const spring =
@@ -519,37 +541,26 @@ const pluginDefinition = {
       this._props.push(property);
     }
 
-    const hasUnsettled = tracks.some((track) => !track.settling.settled);
     const policy = validateUnsettledPolicy(
       value.unsettled ?? 'stop',
       'motionSpring unsettled',
     );
-    if (policy === 'error' && hasUnsettled) {
+    const timing = timingFor(tracks, policy);
+    if (policy === 'error' && timing.hasUnsettled) {
       throw new RangeError('motionSpring cannot start an unsettled spring in error mode');
     }
-    const finiteDuration = Math.max(...tracks.map((track) => track.duration), 0);
-    const infinite = policy === 'continue' && hasUnsettled;
-    const duration = infinite ? Number.POSITIVE_INFINITY : finiteDuration;
-    const requestedLogicalDuration = Math.max(
-      ...tracks.map((track) => track.spring.timing.perceptualDuration),
-      0,
-    );
+    const infinite = policy === 'continue' && timing.hasUnsettled;
 
     this.tracks = tracks;
     this.tween = tween;
     this.policy = policy;
-    this.duration = duration;
-    this.finiteDuration = finiteDuration;
-    this.logicalDuration = infinite
-      ? requestedLogicalDuration
-      : Math.min(requestedLogicalDuration, finiteDuration);
-    this.unsettledAt = Math.max(
-      ...tracks
-        .filter((track) => !track.settling.settled)
-        .map((track) => track.duration),
-      0,
-    );
-    this.hasUnsettled = hasUnsettled;
+    this.duration = infinite
+      ? Number.POSITIVE_INFINITY
+      : timing.finiteDuration;
+    this.finiteDuration = timing.finiteDuration;
+    this.logicalDuration = timing.logicalDuration;
+    this.unsettledAt = timing.unsettledAt;
+    this.hasUnsettled = timing.hasUnsettled;
     this.killed = false;
     this.didLogicalComplete = false;
     this.didSettle = false;

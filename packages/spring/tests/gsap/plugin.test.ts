@@ -542,6 +542,66 @@ describe('MotionCoreSpringPlugin', () => {
     );
   });
 
+  it('uses an external write instead of a stale completed plugin baseline', () => {
+    const target = { score: 0 };
+    const first = gsap.to(target, {
+      paused: true,
+      motionSpring: {
+        values: { score: 100 },
+        parameters,
+      },
+    });
+    first.time(0.01, true);
+    first.time(first.duration(), true);
+    expect(target.score).toBe(100);
+
+    target.score = -250;
+    const second = gsap.to(target, {
+      paused: true,
+      motionSpring: {
+        values: { score: 50 },
+        parameters,
+      },
+    });
+    second.time(0.05, true);
+
+    const fresh = createSpring({
+      from: -250,
+      to: 50,
+      velocity: 0,
+      ...parameters,
+    });
+    expect(target.score).toBeCloseTo(fresh.positionAt(0.05), 10);
+  });
+
+  it('reconciles external writes while preflighting a new timeline effect', () => {
+    const target = { score: 0 };
+    const first = gsap.to(target, {
+      paused: true,
+      motionSpring: {
+        values: { score: 100 },
+        parameters,
+      },
+    });
+    first.time(0.01, true);
+    first.time(first.duration(), true);
+
+    target.score = -250;
+    const timeline = gsap.timeline({ paused: true }).motionSpring(target, {
+      values: { score: 50 },
+      parameters,
+    });
+    timeline.time(0.05, true);
+
+    const fresh = createSpring({
+      from: -250,
+      to: 50,
+      velocity: 0,
+      ...parameters,
+    });
+    expect(target.score).toBeCloseTo(fresh.positionAt(0.05), 10);
+  });
+
   it('automatically hands off between springTo controllers and restores on kill', () => {
     const target = { score: 0 };
     const first = springTo(target, {
