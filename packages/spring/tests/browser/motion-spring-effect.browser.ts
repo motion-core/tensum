@@ -219,6 +219,40 @@ describe('motionSpring effect in a real browser', () => {
     tween.kill();
   });
 
+  it('reconciles a same-number external unit change during effect preflight', () => {
+    const target = createElement();
+    target.style.setProperty('--distance', '0px');
+    const first = gsap.timeline({ paused: true }).motionSpring(target, {
+      values: { '--distance': '100px' },
+      from: { '--distance': '0px' },
+      parameters,
+    });
+    first.time(first.duration(), true);
+    expect(target.style.getPropertyValue('--distance')).toContain('px');
+
+    target.style.setProperty('--distance', '100deg');
+    const second = gsap.timeline({ paused: true }).motionSpring(target, {
+      values: { '--distance': '200deg' },
+      parameters,
+    });
+    const expected = createSpring({
+      from: 100,
+      to: 200,
+      velocity: 0,
+      ...parameters,
+    });
+
+    second.time(0.05, true);
+
+    expect(
+      Number.parseFloat(target.style.getPropertyValue('--distance')),
+    ).toBeCloseTo(expected.positionAt(0.05), 8);
+    expect(target.style.getPropertyValue('--distance')).toContain('deg');
+
+    second.kill();
+    first.kill();
+  });
+
   it('writes transforms to a real SVG element', () => {
     const namespace = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(namespace, 'svg');
