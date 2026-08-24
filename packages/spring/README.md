@@ -311,6 +311,18 @@ consumer checks all three entry points at runtime and under TypeScript Node16,
 NodeNext, and Bundler resolution. It also verifies the ESM-only contract. The
 command does not publish or tag anything.
 
+Run the optional GSAP compatibility matrix before changing the peer range or
+cutting a release:
+
+```bash
+pnpm release:compat
+```
+
+It installs the exact peer lower bound and the current npm `latest` tag in
+separate temporary consumers, then checks Node ESM, TypeScript, plugin
+registration, `springTo()`, and `timeline.motionSpring()`. This command may read
+the npm registry, so it is intentionally separate from `release:check`.
+
 ## License
 
 MIT, copyright 2026 Motion Core. See [LICENSE](LICENSE).
