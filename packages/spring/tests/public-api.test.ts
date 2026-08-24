@@ -1,5 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import * as core from '../src/index.js';
+import type {
+  MotionSpringEffectVars,
+  MotionSpringPluginVars,
+  SpringPropertyAdapter,
+  SpringToVars,
+  SpringTweenTarget,
+} from '../src/index.js';
 import * as coupled from '../src/coupled.js';
 import * as css from '../src/css.js';
 
@@ -46,5 +53,16 @@ describe('single-package public API', () => {
   it('keeps advanced features on explicit subpath exports', () => {
     expect(Object.keys(css)).toEqual(['springToCSSLinear']);
     expect(Object.keys(coupled)).toEqual(['createCoupledSpringSystem']);
+  });
+
+  it('exports the complete GSAP type contract from the root entry point', () => {
+    expectTypeOf<MotionSpringEffectVars>().toMatchTypeOf<MotionSpringPluginVars>();
+    expectTypeOf<SpringToVars['adapters']>().toMatchTypeOf<
+      Readonly<Partial<Record<string, SpringPropertyAdapter>>> | undefined
+    >();
+    expectTypeOf<
+      Parameters<SpringPropertyAdapter['read']>[0]
+    >().toEqualTypeOf<SpringTweenTarget>();
+    expectTypeOf<SpringTweenTarget>().toMatchTypeOf<object>();
   });
 });
