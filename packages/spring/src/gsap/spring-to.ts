@@ -7,28 +7,45 @@ import type {
   SpringState,
 } from '../types.js';
 import { gsap } from 'gsap';
-import {
-  activeTrackState,
-  registerActiveTrack,
-} from './active-tracks.js';
+import { activeTrackState, registerActiveTrack } from './active-tracks.js';
 import type { ActiveTrackRegistration } from './active-tracks.js';
 import { localTimeAt } from './gsap-time.js';
+import {
+  gsapDriverTime,
+  springElapsedTime,
+  springTrackState,
+  springTrackTiming,
+  validateUnsettledPolicy,
+} from './spring-track-policy.js';
+import type {
+  SpringTrackTiming,
+  UnsettledPolicy,
+} from './spring-track-policy.js';
+import {
+  retireActiveTrackRegistrations,
+  syncActiveTrackRegistration,
+} from './track-lifecycle.js';
 
 export const SUPPORTED_PROPERTIES = ['x', 'y', 'scale', 'rotation'] as const;
 export type BuiltInSpringProperty = (typeof SUPPORTED_PROPERTIES)[number];
 export type SpringProperty = string;
 export type SpringTargetValue = number | string;
-export type SpringTargets = Readonly<Record<SpringProperty, SpringTargetValue>>;
-export type SpringVelocities = Readonly<Record<SpringProperty, number>>;
-export type UnsettledPolicy = 'continue' | 'stop' | 'snap' | 'error';
-export type SpringStateMap = Readonly<Record<SpringProperty, SpringState>> &
-  Readonly<Partial<Record<BuiltInSpringProperty, SpringState>>>;
-export type SpringSolutionMap = Readonly<Record<SpringProperty, SpringSolution>> &
-  Readonly<Partial<Record<BuiltInSpringProperty, SpringSolution>>>;
+export type SpringTargets = Readonly<
+  Partial<Record<SpringProperty, SpringTargetValue>>
+>;
+export type SpringVelocities = Readonly<
+  Partial<Record<SpringProperty, number>>
+>;
+type SpringMap<Value> = Readonly<Partial<Record<SpringProperty, Value>>> &
+  Readonly<Partial<Record<BuiltInSpringProperty, Value>>>;
+export type SpringStateMap = SpringMap<SpringState>;
+export type SpringSolutionMap = SpringMap<SpringSolution>;
+export type SpringTweenTarget = Exclude<gsap.TweenTarget, string | null>;
+export type { UnsettledPolicy } from './spring-track-policy.js';
 
 export interface SpringPropertyAdapter {
-  read(target: gsap.TweenTarget): number;
-  write(target: gsap.TweenTarget, value: number): void;
+  read(target: SpringTweenTarget): number;
+  write(target: SpringTweenTarget, value: number): void;
   unit?: string;
 }
 
@@ -40,9 +57,9 @@ export interface SpringPropertyOptions extends Partial<SpringParameters> {
 export interface SpringTrackConfig {
   spring: SpringParameters & { settle?: SpringSettleInput };
   velocity?: number | SpringVelocities;
-  properties?: Readonly<Record<SpringProperty, SpringPropertyOptions>>;
-  adapters?: Readonly<Record<SpringProperty, SpringPropertyAdapter>>;
-  units?: Readonly<Record<SpringProperty, string>>;
+  properties?: Readonly<Partial<Record<SpringProperty, SpringPropertyOptions>>>;
+  adapters?: Readonly<Partial<Record<SpringProperty, SpringPropertyAdapter>>>;
+  units?: Readonly<Partial<Record<SpringProperty, string>>>;
 }
 
 export interface SpringToSnapshot {
@@ -90,12 +107,8 @@ interface ActiveProperty {
   write: (value: number) => void;
 }
 
-interface ActiveProperties {
+interface ActiveProperties extends SpringTrackTiming {
   entries: Record<SpringProperty, ActiveProperty>;
-  finiteDuration: number;
-  logicalDuration: number;
-  hasUnsettled: boolean;
-  unsettledAt: number;
 }
 
 export interface RequestedTarget {
@@ -112,11 +125,133 @@ export interface ParsedNumericValue {
 
 const NUMERIC_VALUE =
   /^([+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:e[+-]?\d+)?)\s*([a-z%]*)$/i;
+const UNSAFE_PROPERTY_NAMES = new Set([
+  '__proto__',
+  'constructor',
+  'prototype',
+]);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isElementTarget(target: SpringTweenTarget): boolean {
+  return (
+    typeof target === 'object' &&
+    target !== null &&
+    'nodeType' in target &&
+    target.nodeType === 1
+  );
+}
+
+function validatePropertyName(property: string): void {
+  if (property.trim().length === 0 || UNSAFE_PROPERTY_NAMES.has(property)) {
+    throw new TypeError(`Invalid spring property: ${property || '(empty)'}`);
+  }
+}
+
+function validateOptionalRecord(value: unknown, name: string): void {
+  if (value !== undefined && !isRecord(value)) {
+    throw new TypeError(`${name} must be an object when provided`);
+  }
+}
+
+function validateSpringToInput(vars: unknown): asserts vars is SpringToVars {
+  if (!isRecord(vars)) {
+    throw new TypeError('springTo requires a configuration object');
+  }
+  if (!isRecord(vars['spring'])) {
+    throw new TypeError('springTo requires a spring parameters object');
+  }
+
+  validateOptionalRecord(vars['targets'], 'targets');
+  validateOptionalRecord(vars['properties'], 'properties');
+  validateOptionalRecord(vars['adapters'], 'adapters');
+  validateOptionalRecord(vars['units'], 'units');
+  if (vars['velocity'] !== undefined && typeof vars['velocity'] !== 'number') {
+    validateOptionalRecord(vars['velocity'], 'velocity');
+  }
+
+  if (isRecord(vars['velocity'])) {
+    for (const [property, value] of Object.entries(vars['velocity'])) {
+      validatePropertyName(property);
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
+        throw new TypeError(`Velocity for ${property} must be a finite number`);
+      }
+    }
+  }
+  if (isRecord(vars['units'])) {
+    for (const [property, value] of Object.entries(vars['units'])) {
+      validatePropertyName(property);
+      if (typeof value !== 'string') {
+        throw new TypeError(`Unit for ${property} must be a string`);
+      }
+    }
+  }
+  if (isRecord(vars['properties'])) {
+    for (const [property, value] of Object.entries(vars['properties'])) {
+      validatePropertyName(property);
+      if (!isRecord(value)) {
+        throw new TypeError(`Properties for ${property} must be an object`);
+      }
+    }
+  }
+  if (isRecord(vars['adapters'])) {
+    for (const [property, value] of Object.entries(vars['adapters'])) {
+      validatePropertyName(property);
+      if (
+        !isRecord(value) ||
+        typeof value['read'] !== 'function' ||
+        typeof value['write'] !== 'function'
+      ) {
+        throw new TypeError(
+          `Adapter for ${property} must provide read and write functions`,
+        );
+      }
+      if (value['unit'] !== undefined && typeof value['unit'] !== 'string') {
+        throw new TypeError(`Adapter unit for ${property} must be a string`);
+      }
+    }
+  }
+  for (const callback of [
+    'onUpdate',
+    'onLogicalComplete',
+    'onSettle',
+    'onUnsettled',
+    'onComplete',
+  ] as const) {
+    const value = vars[callback];
+    if (value !== undefined && typeof value !== 'function') {
+      throw new TypeError(`${callback} must be a function when provided`);
+    }
+  }
+}
+
+export function resolveSpringTarget(
+  target: gsap.TweenTarget,
+): SpringTweenTarget {
+  const candidates = gsap.utils.toArray<unknown>(target);
+  if (candidates.length !== 1) {
+    throw new TypeError(
+      `springTo requires exactly one resolved target; received ${candidates.length}`,
+    );
+  }
+  const resolved = candidates[0];
+  if (
+    ((typeof resolved !== 'object' || resolved === null) &&
+      typeof resolved !== 'function') ||
+    Array.isArray(resolved)
+  ) {
+    throw new TypeError('springTo requires exactly one resolved object target');
+  }
+  return resolved;
+}
 
 export function parseNumericValue(
   input: unknown,
   property: SpringProperty,
 ): ParsedNumericValue {
+  validatePropertyName(property);
   if (typeof input === 'number') {
     if (!Number.isFinite(input)) {
       throw new TypeError(`${property} must be a finite numeric value`);
@@ -124,11 +259,15 @@ export function parseNumericValue(
     return { value: input };
   }
   if (typeof input !== 'string') {
-    throw new TypeError(`${property} must be a number or a single-unit numeric string`);
+    throw new TypeError(
+      `${property} must be a number or a single-unit numeric string`,
+    );
   }
   const match = NUMERIC_VALUE.exec(input.trim());
   if (!match) {
-    throw new TypeError(`${property} must be a number or a single-unit numeric string`);
+    throw new TypeError(
+      `${property} must be a number or a single-unit numeric string`,
+    );
   }
   const value = Number(match[1]);
   if (!Number.isFinite(value)) {
@@ -139,10 +278,11 @@ export function parseNumericValue(
 }
 
 function requestedTargetsFrom(vars: SpringToVars): RequestedTargets {
-  const requested: RequestedTargets = {};
+  const requested: RequestedTargets = Object.create(null) as RequestedTargets;
   for (const property of SUPPORTED_PROPERTIES) {
-    const value = vars[property];
-    if (value !== undefined) requested[property] = parseNumericValue(value, property);
+    const value = Object.hasOwn(vars, property) ? vars[property] : undefined;
+    if (value !== undefined)
+      requested[property] = parseNumericValue(value, property);
   }
   for (const [property, value] of Object.entries(vars.targets ?? {})) {
     requested[property] = parseNumericValue(value, property);
@@ -164,7 +304,9 @@ function resolvedUnit(
 ): string | undefined {
   const adapterUnit = vars.adapters?.[property]?.unit;
   const hasConfiguredUnit = Object.hasOwn(vars.units ?? {}, property);
-  const configuredUnit = hasConfiguredUnit ? vars.units?.[property] || undefined : undefined;
+  const configuredUnit = hasConfiguredUnit
+    ? vars.units?.[property] || undefined
+    : undefined;
   const unit =
     requested.unit ??
     adapterUnit ??
@@ -172,25 +314,46 @@ function resolvedUnit(
     (hasConfiguredUnit ? undefined : defaultUnitFor(property)) ??
     readUnit;
 
-  for (const candidate of [requested.unit, adapterUnit, configuredUnit, readUnit]) {
+  for (const candidate of [
+    requested.unit,
+    adapterUnit,
+    configuredUnit,
+    readUnit,
+  ]) {
     if (candidate !== undefined && unit !== undefined && candidate !== unit) {
-      throw new TypeError(`Unit mismatch for ${property}: expected ${unit}, received ${candidate}`);
+      throw new TypeError(
+        `Unit mismatch for ${property}: expected ${unit}, received ${candidate}`,
+      );
     }
   }
   return unit;
 }
 
 export function accessFor(
-  target: gsap.TweenTarget,
+  target: SpringTweenTarget,
   property: SpringProperty,
   requested: RequestedTarget,
   vars: SpringTrackConfig,
 ): { from: number; unit?: string; write: (value: number) => void } {
-  const adapter = vars.adapters?.[property];
-  if (adapter) {
+  const adapter = Object.hasOwn(vars.adapters ?? {}, property)
+    ? vars.adapters?.[property]
+    : undefined;
+  if (adapter !== undefined) {
+    if (
+      adapter === null ||
+      typeof adapter !== 'object' ||
+      typeof adapter.read !== 'function' ||
+      typeof adapter.write !== 'function'
+    ) {
+      throw new TypeError(
+        `Adapter for ${property} must provide read and write functions`,
+      );
+    }
     const from = adapter.read(target);
     if (!Number.isFinite(from)) {
-      throw new TypeError(`Adapter for ${property} returned a non-finite value`);
+      throw new TypeError(
+        `Adapter for ${property} returned a non-finite value`,
+      );
     }
     const unit = resolvedUnit(property, requested, undefined, vars);
     return {
@@ -202,14 +365,23 @@ export function accessFor(
     };
   }
 
-  const raw = parseNumericValue(gsap.getProperty(target, property), property);
+  const raw = parseNumericValue(
+    gsap.getProperty(target, property, 'native'),
+    property,
+  );
   const unit = resolvedUnit(property, requested, raw.unit, vars);
-  const setter = gsap.quickSetter(target, property, unit);
+  const setters =
+    property === 'scale' && isElementTarget(target)
+      ? [
+          gsap.quickSetter(target, 'scaleX', unit),
+          gsap.quickSetter(target, 'scaleY', unit),
+        ]
+      : [gsap.quickSetter(target, property, unit)];
   return {
     from: raw.value,
     ...(unit === undefined ? {} : { unit }),
     write(value: number): void {
-      setter(value);
+      for (const setter of setters) setter(value);
     },
   };
 }
@@ -218,15 +390,29 @@ export function velocityFor(
   velocity: SpringTrackConfig['velocity'],
   property: SpringProperty,
 ): number {
-  if (typeof velocity === 'number') return velocity;
-  return velocity?.[property] ?? 0;
+  const resolved =
+    typeof velocity === 'number' ? velocity : (velocity?.[property] ?? 0);
+  if (!Number.isFinite(resolved)) {
+    throw new TypeError(`Velocity for ${property} must be a finite number`);
+  }
+  return resolved;
 }
 
 export function optionsFor(
   vars: SpringTrackConfig,
   property: SpringProperty,
 ): SpringParameters & { settle?: SpringSettleInput } {
-  const propertyOptions = vars.properties?.[property];
+  const propertyOptions = Object.hasOwn(vars.properties ?? {}, property)
+    ? vars.properties?.[property]
+    : undefined;
+  if (
+    propertyOptions !== undefined &&
+    (typeof propertyOptions !== 'object' ||
+      propertyOptions === null ||
+      Array.isArray(propertyOptions))
+  ) {
+    throw new TypeError(`Properties for ${property} must be an object`);
+  }
   const commonSettle = vars.spring.settle;
   const propertySettle = propertyOptions?.settle;
 
@@ -244,19 +430,27 @@ export function optionsFor(
  * Animates numeric properties with GSAP as a clock only. Position and velocity
  * always come from closed-form spring samples at absolute time.
  */
-export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringController {
+export function springTo(
+  target: gsap.TweenTarget,
+  vars: SpringToVars,
+): SpringController {
+  validateSpringToInput(vars);
+  const springTarget = resolveSpringTarget(target);
   const requestedTargets = requestedTargetsFrom(vars);
 
   if (Object.keys(requestedTargets).length === 0) {
-    throw new TypeError('springTo requires at least one numeric target property');
+    throw new TypeError(
+      'springTo requires at least one numeric target property',
+    );
   }
 
-  const unsettledPolicy = vars.unsettled ?? 'stop';
+  const unsettledPolicy = validateUnsettledPolicy(vars.unsettled ?? 'stop');
   const clock = { elapsed: 0 };
   let active: Record<SpringProperty, ActiveProperty> = {};
   let tween: gsap.core.Tween;
   let duration = 0;
   let finiteDuration = 0;
+  let driverDuration = 0;
   let hasUnsettled = false;
   let didComplete = false;
   let didLogicalComplete = false;
@@ -269,12 +463,12 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
 
     for (const [property, requested] of Object.entries(targets)) {
       const to = requested.value;
-      const inherited = activeTrackState(target, property);
+      const inherited = activeTrackState(springTarget, property);
       const resolvedRequest =
         requested.unit === undefined && inherited?.unit !== undefined
           ? { ...requested, unit: inherited.unit }
           : requested;
-      const access = accessFor(target, property, resolvedRequest, vars);
+      const access = accessFor(springTarget, property, resolvedRequest, vars);
       if (
         inherited?.unit !== undefined &&
         access.unit !== undefined &&
@@ -308,31 +502,23 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
       };
     }
 
-    const entries = Object.values(next);
+    const timing = springTrackTiming(Object.values(next), unsettledPolicy);
     return {
       entries: next,
-      finiteDuration: Math.max(...entries.map((entry) => entry.duration), 0),
-      logicalDuration: Math.max(
-        ...entries.map((entry) => entry.spring.timing.perceptualDuration),
-        0,
-      ),
-      hasUnsettled: entries.some((entry) => !entry.settling.settled),
-      unsettledAt: Math.max(
-        ...entries
-          .filter((entry) => !entry.settling.settled)
-          .map((entry) => entry.duration),
-        0,
-      ),
+      ...timing,
     };
   };
 
   const activate = (next: ActiveProperties): void => {
     if (unsettledPolicy === 'error' && next.hasUnsettled) {
-      throw new RangeError('springTo cannot start an unsettled spring in error mode');
+      throw new RangeError(
+        'springTo cannot start an unsettled spring in error mode',
+      );
     }
 
     active = next.entries;
     finiteDuration = next.finiteDuration;
+    driverDuration = next.driverDuration;
     hasUnsettled = next.hasUnsettled;
     duration =
       unsettledPolicy === 'continue' && hasUnsettled
@@ -340,19 +526,8 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
         : finiteDuration;
   };
 
-  const stateFor = (entry: ActiveProperty, elapsed: number): SpringState => {
-    if (entry.settling.settled && elapsed >= entry.duration) {
-      return { position: entry.target, velocity: 0 };
-    }
-    if (!entry.settling.settled && elapsed >= entry.duration) {
-      if (unsettledPolicy === 'snap') {
-        return { position: entry.target, velocity: 0 };
-      }
-      if (unsettledPolicy === 'continue') return entry.spring.stateAt(elapsed);
-      return entry.spring.stateAt(entry.duration);
-    }
-    return entry.spring.stateAt(elapsed);
-  };
+  const stateFor = (entry: ActiveProperty, elapsed: number): SpringState =>
+    springTrackState(entry, elapsed, unsettledPolicy);
 
   const snapshotAt = (
     elapsed: number,
@@ -363,7 +538,9 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
       states[property] = stateFor(entry, elapsed);
     }
     return {
-      elapsed: Number.isFinite(duration) ? Math.min(elapsed, duration) : elapsed,
+      elapsed: Number.isFinite(duration)
+        ? Math.min(elapsed, duration)
+        : elapsed,
       duration,
       states: states as SpringStateMap,
     };
@@ -371,27 +548,12 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
 
   const timingFor = (
     entries: Readonly<Record<SpringProperty, ActiveProperty>>,
-  ): Omit<ActiveProperties, 'entries'> => {
-    const values = Object.values(entries);
-    return {
-      finiteDuration: Math.max(...values.map((entry) => entry.duration), 0),
-      logicalDuration: Math.max(
-        ...values.map((entry) => entry.spring.timing.perceptualDuration),
-        0,
-      ),
-      hasUnsettled: values.some((entry) => !entry.settling.settled),
-      unsettledAt: Math.max(
-        ...values
-          .filter((entry) => !entry.settling.settled)
-          .map((entry) => entry.duration),
-        0,
-      ),
-    };
-  };
+  ): SpringTrackTiming =>
+    springTrackTiming(Object.values(entries), unsettledPolicy);
 
   const notifyUnsettled = (
     snapshot: SpringToSnapshot,
-    timing: Omit<ActiveProperties, 'entries'>,
+    timing: SpringTrackTiming,
   ): void => {
     if (
       killed ||
@@ -408,17 +570,14 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
 
   const notifyTiming = (
     snapshot: SpringToSnapshot,
-    timing: Omit<ActiveProperties, 'entries'>,
+    timing: SpringTrackTiming,
   ): void => {
     if (killed) return;
-    const resolvedLogicalDuration = timing.hasUnsettled
-      ? timing.logicalDuration
-      : Math.min(timing.logicalDuration, timing.finiteDuration);
-    if (snapshot.elapsed < resolvedLogicalDuration) didLogicalComplete = false;
+    if (snapshot.elapsed < timing.logicalDuration) didLogicalComplete = false;
     if (snapshot.elapsed < timing.finiteDuration) didSettle = false;
     if (snapshot.elapsed < timing.unsettledAt) didNotifyUnsettled = false;
 
-    if (!didLogicalComplete && snapshot.elapsed >= resolvedLogicalDuration) {
+    if (!didLogicalComplete && snapshot.elapsed >= timing.logicalDuration) {
       didLogicalComplete = true;
       vars.onLogicalComplete?.(snapshot);
     }
@@ -432,24 +591,23 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
     }
   };
 
-  const render = (): SpringToSnapshot => {
+  const render = (notifyUpdate = true): SpringToSnapshot => {
     const owners: Record<SpringProperty, ActiveProperty> = {};
     for (const [property, entry] of Object.entries(active)) {
       const registration = entry.registration;
       if (!registration) continue;
-      if (
-        clock.elapsed <= 0 &&
-        entry.lastTime > 0 &&
-        registration.isActive()
-      ) {
-        const restored = registration.release();
-        entry.lastTime = clock.elapsed;
-        if (!restored) entry.write(stateFor(entry, 0).position);
+      const transition = syncActiveTrackRegistration(
+        registration,
+        clock.elapsed,
+        entry.lastTime,
+      );
+      entry.lastTime = clock.elapsed;
+      if (transition.releasedAtStart) {
+        if (!transition.restoredPrevious)
+          entry.write(stateFor(entry, 0).position);
         continue;
       }
-      if (clock.elapsed > 0 && !registration.isActive()) registration.activate();
-      entry.lastTime = clock.elapsed;
-      if (registration.isOwner()) owners[property] = entry;
+      if (transition.isOwner) owners[property] = entry;
     }
 
     const snapshot = snapshotAt(clock.elapsed, owners);
@@ -459,7 +617,7 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
     }
     if (Object.keys(owners).length === 0) return snapshot;
     const timing = timingFor(owners);
-    vars.onUpdate?.(snapshot);
+    if (notifyUpdate) vars.onUpdate?.(snapshot);
     notifyTiming(snapshot, timing);
     notifyUnsettled(snapshot, timing);
     return snapshot;
@@ -468,9 +626,12 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
   const complete = (): void => {
     if (killed || didComplete) return;
     clock.elapsed = finiteDuration;
-    const snapshot = render();
-    if (Object.keys(snapshot.states).length === 0) return;
+    const snapshot = render(false);
+    retireActiveTrackRegistrations(
+      Object.values(active).map((entry) => entry.registration),
+    );
     didComplete = true;
+    if (Object.keys(snapshot.states).length === 0) return;
     vars.onComplete?.();
   };
 
@@ -521,7 +682,7 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
     return withInterruptCleanup(
       gsap.to(clock, {
         elapsed: finiteDuration,
-        duration: finiteDuration,
+        duration: driverDuration,
         ease: 'none',
         onUpdate: render,
         onComplete: complete,
@@ -531,11 +692,19 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
 
   activate(buildProperties(requestedTargets));
   for (const [property, entry] of Object.entries(active)) {
-    entry.registration = registerActiveTrack(target, property, {
+    entry.registration = registerActiveTrack(springTarget, property, {
       state: (globalTime) => ({
         ...stateFor(
           entry,
-          globalTime === undefined ? clock.elapsed : localTimeAt(tween, globalTime),
+          globalTime === undefined
+            ? clock.elapsed
+            : Number.isFinite(duration)
+              ? springElapsedTime(
+                  localTimeAt(tween, globalTime),
+                  finiteDuration,
+                  driverDuration,
+                )
+              : localTimeAt(tween, globalTime),
         ),
         ...(entry.unit === undefined ? {} : { unit: entry.unit }),
       }),
@@ -552,7 +721,10 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
     },
     get springs() {
       return Object.fromEntries(
-        Object.entries(active).map(([property, entry]) => [property, entry.spring]),
+        Object.entries(active).map(([property, entry]) => [
+          property,
+          entry.spring,
+        ]),
       );
     },
     get tween() {
@@ -576,11 +748,19 @@ export function springTo(target: gsap.TweenTarget, vars: SpringToVars): SpringCo
     seek(time) {
       if (killed) return;
       if (!Number.isFinite(time) || time < 0) {
-        throw new RangeError('seek time must be a finite number greater than or equal to 0');
+        throw new RangeError(
+          'seek time must be a finite number greater than or equal to 0',
+        );
       }
-      const resolvedTime = Number.isFinite(duration) ? Math.min(time, duration) : time;
-      if (Number.isFinite(duration)) tween.time(resolvedTime, false);
-      else tween.totalTime(resolvedTime, false);
+      const resolvedTime = Number.isFinite(duration)
+        ? Math.min(time, duration)
+        : time;
+      if (Number.isFinite(duration)) {
+        tween.time(
+          gsapDriverTime(resolvedTime, finiteDuration, driverDuration),
+          false,
+        );
+      } else tween.totalTime(resolvedTime, false);
     },
     playbackReverse() {
       if (!killed) tween.reverse();

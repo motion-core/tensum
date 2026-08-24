@@ -79,4 +79,81 @@ describe('active spring track registry', () => {
     expect(state).toHaveBeenCalledWith(1.25);
     registration.release();
   });
+
+  it('collapses completed ownership to one terminal baseline', () => {
+    const target = {};
+    const first = registerActiveTrack(target, 'x', {
+      state: () => ({ position: 10, velocity: 0 }),
+      restore: vi.fn(),
+    });
+    const second = registerActiveTrack(target, 'x', {
+      state: () => ({ position: 20, velocity: 0 }),
+      restore: vi.fn(),
+    });
+    const third = registerActiveTrack(target, 'x', {
+      state: () => ({ position: 30, velocity: 0 }),
+      restore: vi.fn(),
+    });
+
+    expect(third.retire()).toBe(true);
+    expect(third.isOwner()).toBe(true);
+    expect(first.isActive()).toBe(false);
+    expect(second.isActive()).toBe(false);
+    expect(activeTrackState(target, 'x')?.position).toBe(30);
+
+    third.release();
+  });
+
+  it('preserves original priority when a retired track reactivates for reverse playback', () => {
+    const target = {};
+    const restoreFirst = vi.fn();
+    const first = registerActiveTrack(target, 'x', {
+      state: () => ({ position: 10, velocity: 1 }),
+      restore: restoreFirst,
+    });
+    const second = registerActiveTrack(target, 'x', {
+      state: () => ({ position: 20, velocity: 2 }),
+      restore: vi.fn(),
+    });
+
+    second.retire();
+    expect(first.isActive()).toBe(false);
+    first.activate();
+    expect(first.isOwner()).toBe(false);
+    expect(second.isOwner()).toBe(true);
+
+    expect(second.release()).toBe(true);
+    expect(first.isOwner()).toBe(true);
+    expect(restoreFirst).toHaveBeenCalledOnce();
+    first.release();
+  });
+
+  it('removes a covered track when it completes without disturbing its owner', () => {
+    const target = {};
+    const first = registerActiveTrack(target, 'x', {
+      state: () => ({ position: 10, velocity: 1 }),
+      restore: vi.fn(),
+    });
+    const second = registerActiveTrack(target, 'x', {
+      state: () => ({ position: 20, velocity: 2 }),
+      restore: vi.fn(),
+    });
+
+    expect(first.retire()).toBe(true);
+    expect(first.isActive()).toBe(false);
+    expect(second.isOwner()).toBe(true);
+    expect(activeTrackState(target, 'x')?.position).toBe(20);
+
+    second.release();
+  });
+
+  it('rejects primitive registry keys instead of retaining them globally', () => {
+    expect(() =>
+      registerActiveTrack('.item', 'x', {
+        state: () => ({ position: 0, velocity: 0 }),
+        restore: vi.fn(),
+      }),
+    ).toThrow(TypeError);
+    expect(activeTrackState('.item', 'x')).toBeUndefined();
+  });
 });
