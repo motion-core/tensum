@@ -53,6 +53,7 @@ import type {
   SpringVelocities,
 } from './spring-to.js';
 
+/** Configuration for the lazy `motionSpring` GSAP special property. */
 export interface MotionSpringPluginVars {
   x?: SpringTargetValue;
   y?: SpringTargetValue;
@@ -64,19 +65,37 @@ export interface MotionSpringPluginVars {
   properties?: Readonly<Partial<Record<SpringProperty, SpringPropertyOptions>>>;
   adapters?: Readonly<Partial<Record<SpringProperty, SpringPropertyAdapter>>>;
   units?: Readonly<Partial<Record<SpringProperty, string>>>;
+  /** Behavior when a track reaches `maxDuration` without settling. */
   unsettled?: UnsettledPolicy;
-  /** Target-scoped: target arrays invoke this hook once per target. */
+  /**
+   * Runs once per target at each forward logical-completion crossing. The
+   * snapshot does not include the target or its array index.
+   */
   onLogicalComplete?: (snapshot: SpringToSnapshot) => void;
-  /** Target-scoped: target arrays invoke this hook once per target. */
+  /**
+   * Runs once per settled target at each forward settlement crossing. The
+   * snapshot does not include the target or its array index.
+   */
   onSettle?: (snapshot: SpringToSnapshot) => void;
-  /** Target-scoped: target arrays invoke this hook once per target. */
+  /**
+   * Runs once per unsettled target at each forward `maxDuration` crossing. The
+   * snapshot does not include the target or its array index.
+   */
   onUnsettled?: (snapshot: SpringToSnapshot) => void;
 }
 
+/**
+ * GSAP options forwarded by the preflighted effect. Spring owns `duration`,
+ * `ease`, and `motionSpring`, so those keys are rejected here.
+ */
 export type MotionSpringEffectTweenVars = Omit<
   gsap.TweenVars,
   'duration' | 'ease' | 'motionSpring'
->;
+> & {
+  duration?: never;
+  ease?: never;
+  motionSpring?: never;
+};
 
 /**
  * Configuration for the preflighted GSAP effect. Unlike the lazy special
@@ -88,7 +107,12 @@ export type MotionSpringEffectTweenVars = Omit<
  * preflight intentionally reads the target at effect-construction time.
  */
 export interface MotionSpringEffectVars extends MotionSpringPluginVars {
+  /**
+   * Explicit starting snapshot captured during effect construction. One map is
+   * applied to every resolved target. Without it, preflight reads each target.
+   */
   from?: SpringTargets;
+  /** GSAP driver options such as `paused`, `stagger`, `repeat`, and `yoyo`. */
   tween?: MotionSpringEffectTweenVars;
 }
 
@@ -248,6 +272,8 @@ function preflightTarget(
  * sequential, staggered, or nested composition. The raw `motionSpring` special
  * property remains available for direct tweens, but its lazy `init()` cannot
  * retroactively repair positions that a timeline has already resolved.
+ * Calling `invalidate()` reuses the prepared snapshot; create a new effect
+ * tween to preflight changed starting values, destinations, or parameters.
  */
 export function createMotionSpringTween(
   targets: gsap.TweenTarget,
@@ -656,6 +682,7 @@ const pluginDefinition = {
 
 export const MotionCoreSpringPlugin = pluginDefinition as unknown as gsap.Plugin;
 
+/** Registers both the special property and `timeline.motionSpring()` effect. */
 export function registerMotionCoreSpringPlugin(
   instance: typeof gsap = gsap,
 ): void {
