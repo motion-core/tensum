@@ -5,6 +5,11 @@ build/
 dist/
 coverage/
 .vitest-attachments/
+playwright-report/
+test-results/
+.artifacts/
+.runtime-consumer/
+*.tgz
 .env
 .env.*
 !.env.example
