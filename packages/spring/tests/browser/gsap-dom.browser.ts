@@ -66,9 +66,7 @@ describe('GSAP browser integration', () => {
     tween.kill();
   });
 
-  // Remove `.fails` when the DOM writer expands GSAP's `scale` alias to
-  // separate `scaleX` and `scaleY` setters.
-  it.fails('writes scale through the CSSPlugin transform cache', () => {
+	it('writes scale through the CSSPlugin transform cache', () => {
     const target = createTarget();
     const tween = gsap.to(target, {
       paused: true,
@@ -238,8 +236,7 @@ describe('GSAP browser integration', () => {
     first.kill();
   });
 
-  // Remove `.fails` when the DOM reader preserves CSSPlugin's native unit.
-  it.fails(
+	it(
     'rejects incompatible CSS units before starting a controller',
     () => {
       const target = createTarget();
