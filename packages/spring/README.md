@@ -30,17 +30,9 @@ CommonJS `require()` is not supported. A CommonJS module can use dynamic
 
 ```ts
 import { gsap } from 'gsap';
-import { SpringPlugin, springPresets } from '@motion-core/spring';
+import { SpringPlugin } from '@motion-core/spring';
 
 gsap.registerPlugin(SpringPlugin);
-
-gsap.to(element, {
-  motionSpring: {
-    x: 600,
-    rotation: '30deg',
-    parameters: springPresets.snappy(),
-  },
-});
 ```
 
 `registerSpringPlugin(gsap)` is an equivalent explicit helper. The older
@@ -51,37 +43,130 @@ GSAP owns the clock, timeline lifecycle, context, and property writes. The
 plugin calculates position and velocity from absolute elapsed time. Seeking or
 sampling at a different frame rate does not change the trajectory.
 
-Spring duration comes from physical parameters and settling tolerances. Do not
-set a GSAP `duration` for `motionSpring`; the plugin updates the tween duration
-after it resolves every spring track.
+## Compose derived-duration timelines
 
-## Timeline handoff
-
-Overlapping `motionSpring` tweens on the same target and property share a track
-registry. The newer tween inherits the current analytical position and velocity
-and becomes the only writer.
+Use `timeline.motionSpring()` when spring duration affects the position or
+duration of other timeline children. It is a registered GSAP effect with
+`extendTimeline: true`. The effect resolves every spring track before returning
+its tween, so GSAP receives the final duration before it lays out the timeline.
 
 ```ts
 const timeline = gsap.timeline();
 
 timeline
-  .to(element, {
-    motionSpring: {
-      x: 320,
-      parameters: { mass: 1, stiffness: 180, damping: 24 },
-    },
+  .motionSpring(element, {
+    x: 320,
+    from: { x: 0 },
+    parameters: { mass: 1, stiffness: 180, damping: 24 },
   })
-  .to(
-    element,
-    {
-      motionSpring: {
-        x: 80,
-        parameters: { mass: 1, stiffness: 240, damping: 26 },
-      },
-    },
-    '<0.2',
-  );
+  .motionSpring(element, {
+    x: 80,
+    from: { x: 320 },
+    parameters: { mass: 1, stiffness: 240, damping: 26 },
+  });
 ```
+
+The second tween starts when the first tween's derived duration ends. No GSAP
+`duration` is required.
+
+### Starting state and velocity
+
+Preflight reads each target when the effect is created. Add `from` when an
+earlier timeline child will change that target before the spring starts:
+
+```ts
+timeline.motionSpring(element, {
+  x: 80,
+  from: { x: 320 },
+  velocity: { x: -240 },
+  parameters: { mass: 1, stiffness: 240, damping: 26 },
+});
+```
+
+`from` accepts the same numeric values and single-unit strings as spring
+destinations. It is a property map, so a tween can snapshot different starting
+values for `x`, `rotation`, or custom numeric properties. If `from` is omitted,
+the construction-time value and any currently active Motion Core track are used.
+
+This distinction matters for timelines built before playback. A state created by
+an earlier child does not exist yet, so the effect cannot read it automatically.
+Pass both `from` and `velocity` when that future state must be exact.
+
+### GSAP tween options
+
+Put GSAP driver options in `tween`:
+
+```ts
+const entrance = gsap.timeline().motionSpring(cards, {
+  y: 0,
+  from: { y: -24 },
+  parameters: { mass: 1, stiffness: 180, damping: 24 },
+  tween: {
+    stagger: 0.06,
+    repeat: 1,
+    yoyo: true,
+  },
+});
+
+masterTimeline.add(entrance, 0.4);
+```
+
+The effect supports array targets, stagger, repeats, yoyo playback, and nested
+timelines. It owns `duration`, `ease`, and `motionSpring`. The helper discards
+those keys if they are present in `tween`.
+
+Use `createMotionSpringTween()` when code needs a preflighted tween without the
+extended timeline method:
+
+```ts
+import { createMotionSpringTween } from '@motion-core/spring';
+
+const tween = createMotionSpringTween(element, {
+  x: 320,
+  from: { x: 0 },
+  parameters: { mass: 1, stiffness: 180, damping: 24 },
+  tween: { paused: true },
+});
+
+timeline.add(tween, 0.5);
+```
+
+## Legacy special-property syntax
+
+The original `gsap.to({ motionSpring: ... })` syntax remains supported:
+
+```ts
+gsap.to(element, {
+  motionSpring: {
+    x: 600,
+    rotation: '30deg',
+    parameters: { mass: 1, stiffness: 180, damping: 24 },
+  },
+});
+```
+
+Use it for a direct tween or for timeline children placed at explicit positions.
+GSAP initializes special properties lazily, after a timeline has already placed
+sequential children using its current duration. The plugin can update its own
+duration at that point, but it cannot move a child that GSAP already positioned.
+
+For a sequential timeline, the basic migration is:
+
+```ts
+// Before: GSAP positions the next child before this duration is known.
+timeline.to(element, { motionSpring: springVars });
+
+// After: the effect returns a tween with its final duration.
+timeline.motionSpring(element, springVars);
+```
+
+Move ordinary tween settings such as `stagger` or `repeat` into
+`springVars.tween`. Add `from` when the starting value comes from an earlier
+child.
+
+The special-property form still provides runtime position and velocity handoff.
+Overlapping tracks on the same target and property share a registry, and the
+newer track becomes the only writer.
 
 Pause, seek, reverse, `timeScale`, property-level kill, and GSAP context cleanup
 retain their normal GSAP behavior. Seeking directly across a handoff produces
@@ -131,8 +216,10 @@ Numeric strings may contain one unit, such as `24px`, `30deg`, or `100%`. A unit
 mismatch throws before the animation starts. Use `adapters` when a property
 needs custom read and write behavior.
 
-Starting another `springTo()` or `motionSpring` animation on the same target and
-property performs an automatic velocity-preserving handoff.
+Starting another `springTo()` animation or a lazily initialized `motionSpring`
+special-property tween on the same target and property performs an automatic
+velocity-preserving handoff. Preflighted effects use their construction snapshot
+instead.
 
 ## Parameters
 

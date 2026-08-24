@@ -18,6 +18,7 @@ describe('single-package public API', () => {
       'createAdditiveSpringValue',
       'createAnalyticalSolver',
       'createInertia',
+      'createMotionSpringTween',
       'createSpring',
       'createSpringKeyframes',
       'createSpringModel',

@@ -6,6 +6,9 @@ This file records user-visible changes to `@motion-core/spring`.
 
 - Add the `motionSpring` GSAP plugin with solver-derived duration and analytical
   sampling.
+- Add the preflighted `timeline.motionSpring()` effect and
+  `createMotionSpringTween()` helper so derived durations are available before
+  GSAP lays out sequential, staggered, or nested timelines.
 - Add automatic position and velocity handoff between overlapping timeline and
   `springTo()` tracks.
 - Add controller playback, lifecycle callbacks, custom property adapters, unit
