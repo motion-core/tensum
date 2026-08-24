@@ -11,6 +11,7 @@
     "benchmark": "pnpm -r --if-present benchmark",
     "check": "pnpm --filter @motion-core/spring build && pnpm -r --if-present check",
     "test": "pnpm -r --if-present test",
+    "test:browser": "pnpm --filter @motion-core/spring test:browser",
     "lint": "pnpm -r --if-present lint",
     "format": "pnpm --filter @motion-core/spring-site format",
     "release:check": "node scripts/release-check.mjs",
