@@ -26,7 +26,7 @@
 	const scenarios = [
 		{ id: 'distance', label: 'Distance', detail: 'Retargetable x' },
 		{ id: 'rotation', label: 'Rotation', detail: 'Angular spring' },
-		{ id: 'timeline', label: 'GSAP timeline', detail: 'Seek and reverse' }
+		{ id: 'timeline', label: 'Timeline', detail: 'GSAP seek and reverse' }
 	] as const;
 	const feelPresets = [
 		{ label: 'Gentle', duration: 0.85, bounce: -0.3 },
@@ -376,7 +376,7 @@
 	});
 </script>
 
-<div
+<section
 	class="grid overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:grid-cols-[11rem_minmax(0,1fr)_13rem]"
 	aria-label="Spring playground"
 >
@@ -410,7 +410,36 @@
 			</nav>
 
 			{#if scenario !== 'timeline'}
-				<p class="mt-4 mb-1 px-2 text-xs text-muted-foreground">Feel preset</p>
+				<p class="mt-3 mb-1 px-2 text-xs text-muted-foreground">Target</p>
+				{#if scenario === 'distance'}
+					<div class="grid grid-cols-3 gap-1 lg:grid-cols-1" aria-label="Distance target">
+						{#each distanceTargets as target, index (target.label)}
+							<Button
+								variant={distanceTargetIndex === index ? 'secondary' : 'ghost'}
+								class="justify-start"
+								onclick={() => setDistanceTarget(index)}
+								aria-pressed={distanceTargetIndex === index}
+							>
+								{target.label}
+							</Button>
+						{/each}
+					</div>
+				{:else}
+					<div class="grid grid-cols-3 gap-1 lg:grid-cols-1" aria-label="Rotation target">
+						{#each rotationTargets as target (target)}
+							<Button
+								variant={rotationTarget === target ? 'secondary' : 'ghost'}
+								class="justify-start"
+								onclick={() => setRotationTarget(target)}
+								aria-pressed={rotationTarget === target}
+							>
+								{target > 0 ? '+' : ''}{target}°
+							</Button>
+						{/each}
+					</div>
+				{/if}
+
+				<p class="mt-3 mb-1 px-2 text-xs text-muted-foreground">Feel preset</p>
 				<div class="grid grid-cols-3 gap-1 lg:grid-cols-1">
 					{#each feelPresets as preset (preset.label)}
 						<Button
@@ -442,9 +471,9 @@
 			<h2 class="font-heading text-sm font-medium" id="playground-stage-heading">Stage</h2>
 			<span class="font-mono text-xs text-muted-foreground tabular-nums">{stageStatus}</span>
 		</header>
-		<div class="flex min-h-52 flex-1 flex-col p-2 lg:min-h-96">
+		<div class="flex min-h-48 flex-1 flex-col p-2 lg:min-h-96">
 			<div
-				class="relative min-h-40 flex-1 overflow-hidden rounded-lg bg-muted ring-1 ring-border"
+				class="relative min-h-32 flex-1 overflow-hidden rounded-lg bg-muted ring-1 ring-border lg:min-h-40"
 				{@attach captureTrack}
 			>
 				{#if scenario === 'rotation'}
@@ -505,30 +534,14 @@
 
 			<footer class="flex min-h-10 flex-wrap items-center justify-between gap-2 pt-2">
 				{#if scenario === 'distance'}
-					<div class="flex flex-wrap gap-1" aria-label="Distance target">
-						{#each distanceTargets as target, index (target.label)}
-							<Button
-								variant={distanceTargetIndex === index ? 'secondary' : 'ghost'}
-								onclick={() => setDistanceTarget(index)}
-								aria-pressed={distanceTargetIndex === index}
-							>
-								{target.label}
-							</Button>
-						{/each}
-					</div>
+					<span class="font-mono text-xs text-muted-foreground">
+						target {distanceTargets[distanceTargetIndex]?.label.toLowerCase()}
+					</span>
 					<span class="text-xs text-muted-foreground">Choose a new target mid-flight.</span>
 				{:else if scenario === 'rotation'}
-					<div class="flex flex-wrap gap-1" aria-label="Rotation target">
-						{#each rotationTargets as target (target)}
-							<Button
-								variant={rotationTarget === target ? 'secondary' : 'ghost'}
-								onclick={() => setRotationTarget(target)}
-								aria-pressed={rotationTarget === target}
-							>
-								{target > 0 ? '+' : ''}{target}°
-							</Button>
-						{/each}
-					</div>
+					<span class="font-mono text-xs text-muted-foreground">
+						target {rotationTarget > 0 ? '+' : ''}{rotationTarget}°
+					</span>
 					<span class="text-xs text-muted-foreground">One solver, another property.</span>
 				{:else}
 					<span class="font-mono text-xs text-muted-foreground">handoff @ {handoffTime}s</span>
@@ -552,7 +565,7 @@
 		</header>
 
 		{#if scenario === 'timeline'}
-			<div class="flex flex-1 flex-col gap-4 p-3">
+			<div class="flex flex-1 flex-col gap-3 p-2.5">
 				<div class="space-y-2">
 					<div class="flex justify-between font-mono text-xs text-muted-foreground tabular-nums">
 						<span>0s</span>
@@ -633,7 +646,7 @@
 				</p>
 			</div>
 		{:else}
-			<div class="flex flex-1 flex-col gap-4 p-3">
+			<div class="flex flex-1 flex-col gap-3 p-2.5">
 				<Tabs.Root
 					class="w-full"
 					value={inputMode}
@@ -645,7 +658,7 @@
 					</Tabs.List>
 				</Tabs.Root>
 
-				<div class="grid gap-4">
+				<div class="grid gap-3">
 					{#if inputMode === 'perceptual'}
 						<ParameterField
 							id="hero-duration"
@@ -719,4 +732,4 @@
 			</div>
 		{/if}
 	</section>
-</div>
+</section>
