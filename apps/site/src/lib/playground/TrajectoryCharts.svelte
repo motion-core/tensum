@@ -106,7 +106,7 @@
 		<figure class="flex min-h-36 flex-col sm:min-h-0" aria-labelledby="position-chart-title">
 			<figcaption class="flex items-center justify-between gap-2 text-sm" id="position-chart-title">
 				<span class="font-medium">Position</span>
-				<span class="flex items-center gap-1.5 text-muted-foreground">
+				<span class="flex items-center gap-1.5 text-xs text-muted-foreground">
 					<span class="size-2 rounded-full bg-chart-1" aria-hidden="true"></span>
 					{positionUnit}
 				</span>
@@ -163,7 +163,7 @@
 		<figure class="flex min-h-36 flex-col sm:min-h-0" aria-labelledby="velocity-chart-title">
 			<figcaption class="flex items-center justify-between gap-2 text-sm" id="velocity-chart-title">
 				<span class="font-medium">Velocity</span>
-				<span class="flex items-center gap-1.5 text-muted-foreground">
+				<span class="flex items-center gap-1.5 text-xs text-muted-foreground">
 					<span class="size-2 rounded-full bg-chart-2" aria-hidden="true"></span>
 					{velocityUnit}
 				</span>

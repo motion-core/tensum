@@ -62,7 +62,7 @@
 	</section>
 </main>
 
-<footer class="mx-auto w-full max-w-4xl px-4 pb-8 text-xs">
+<footer class="mx-auto w-full max-w-5xl px-4 pb-8 text-xs">
 	<Separator />
 	<div
 		class="flex flex-col gap-3 py-6 text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
