@@ -12,7 +12,13 @@ import {
   registerActiveTrack,
 } from './active-tracks.js';
 import type { ActiveTrackRegistration } from './active-tracks.js';
-import { globalTimeAt, localTimeAt } from './gsap-time.js';
+import { globalTimeAt, localCycleAt, localTimeAt } from './gsap-time.js';
+import {
+  beginPluginTweenInit,
+  gsapSafeDuration,
+  registerPluginTweenParticipant,
+} from './plugin-tween-coordinator.js';
+import type { PluginTweenRegistration } from './plugin-tween-coordinator.js';
 import {
   SUPPORTED_PROPERTIES,
   accessFor,
@@ -99,11 +105,7 @@ interface MotionSpringPluginScope extends gsap.PluginScope {
     MotionSpringPluginVars,
     'onLogicalComplete' | 'onSettle' | 'onUnsettled'
   >;
-}
-
-interface TweenTimingState {
-  duration: number;
-  infinite: boolean;
+  coordinator?: PluginTweenRegistration;
 }
 
 interface PreparedTrack {
@@ -121,18 +123,14 @@ interface PreparedTarget {
 
 interface PreparedMotionSpring {
   targets: WeakMap<object, PreparedTarget>;
+  baseDuration: number;
+  baseRepeat: number;
 }
 
-const tweenTiming = new WeakMap<gsap.core.Tween, TweenTimingState>();
 const preparedMotionSprings = new WeakMap<
   MotionSpringPluginVars,
   PreparedMotionSpring
 >();
-const GSAP_TIME_PRECISION = 1e7;
-
-function gsapSafeDuration(duration: number): number {
-  return Math.ceil(duration * GSAP_TIME_PRECISION) / GSAP_TIME_PRECISION;
-}
 
 function pluginTargetsFrom(vars: MotionSpringPluginVars): Record<string, RequestedTarget> {
   const requested: Record<string, RequestedTarget> = {};
@@ -254,7 +252,12 @@ export function createMotionSpringTween(
     throw new RangeError('motionSpring cannot start an unsettled spring in error mode');
   }
   const infinite = policy === 'continue' && hasUnsettled;
-  preparedMotionSprings.set(pluginVars, { targets: preparedTargets });
+  preparedMotionSprings.set(pluginVars, {
+    targets: preparedTargets,
+    baseDuration: gsapSafeDuration(finiteDuration),
+    baseRepeat:
+      typeof tweenOptions?.['repeat'] === 'number' ? tweenOptions['repeat'] : 0,
+  });
 
   const safeTweenOptions = { ...(tweenOptions ?? {}) } as gsap.TweenVars;
   delete safeTweenOptions.duration;
@@ -323,6 +326,18 @@ function timingFor(
   };
 }
 
+function updateScopeTiming(scope: MotionSpringPluginScope): void {
+  const timing = timingFor(scope.tracks, scope.policy);
+  scope.finiteDuration = timing.finiteDuration;
+  scope.hasUnsettled = timing.hasUnsettled;
+  scope.duration =
+    scope.policy === 'continue' && timing.hasUnsettled
+      ? Number.POSITIVE_INFINITY
+      : timing.finiteDuration;
+  scope.logicalDuration = timing.logicalDuration;
+  scope.unsettledAt = timing.unsettledAt;
+}
+
 function snapshotAt(
   scope: MotionSpringPluginScope,
   time: number,
@@ -389,25 +404,14 @@ function renderAt(scope: MotionSpringPluginScope, time: number): void {
     scope.didNotifyUnsettled = true;
     scope.callbacks.onUnsettled?.(snapshot);
   }
-}
 
-function configureTweenDuration(
-  tween: gsap.core.Tween,
-  duration: number,
-  infinite: boolean,
-): void {
-  const state = tweenTiming.get(tween) ?? { duration: 0, infinite: false };
-  state.duration = Math.max(state.duration, duration);
-  state.infinite ||= infinite;
-  tweenTiming.set(tween, state);
-
-  if (state.infinite) {
-    tween.duration(1);
-    tween.repeat(-1);
-  } else {
-    // GSAP stores time at seven decimal places. Rounding upward prevents its
-    // completion boundary from landing microscopically before physical rest.
-    tween.duration(gsapSafeDuration(state.duration));
+  if (
+    scope.tween.repeat() >= 0 &&
+    scope.tween.totalTime() >= scope.tween.totalDuration()
+  ) {
+    for (const track of scope.tracks) {
+      track.registration?.release({ restore: false });
+    }
   }
 }
 
@@ -435,6 +439,7 @@ const pluginDefinition = {
     target: object,
     value: MotionSpringPluginVars,
     tween: gsap.core.Tween,
+    _targetIndex: number,
   ): boolean {
     if (!value || typeof value !== 'object') {
       throw new TypeError('motionSpring requires a configuration object');
@@ -445,7 +450,18 @@ const pluginDefinition = {
     }
 
     const config = trackConfigFrom(value);
-    const preparedTarget = preparedMotionSprings.get(value)?.targets.get(target);
+    const prepared = preparedMotionSprings.get(value);
+    const coordinator = beginPluginTweenInit(tween, target, {
+      baseDuration:
+        prepared?.baseDuration ??
+        (typeof tween.vars.duration === 'number'
+          ? tween.vars.duration
+          : tween.duration()),
+      baseRepeat:
+        prepared?.baseRepeat ??
+        (typeof tween.vars.repeat === 'number' ? tween.vars.repeat : 0),
+    });
+    const preparedTarget = prepared?.targets.get(target);
     if (
       preparedTarget !== undefined &&
       (Object.keys(preparedTarget.tracks).length !== Object.keys(requested).length ||
@@ -568,33 +584,43 @@ const pluginDefinition = {
 
     for (const track of tracks) {
       track.registration = registerActiveTrack(target, track.property, {
-        state: (globalTime) => ({
-          ...stateFor(
-            track,
-            globalTime === undefined
-              ? currentTime(this)
-              : localTimeAt(this.tween, globalTime),
-            this.policy,
-          ),
-          ...(track.unit === undefined ? {} : { unit: track.unit }),
-        }),
+        state: (globalTime) => {
+          let time = currentTime(this);
+          let direction: 1 | 0 | -1 = 1;
+          if (globalTime !== undefined) {
+            if (this.policy === 'continue' && this.hasUnsettled) {
+              time = localTimeAt(this.tween, globalTime);
+            } else {
+              const cycle = localCycleAt(this.tween, globalTime);
+              time = cycle.time;
+              direction = cycle.direction;
+            }
+          }
+          const state = stateFor(track, time, this.policy);
+          return {
+            ...state,
+            velocity: state.velocity * direction,
+            ...(track.unit === undefined ? {} : { unit: track.unit }),
+          };
+        },
         restore: () => {
           track.write(stateFor(track, currentTime(this), this.policy).position);
         },
       });
     }
-    const previousInterrupt = tween.eventCallback('onInterrupt');
-    tween.eventCallback('onInterrupt', () => {
-      for (const track of this.tracks) track.registration?.release();
-      previousInterrupt?.apply(
-        tween.vars.callbackScope ?? tween,
-        tween.vars.onInterruptParams ?? [],
-      );
+    this.coordinator = registerPluginTweenParticipant(coordinator, {
+      timing: () => ({
+        finiteDuration: timingFor(this.tracks, this.policy).finiteDuration,
+        infinite:
+          this.policy === 'continue' &&
+          this.tracks.some((track) => !track.settling.settled),
+      }),
+      dispose: () => {
+        for (const track of this.tracks) track.registration?.release();
+        this.killed = true;
+        this.tracks.length = 0;
+      },
     });
-
-    if (preparedTarget === undefined) {
-      configureTweenDuration(tween, finiteDuration, infinite);
-    }
     return true;
   },
   render(
@@ -604,19 +630,27 @@ const pluginDefinition = {
     const scope = data as MotionSpringPluginScope;
     renderAt(scope, currentTime(scope));
   },
-  kill(this: MotionSpringPluginScope, property?: string): void {
+  kill(this: MotionSpringPluginScope, property?: string): boolean {
     if (!property || property === 'motionSpring') {
       for (const track of this.tracks) track.registration?.release();
       this.killed = true;
       this.tracks.length = 0;
-      return;
+      this.coordinator?.remove();
+      return true;
     }
     for (const track of this.tracks) {
       if (track.property === property) track.registration?.release();
     }
     this.tracks = this.tracks.filter((track) => track.property !== property);
     this._props = this._props.filter((tracked) => tracked !== property);
-    if (this.tracks.length === 0) this.killed = true;
+    updateScopeTiming(this);
+    if (this.tracks.length === 0) {
+      this.killed = true;
+      this.coordinator?.remove();
+      return true;
+    }
+    this.coordinator?.recompute();
+    return false;
   },
 };
 

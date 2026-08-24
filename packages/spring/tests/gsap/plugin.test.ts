@@ -611,6 +611,211 @@ describe('MotionCoreSpringPlugin', () => {
     expect(target.score).toBe(beforeKill);
   });
 
+  it('lets GSAP remove the plugin PropTween after its final property is killed', () => {
+    const target = { x: 0, y: 0 };
+    const tween = gsap.to(target, {
+      paused: true,
+      motionSpring: {
+        values: { x: 100, y: 200 },
+        parameters,
+      },
+    });
+    const hostTween = tween as gsap.core.Tween & { _pt?: unknown };
+
+    tween.time(0.01, true);
+    tween.kill(target, 'x');
+    expect(hostTween._pt).toBeDefined();
+
+    tween.kill(target, 'y');
+    expect(hostTween._pt).toBeFalsy();
+  });
+
+  it('recomputes an infinite driver after its unsettled property is killed', () => {
+    const target = { x: 0, y: 0 };
+    const finite = createSpring({ from: 0, to: 100, velocity: 0, ...parameters });
+    const tween = gsap.to(target, {
+      paused: true,
+      repeat: 2,
+      motionSpring: {
+        values: { x: 100, y: 100 },
+        parameters,
+        properties: {
+          y: { damping: 0, settle: { maxDuration: 0.2 } },
+        },
+        unsettled: 'continue',
+      },
+    });
+
+    tween.totalTime(0.01, true);
+    expect(tween.repeat()).toBe(-1);
+
+    tween.kill(target, 'y');
+
+    expect(tween.repeat()).toBe(2);
+    expect(tween.duration()).toBeCloseTo(finite.getSettlingDuration(), 6);
+    tween.totalTime(tween.totalDuration(), true);
+    expect(Number.parseFloat(String(target.x))).toBe(100);
+  });
+
+  it('recomputes a shared multi-target driver when its infinite target is killed', () => {
+    const targets = [{ score: 0 }, { score: 100 }];
+    const tween = gsap.to(targets, {
+      paused: true,
+      repeat: 1,
+      motionSpring: {
+        values: { score: 100 },
+        parameters: {
+          ...parameters,
+          damping: 0,
+          settle: { maxDuration: 0.2 },
+        },
+        unsettled: 'continue',
+      },
+    });
+
+    tween.totalTime(0.01, true);
+    expect(tween.repeat()).toBe(-1);
+
+    tween.kill(targets[0], 'score');
+
+    expect(tween.repeat()).toBe(1);
+    expect(tween.duration()).toBe(0);
+  });
+
+  it('recomputes duration and replaces ownership when a tween is invalidated', () => {
+    const target = { score: 0 };
+    const pluginVars = {
+      values: { score: 100 },
+      parameters: { ...parameters },
+    };
+    const tween = gsap.to(target, {
+      paused: true,
+      motionSpring: pluginVars,
+    });
+
+    tween.time(0.01, true);
+    const firstDuration = tween.duration();
+    pluginVars.parameters.stiffness = 900;
+    pluginVars.parameters.damping = 60;
+    tween.invalidate().time(0.01, true);
+
+    expect(tween.duration()).toBeLessThan(firstDuration);
+
+    const valueBeforeKill = target.score;
+    tween.kill();
+    const replacement = gsap.to(target, {
+      paused: true,
+      motionSpring: {
+        values: { score: 200 },
+        velocity: 0,
+        parameters,
+      },
+    });
+    replacement.time(0.01, true);
+    const expected = createSpring({
+      from: valueBeforeKill,
+      to: 200,
+      velocity: 0,
+      ...parameters,
+    });
+    expect(target.score).toBeCloseTo(expected.positionAt(0.01), 9);
+  });
+
+  it('hands off cycle-local position and velocity during a yoyo repeat', () => {
+    const target = { score: 0 };
+    const firstSpring = createSpring({
+      from: 0,
+      to: 100,
+      velocity: 0,
+      ...parameters,
+    });
+    const timeline = gsap.timeline({ paused: true });
+    timeline.motionSpring(target, {
+      values: { score: 100 },
+      from: { score: 0 },
+      parameters,
+      tween: { repeat: 1, yoyo: true },
+    });
+    const firstTween = timeline.getChildren(false, true, false)[0] as gsap.core.Tween;
+    const handoffOffset = 0.1;
+    const sampleTime = 0.05;
+    const cycleTime = firstTween.duration() - handoffOffset;
+    const firstState = firstSpring.stateAt(cycleTime);
+    const redirected = createSpring({
+      from: firstState.position,
+      to: 200,
+      velocity: -firstState.velocity,
+      ...parameters,
+    });
+    timeline.to(
+      target,
+      {
+        motionSpring: {
+          values: { score: 200 },
+          parameters,
+        },
+      },
+      firstTween.duration() + handoffOffset,
+    );
+
+    timeline.time(firstTween.duration() + handoffOffset + sampleTime, true);
+
+    expect(target.score).toBeCloseTo(redirected.positionAt(sampleTime), 9);
+  });
+
+  it('keeps multi-target lifecycle callbacks explicitly target-scoped', () => {
+    const targets = [{ score: 0 }, { score: 20 }];
+    const onSettle = vi.fn();
+    const tween = gsap.to(targets, {
+      paused: true,
+      motionSpring: {
+        values: { score: 100 },
+        parameters,
+        onSettle,
+      },
+    });
+
+    tween.time(0.01, true);
+    tween.time(tween.duration(), true);
+
+    expect(onSettle).toHaveBeenCalledTimes(targets.length);
+  });
+
+  it('releases completed ownership instead of restoring a covered zombie', () => {
+    const target = { score: 0 };
+    const timeline = gsap
+      .timeline({ paused: true })
+      .motionSpring(
+        target,
+        {
+          values: { score: 100 },
+          from: { score: 0 },
+          parameters,
+        },
+        0,
+      )
+      .motionSpring(
+        target,
+        {
+          values: { score: 200 },
+          from: { score: 0 },
+          parameters,
+        },
+        0.1,
+      );
+    const [, second] = timeline.getChildren(
+      false,
+      true,
+      false,
+    ) as gsap.core.Tween[];
+
+    timeline.time(timeline.duration(), true);
+    expect(target.score).toBe(200);
+    second!.kill();
+
+    expect(target.score).toBe(200);
+  });
+
   it('uses totalTime for an explicitly continuing unsettled spring', () => {
     const target = { score: 0 };
     const onUnsettled = vi.fn();
