@@ -49,13 +49,13 @@ describe('active spring track registry stress', () => {
       unit: 'px',
       terminal: true,
     });
-    expect(reconcileActiveTrackHandoff(target, 'x', terminal, 100)).toBe(
-      terminal,
-    );
+    expect(
+      reconcileActiveTrackHandoff(target, 'x', terminal, 100, 'px'),
+    ).toBe(terminal);
     expect(registration.isOwner()).toBe(true);
 
     expect(
-      reconcileActiveTrackHandoff(target, 'x', terminal, -250),
+      reconcileActiveTrackHandoff(target, 'x', terminal, -250, 'px'),
     ).toBeUndefined();
     expect(registration.isActive()).toBe(false);
     expect(older.isActive()).toBe(false);

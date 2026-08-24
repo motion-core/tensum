@@ -469,7 +469,9 @@ export function springTo(
       const to = requested.value;
       let inherited = activeTrackState(springTarget, property);
       const resolvedRequest =
-        requested.unit === undefined && inherited?.unit !== undefined
+        requested.unit === undefined &&
+        !inherited?.terminal &&
+        inherited?.unit !== undefined
           ? { ...requested, unit: inherited.unit }
           : requested;
       const access = accessFor(springTarget, property, resolvedRequest, vars);
@@ -478,6 +480,7 @@ export function springTo(
         property,
         inherited,
         access.from,
+        access.unit,
       );
       if (
         inherited?.unit !== undefined &&

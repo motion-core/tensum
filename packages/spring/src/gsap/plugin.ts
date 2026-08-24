@@ -207,6 +207,7 @@ function preflightTarget(
         property,
         inherited,
         access.from,
+        access.unit,
       );
     }
     const handoffUnit = explicit?.unit ?? inherited?.unit;
@@ -506,6 +507,7 @@ const pluginDefinition = {
           property,
           inherited,
           access.from,
+          access.unit,
         );
       }
       const handoffUnit = prepared?.unit ?? inherited?.unit;

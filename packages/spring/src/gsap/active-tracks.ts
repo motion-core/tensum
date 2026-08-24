@@ -135,10 +135,12 @@ export function reconcileActiveTrackHandoff(
   property: string,
   inherited: ActiveTrackHandoffState | undefined,
   actualPosition: number,
+  actualUnit: string | undefined,
 ): ActiveTrackHandoffState | undefined {
   if (
     !inherited?.terminal ||
-    positionsMatch(inherited.position, actualPosition)
+    (positionsMatch(inherited.position, actualPosition) &&
+      inherited.unit === actualUnit)
   ) {
     return inherited;
   }

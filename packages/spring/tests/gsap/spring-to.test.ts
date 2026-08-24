@@ -323,6 +323,33 @@ describe('springTo', () => {
     );
   });
 
+  it('treats an external unit change as a new terminal baseline', () => {
+    const target: Record<string, unknown> = { '--distance': '0px' };
+    const first = springTo(target, {
+      targets: { '--distance': '100px' },
+      spring,
+    });
+    mocks.calls[0]!.vars.onComplete?.();
+
+    target['--distance'] = '100deg';
+    const second = springTo(target, {
+      targets: { '--distance': '200deg' },
+      spring,
+    });
+
+    expect(second.springs['--distance']!.stateAt(0)).toEqual({
+      position: 100,
+      velocity: 0,
+    });
+    expect(mocks.gsap.quickSetter).toHaveBeenLastCalledWith(
+      target,
+      '--distance',
+      'deg',
+    );
+    second.kill();
+    first.kill();
+  });
+
   it('uses explicit read and write adapters without touching GSAP properties', () => {
     const target = { nested: { progress: 0 } };
     const controller = springTo(target, {
