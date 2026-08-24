@@ -3,10 +3,10 @@
   "private": true,
   "packageManager": "pnpm@10.33.3",
   "scripts": {
-    "dev": "pnpm --filter @motion-core/spring-lab dev",
+    "dev": "pnpm --filter @motion-core/spring build && pnpm --filter @motion-core/spring-lab dev",
     "build": "pnpm -r --if-present build",
     "benchmark": "pnpm -r --if-present benchmark",
-    "check": "pnpm -r --if-present check",
+    "check": "pnpm --filter @motion-core/spring build && pnpm -r --if-present check",
     "test": "pnpm -r --if-present test",
     "lint": "pnpm -r --if-present lint",
     "format": "pnpm --filter @motion-core/spring-lab format"

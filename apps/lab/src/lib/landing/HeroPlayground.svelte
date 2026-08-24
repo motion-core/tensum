@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { springTo } from '@motion-core/gsap-spring';
-	import type { SpringController, SpringToSnapshot } from '@motion-core/gsap-spring';
-	import { registerMotionCoreSpringPlugin } from '@motion-core/gsap-spring';
 	import {
 		createSpring,
+		registerSpringPlugin,
+		springTo,
 		springCharacteristics,
 		springParameters,
 		springPresets
 	} from '@motion-core/spring';
+	import type { SpringController, SpringToSnapshot } from '@motion-core/spring';
 	import { PauseIcon, PlayIcon, Refresh01Icon } from '@hugeicons/core-free-icons';
 	import { HugeiconsIcon } from '@hugeicons/svelte';
 	import { gsap } from 'gsap';
@@ -336,7 +336,7 @@
 	}
 
 	onMount(() => {
-		registerMotionCoreSpringPlugin(gsap);
+		registerSpringPlugin(gsap);
 		const media = window.matchMedia('(prefers-reduced-motion: reduce)');
 		const syncMotionPreference = (): void => {
 			prefersReducedMotion = media.matches;

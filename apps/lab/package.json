@@ -4,7 +4,6 @@
 	"version": "0.0.1",
 	"type": "module",
 	"dependencies": {
-		"@motion-core/gsap-spring": "workspace:*",
 		"@motion-core/spring": "workspace:*",
 		"d3": "^7.9.0",
 		"gsap": "^3.15.0"
