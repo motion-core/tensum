@@ -4,6 +4,10 @@ export interface ActiveTrackState extends SpringState {
   unit?: string;
 }
 
+export interface ActiveTrackHandoffState extends ActiveTrackState {
+  terminal?: true;
+}
+
 export interface ActiveTrackSource {
   state(globalTime?: number): ActiveTrackState;
   restore(): void;
@@ -23,8 +27,10 @@ export interface ActiveTrackRegistration {
 
 interface TrackEntry {
   active: boolean;
+  discarded: boolean;
   order: number;
   source: ActiveTrackSource;
+  terminal: boolean;
 }
 
 type PropertyTracks = Map<string, TrackEntry[]>;
@@ -84,10 +90,60 @@ export function activeTrackState(
   target: unknown,
   property: string,
   globalTime?: number,
-): ActiveTrackState | undefined {
+): ActiveTrackHandoffState | undefined {
   const owner = stackFor(target, property, false)?.at(-1);
   if (!owner) return undefined;
-  return { ...owner.source.state(globalTime) };
+  return {
+    ...owner.source.state(globalTime),
+    ...(owner.terminal ? { terminal: true as const } : {}),
+  };
+}
+
+/**
+ * Invalidates a terminal handoff baseline after an external write. The whole
+ * property history is discarded so reversing an older tween cannot restore a
+ * value that no longer represents the target.
+ */
+function discardTerminalTrackHistory(
+  target: unknown,
+  property: string,
+): boolean {
+  const stack = stackFor(target, property, false);
+  if (!stack?.at(-1)?.terminal) return false;
+  for (const entry of stack) {
+    entry.active = false;
+    entry.discarded = true;
+    entry.terminal = false;
+  }
+  stack.length = 0;
+  cleanup(target, property);
+  return true;
+}
+
+function positionsMatch(first: number, second: number): boolean {
+  const floatingPointTolerance =
+    Number.EPSILON * Math.max(1, Math.abs(first), Math.abs(second)) * 8;
+  return Math.abs(first - second) <= Math.max(1e-9, floatingPointTolerance);
+}
+
+/**
+ * Preserves a live/unchanged handoff, but atomically invalidates terminal
+ * history when the target was externally changed after completion.
+ */
+export function reconcileActiveTrackHandoff(
+  target: unknown,
+  property: string,
+  inherited: ActiveTrackHandoffState | undefined,
+  actualPosition: number,
+): ActiveTrackHandoffState | undefined {
+  if (
+    !inherited?.terminal ||
+    positionsMatch(inherited.position, actualPosition)
+  ) {
+    return inherited;
+  }
+  discardTerminalTrackHistory(target, property);
+  return undefined;
 }
 
 export function registerActiveTrack(
@@ -97,12 +153,14 @@ export function registerActiveTrack(
 ): ActiveTrackRegistration {
   const entry: TrackEntry = {
     active: false,
+    discarded: false,
     order: nextTrackOrder++,
     source,
+    terminal: false,
   };
 
   const activate = (): void => {
-    if (entry.active) return;
+    if (entry.active || entry.discarded) return;
     const stack = stackFor(target, property, true)!;
     const nextIndex = stack.findIndex(
       (candidate) => candidate.order > entry.order,
@@ -117,16 +175,19 @@ export function registerActiveTrack(
     const stack = stackFor(target, property, false);
     if (!stack) {
       entry.active = false;
+      entry.terminal = false;
       return false;
     }
     const index = stack.indexOf(entry);
     if (index < 0) {
       entry.active = false;
+      entry.terminal = false;
       return false;
     }
     const wasOwner = index === stack.length - 1;
     stack.splice(index, 1);
     entry.active = false;
+    entry.terminal = false;
     const previous = wasOwner ? stack.at(-1) : undefined;
     if (previous && options.restore !== false) previous.source.restore();
     cleanup(target, property);
@@ -134,26 +195,33 @@ export function registerActiveTrack(
   };
 
   const retire = (): boolean => {
-    if (!entry.active) return false;
+    if (!entry.active || entry.discarded) return false;
     const stack = stackFor(target, property, false);
     if (!stack) {
       entry.active = false;
+      entry.terminal = false;
       return false;
     }
     const index = stack.indexOf(entry);
     if (index < 0) {
       entry.active = false;
+      entry.terminal = false;
       return false;
     }
 
     if (index === stack.length - 1) {
       const covered = stack.splice(0, index);
-      for (const candidate of covered) candidate.active = false;
+      for (const candidate of covered) {
+        candidate.active = false;
+        candidate.terminal = false;
+      }
+      entry.terminal = true;
       return true;
     }
 
     stack.splice(index, 1);
     entry.active = false;
+    entry.terminal = false;
     cleanup(target, property);
     return true;
   };
