@@ -4,16 +4,9 @@
 		registerSpringPlugin,
 		springTo,
 		springCharacteristics,
-		springParameters,
-		springPresets
+		springParameters
 	} from '@motion-core/spring';
-	import type {
-		SpringController,
-		SpringParameters,
-		SpringSolution,
-		SpringState,
-		SpringToSnapshot
-	} from '@motion-core/spring';
+	import type { SpringController, SpringState, SpringToSnapshot } from '@motion-core/spring';
 	import { PauseIcon, PlayIcon, Refresh01Icon } from '@hugeicons/core-free-icons';
 	import { HugeiconsIcon } from '@hugeicons/svelte';
 	import { gsap } from 'gsap';
@@ -22,26 +15,14 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Slider } from '$lib/components/ui/slider';
 	import * as Tabs from '$lib/components/ui/tabs';
-	import ParameterField from '$lib/lab/ParameterField.svelte';
-	import TrajectoryGraph from '$lib/lab/TrajectoryGraph.svelte';
-	import type { TrajectorySample } from '$lib/lab/model.js';
+	import ParameterField from './ParameterField.svelte';
+	import TrajectoryCharts from './TrajectoryCharts.svelte';
+	import { createTimelineMotion, createTrajectory, TIMELINE_HANDOFF_TIME } from './trajectory.js';
+	import type { PlaygroundScenario } from './trajectory.js';
 
-	type Scenario = 'distance' | 'rotation' | 'timeline';
 	type InputMode = 'perceptual' | 'physics';
 	type Segment = { start: number; end: number };
-	type TimelineMotion = {
-		far: number;
-		near: number;
-		firstParameters: Readonly<SpringParameters>;
-		secondParameters: Readonly<SpringParameters>;
-		first: SpringSolution;
-		second: SpringSolution;
-		firstEnd: number;
-		secondEnd: number;
-		duration: number;
-	};
 
-	const handoffTime = 0.35;
 	const scenarios = [
 		{ id: 'distance', label: 'Distance', detail: 'Retargetable x' },
 		{ id: 'rotation', label: 'Rotation', detail: 'Angular spring' },
@@ -58,82 +39,7 @@
 		{ label: 'Far', ratio: 1 }
 	] as const;
 	const rotationTargets = [-90, 0, 90] as const;
-	const trajectorySampleCount = 160;
-
-	function createTimelineMotion(trackWidth: number): TimelineMotion {
-		const available = Math.max(trackWidth - 96, 0);
-		const far = available * 0.82;
-		const near = available * 0.22;
-		const firstParameters = springPresets.snappy();
-		const secondParameters = springPresets.bouncy();
-		const first = createSpring({ from: 0, to: far, ...firstParameters });
-		const handoff = first.stateAt(handoffTime);
-		const second = createSpring({
-			from: handoff.position,
-			to: near,
-			velocity: handoff.velocity,
-			...secondParameters
-		});
-		const firstEnd = first.getSettlingDuration();
-		const secondEnd = handoffTime + second.getSettlingDuration();
-
-		return {
-			far,
-			near,
-			firstParameters,
-			secondParameters,
-			first,
-			second,
-			firstEnd,
-			secondEnd,
-			duration: Math.max(firstEnd, secondEnd)
-		};
-	}
-
-	function sampleStates(
-		duration: number,
-		stateAt: (time: number) => SpringState
-	): TrajectorySample[] {
-		const displayDuration = Math.max(duration, 0.25);
-		return Array.from({ length: trajectorySampleCount + 1 }, (_, index) => {
-			const time = (displayDuration * index) / trajectorySampleCount;
-			return { time, ...stateAt(time) };
-		});
-	}
-
-	function createTrajectory(
-		scenario: Scenario,
-		parameters: Readonly<SpringParameters>,
-		initialState: SpringState,
-		distanceTarget: number,
-		rotationTarget: number,
-		timelineMotion: TimelineMotion
-	): { samples: TrajectorySample[]; target: number } {
-		if (scenario === 'timeline') {
-			return {
-				target: timelineMotion.near,
-				samples: sampleStates(timelineMotion.duration, (time) =>
-					time < handoffTime
-						? timelineMotion.first.stateAt(time)
-						: timelineMotion.second.stateAt(time - handoffTime)
-				)
-			};
-		}
-
-		const target = scenario === 'rotation' ? rotationTarget : distanceTarget;
-		const spring = createSpring({
-			from: initialState.position,
-			to: target,
-			velocity: initialState.velocity,
-			...parameters
-		});
-		return {
-			target,
-			samples: sampleStates(spring.getSettlingDuration(), (time) => spring.stateAt(time))
-		};
-	}
-
-	let scenario = $state<Scenario>('distance');
+	let scenario = $state<PlaygroundScenario>('distance');
 	let inputMode = $state<InputMode>('perceptual');
 	let duration = $state(0.5);
 	let bounce = $state(0.15);
@@ -159,7 +65,7 @@
 	let timeline: gsap.core.Timeline | undefined;
 	let segments = $state<{ a: Segment; b: Segment }>({
 		a: { start: 0, end: 0.5 },
-		b: { start: handoffTime, end: 1 }
+		b: { start: TIMELINE_HANDOFF_TIME, end: 1 }
 	});
 
 	let parameters = $derived(
@@ -316,7 +222,7 @@
 		timelineDuration = motion.duration;
 		segments = {
 			a: { start: 0, end: motion.firstEnd },
-			b: { start: handoffTime, end: motion.secondEnd }
+			b: { start: TIMELINE_HANDOFF_TIME, end: motion.secondEnd }
 		};
 		timeline = gsap
 			.timeline({
@@ -349,7 +255,7 @@
 						parameters: motion.secondParameters
 					}
 				},
-				`<${handoffTime}`
+				`<${TIMELINE_HANDOFF_TIME}`
 			);
 
 		timeline.totalTime(timelineDuration, true);
@@ -421,7 +327,7 @@
 		timelineStatus = 'ready';
 	}
 
-	async function setScenario(nextScenario: Scenario): Promise<void> {
+	async function setScenario(nextScenario: PlaygroundScenario): Promise<void> {
 		if (nextScenario === scenario) return;
 		runtimeController?.kill();
 		runtimeController = undefined;
@@ -654,7 +560,9 @@
 					</span>
 					<span class="text-xs text-muted-foreground">One solver, another property.</span>
 				{:else}
-					<span class="font-mono text-xs text-muted-foreground">handoff @ {handoffTime}s</span>
+					<span class="font-mono text-xs text-muted-foreground"
+						>handoff @ {TIMELINE_HANDOFF_TIME}s</span
+					>
 					<span class="text-xs text-muted-foreground"
 						>Object and playhead share the same clock.</span
 					>
@@ -711,7 +619,7 @@
 				<p
 					class="mt-auto border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground"
 				>
-					Spring B inherits A's position and velocity at exactly {handoffTime}s.
+					Spring B inherits A's position and velocity at exactly {TIMELINE_HANDOFF_TIME}s.
 				</p>
 			</div>
 		{:else}
@@ -808,12 +716,11 @@
 	</section>
 
 	<div class="order-4 col-span-full min-w-0 border-t border-border">
-		<TrajectoryGraph
+		<TrajectoryCharts
 			samples={trajectory.samples}
 			target={trajectory.target}
 			positionUnit={stageUnit}
 			{velocityUnit}
-			embedded
 		/>
 	</div>
 </section>

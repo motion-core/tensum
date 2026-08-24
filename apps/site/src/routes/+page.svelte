@@ -2,7 +2,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
-	import HeroPlayground from '$lib/landing/HeroPlayground.svelte';
+	import SpringPlayground from '$lib/playground/SpringPlayground.svelte';
 </script>
 
 <svelte:head>
@@ -57,7 +57,7 @@
 		</div>
 
 		<div class="mt-10">
-			<HeroPlayground />
+			<SpringPlayground />
 		</div>
 	</section>
 </main>

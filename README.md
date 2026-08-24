@@ -159,7 +159,7 @@ import { createCoupledSpringSystem } from '@motion-core/spring/coupled';
 
 ```text
 packages/spring   one published GSAP plugin package
-apps/lab          Svelte development and verification surface
+apps/site         Svelte product site and interactive playground
 ```
 
 Inside the package, the analytical solver stays separate from the GSAP adapter so sampling remains deterministic. This is an implementation boundary, not another published library.

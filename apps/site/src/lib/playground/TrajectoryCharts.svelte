@@ -1,22 +1,19 @@
 <script lang="ts">
 	import { curveMonotoneX, extent, scaleLinear } from 'd3';
 	import { LineChart } from 'layerchart';
-	import * as Card from '$lib/components/ui/card';
 	import * as Chart from '$lib/components/ui/chart';
-	import type { TrajectorySample } from './model.js';
+	import type { TrajectorySample } from './trajectory.js';
 
 	let {
 		samples,
 		target,
 		positionUnit = 'px',
-		velocityUnit = 'px/s',
-		embedded = false
+		velocityUnit = 'px/s'
 	}: {
 		samples: TrajectorySample[];
 		target: number;
 		positionUnit?: string;
 		velocityUnit?: string;
-		embedded?: boolean;
 	} = $props();
 
 	type Metric = 'position' | 'velocity';
@@ -101,12 +98,11 @@
 	}
 </script>
 
-{#snippet charts(isEmbedded: boolean)}
-	<div
-		class={isEmbedded
-			? 'grid min-h-0 grid-cols-1 gap-6 p-3 sm:min-h-56 sm:grid-cols-2'
-			: 'grid h-full min-h-0 grid-cols-1 gap-6 sm:grid-cols-2'}
-	>
+<section class="flex min-h-0 flex-col" aria-labelledby="trajectory-heading">
+	<header class="flex h-10 items-center border-b border-border px-3">
+		<h2 class="font-heading text-sm font-medium" id="trajectory-heading">Analytical trajectory</h2>
+	</header>
+	<div class="grid min-h-0 grid-cols-1 gap-6 p-3 sm:min-h-56 sm:grid-cols-2">
 		<figure class="flex min-h-36 flex-col sm:min-h-0" aria-labelledby="position-chart-title">
 			<figcaption class="flex items-center justify-between gap-2 text-sm" id="position-chart-title">
 				<span class="font-medium">Position</span>
@@ -220,24 +216,4 @@
 			</Chart.Container>
 		</figure>
 	</div>
-{/snippet}
-
-{#if embedded}
-	<section class="flex min-h-0 flex-col" aria-labelledby="trajectory-heading">
-		<header class="flex h-10 items-center border-b border-border px-3">
-			<h2 class="font-heading text-sm font-medium" id="trajectory-heading">
-				Analytical trajectory
-			</h2>
-		</header>
-		{@render charts(true)}
-	</section>
-{:else}
-	<Card.Root size="sm" class="h-full min-h-0">
-		<Card.Header>
-			<Card.Title>Analytical trajectory</Card.Title>
-		</Card.Header>
-		<Card.Content class="min-h-0 flex-1">
-			{@render charts(false)}
-		</Card.Content>
-	</Card.Root>
-{/if}
+</section>
