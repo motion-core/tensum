@@ -2,11 +2,22 @@
   "name": "@motion-core/spring",
   "version": "0.1.0",
   "description": "Analytical spring physics as a native GSAP plugin",
+  "license": "MIT",
+  "author": "Motion Core",
+  "keywords": [
+    "animation",
+    "gsap",
+    "physics",
+    "spring"
+  ],
   "private": false,
   "type": "module",
   "sideEffects": false,
   "files": [
     "dist",
+    "src",
+    "CHANGELOG.md",
+    "LICENSE",
     "README.md"
   ],
   "types": "./dist/index.d.ts",

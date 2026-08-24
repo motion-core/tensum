@@ -2,15 +2,22 @@
 
 Spring is a GSAP plugin backed by an analytical spring solver. GSAP owns the timeline, scheduling, context, and property writes. Spring calculates position and velocity from absolute time.
 
-There is one published package:
+The repository contains one package prepared for public distribution:
 
 ```text
 @motion-core/spring
 ```
 
+Version `0.1.0` is currently unreleased. The package manifest, tarball checks, and
+consumer contract are kept in the repository so a release can be rehearsed
+without publishing anything.
+
 The public spring configuration has no required duration. Duration comes from the physical state and settling tolerances.
 
 ## Install
+
+The registry command below applies after `0.1.0` is published. Until then, use
+the workspace package or a tarball created by the local release check.
 
 ```bash
 pnpm add @motion-core/spring gsap
@@ -22,10 +29,7 @@ Both packages are required. GSAP is a peer dependency so an application and the 
 
 ```ts
 import { gsap } from 'gsap';
-import {
-  SpringPlugin,
-  springPresets,
-} from '@motion-core/spring';
+import { SpringPlugin, springPresets } from '@motion-core/spring';
 
 gsap.registerPlugin(SpringPlugin);
 
@@ -158,11 +162,11 @@ import { createCoupledSpringSystem } from '@motion-core/spring/coupled';
 ## Repository structure
 
 ```text
-packages/spring   one published GSAP plugin package
+packages/spring   one public GSAP plugin package
 apps/site         Svelte product site and interactive playground
 ```
 
-Inside the package, the analytical solver stays separate from the GSAP adapter so sampling remains deterministic. This is an implementation boundary, not another published library.
+Inside the package, the analytical solver stays separate from the GSAP adapter so sampling remains deterministic. This is an implementation boundary, not another public library.
 
 ## Development
 
@@ -174,6 +178,24 @@ pnpm check
 pnpm lint
 pnpm build
 pnpm benchmark
+pnpm release:check
 ```
 
-The package is ESM-only, publishes compiled JavaScript with declarations and source maps, and requires Node.js 18 or newer for development and server-side use. Version `0.x` may contain breaking API changes.
+The package runtime supports Node.js 18 or newer. Working in this repository
+requires Node.js 20.19.x, or Node.js 22.12 and newer, because the current build
+and test tools no longer run on Node 18. `pnpm release:check` builds every
+workspace, runs all checks, validates the package manifest, packs a tarball,
+and installs that tarball in a temporary consumer project. It does not publish
+or tag a release.
+
+The package is ESM-only. TypeScript consumers should use `node16`, `nodenext`,
+or `bundler` module resolution. CommonJS code can load it with dynamic
+`import()`, but `require()` is intentionally unsupported. Version `0.x` may
+contain breaking API changes.
+
+See the [package README](packages/spring/README.md) for the full public API and
+the [changelog](packages/spring/CHANGELOG.md) for release status.
+
+## License
+
+MIT, copyright 2026 Motion Core. See [LICENSE](LICENSE).
