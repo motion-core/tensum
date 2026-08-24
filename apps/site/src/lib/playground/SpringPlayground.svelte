@@ -581,24 +581,17 @@
 
 		{#if scenario === 'timeline'}
 			<div class="flex flex-1 flex-col gap-3 p-2.5">
-				<div class="space-y-2">
-					<div class="flex items-center justify-between gap-2 text-xs">
-						<label for="hero-timeline-time">Timeline time</label>
-						<output class="font-mono text-muted-foreground tabular-nums" for="hero-timeline-time">
-							{currentTime.toFixed(3)}s
-						</output>
-					</div>
-					<Slider
-						type="single"
-						id="hero-timeline-time"
-						min={0}
-						max={timelineDuration}
-						step={0.001}
-						value={currentTime}
-						aria-label="Timeline time"
-						onValueChange={seekTimeline}
-					/>
-				</div>
+				<Slider
+					type="single"
+					id="hero-timeline-time"
+					label="Timeline time"
+					displayValue={`${currentTime.toFixed(2)}s`}
+					min={0}
+					max={timelineDuration}
+					step={0.001}
+					value={currentTime}
+					onValueChange={seekTimeline}
+				/>
 
 				<div class="flex flex-wrap gap-1">
 					<Button onclick={toggleTimelinePlayback}>

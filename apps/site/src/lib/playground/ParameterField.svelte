@@ -23,26 +23,28 @@
 		onValue: (value: number) => void;
 	} = $props();
 
-	let formattedValue = $derived(
-		`${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value)} ${unit}`
+	let formattedNumber = $derived(
+		new Intl.NumberFormat('en-US', {
+			minimumFractionDigits: 2,
+			maximumFractionDigits: 2
+		}).format(value)
 	);
+	let formattedValue = $derived(unit ? `${formattedNumber} ${unit}` : formattedNumber);
 </script>
 
-<div class="space-y-1">
-	<div class="flex items-center justify-between gap-2 text-xs">
-		<label class="truncate font-medium" for={id} title={description}>{label}</label>
-		<output class="shrink-0 text-muted-foreground tabular-nums" for={id}>{formattedValue}</output>
-		<span class="sr-only" id={`${id}-description`}>{description}</span>
-	</div>
+<div>
+	<span class="sr-only" id={`${id}-description`}>{description}</span>
 	<Slider
 		type="single"
 		{id}
+		{label}
+		displayValue={formattedValue}
 		{min}
 		{max}
 		{step}
 		{value}
-		aria-label={label}
 		aria-describedby={`${id}-description`}
+		title={description}
 		onValueChange={onValue}
 	/>
 </div>
