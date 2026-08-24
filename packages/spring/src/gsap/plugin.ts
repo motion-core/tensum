@@ -148,11 +148,191 @@ const preparedMotionSprings = new WeakMap<
   PreparedMotionSpring
 >();
 
-function pluginTargetsFrom(vars: MotionSpringPluginVars): Record<string, RequestedTarget> {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function validateMapProperty(property: string): void {
+  parseNumericValue(0, property);
+}
+
+function normalizeOptionalRecord(
+  value: unknown,
+  name: string,
+): Record<string, unknown> | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) {
+    throw new TypeError(`${name} must be an object when provided`);
+  }
+  return { ...value };
+}
+
+function normalizeTargets(
+  value: unknown,
+  name: string,
+): SpringTargets | undefined {
+  const record = normalizeOptionalRecord(value, name);
+  if (!record) return undefined;
+  for (const [property, target] of Object.entries(record)) {
+    parseNumericValue(target, property);
+  }
+  return record as SpringTargets;
+}
+
+function normalizeProperties(
+  value: unknown,
+): MotionSpringPluginVars['properties'] {
+  const record = normalizeOptionalRecord(value, 'motionSpring properties');
+  if (!record) return undefined;
+  const properties = Object.create(null) as Record<
+    string,
+    SpringPropertyOptions
+  >;
+  for (const [property, options] of Object.entries(record)) {
+    validateMapProperty(property);
+    if (!isRecord(options)) {
+      throw new TypeError(`Properties for ${property} must be an object`);
+    }
+    const normalized = { ...options };
+    for (const parameter of [
+      'mass',
+      'stiffness',
+      'damping',
+      'velocity',
+    ] as const) {
+      const parameterValue = normalized[parameter];
+      if (
+        parameterValue !== undefined &&
+        (typeof parameterValue !== 'number' || !Number.isFinite(parameterValue))
+      ) {
+        throw new TypeError(
+          `${parameter} for ${property} must be a finite number`,
+        );
+      }
+    }
+    if (normalized['settle'] !== undefined) {
+      if (!isRecord(normalized['settle'])) {
+        throw new TypeError(`settle for ${property} must be an object`);
+      }
+      normalized['settle'] = { ...normalized['settle'] };
+    }
+    properties[property] = normalized as SpringPropertyOptions;
+  }
+  return properties;
+}
+
+function normalizeAdapters(value: unknown): MotionSpringPluginVars['adapters'] {
+  const record = normalizeOptionalRecord(value, 'motionSpring adapters');
+  if (!record) return undefined;
+  const adapters = Object.create(null) as Record<string, SpringPropertyAdapter>;
+  for (const [property, adapter] of Object.entries(record)) {
+    validateMapProperty(property);
+    if (!isRecord(adapter)) {
+      throw new TypeError(`Adapter for ${property} must be an object`);
+    }
+    if (
+      typeof adapter['read'] !== 'function' ||
+      typeof adapter['write'] !== 'function'
+    ) {
+      throw new TypeError(
+        `Adapter for ${property} must provide read and write functions`,
+      );
+    }
+    if (adapter['unit'] !== undefined && typeof adapter['unit'] !== 'string') {
+      throw new TypeError(`Adapter unit for ${property} must be a string`);
+    }
+    adapters[property] = adapter as unknown as SpringPropertyAdapter;
+  }
+  return adapters;
+}
+
+function normalizeUnits(value: unknown): MotionSpringPluginVars['units'] {
+  const record = normalizeOptionalRecord(value, 'motionSpring units');
+  if (!record) return undefined;
+  const units = Object.create(null) as Record<string, string>;
+  for (const [property, unit] of Object.entries(record)) {
+    validateMapProperty(property);
+    if (typeof unit !== 'string') {
+      throw new TypeError(`Unit for ${property} must be a string`);
+    }
+    units[property] = unit;
+  }
+  return units;
+}
+
+function normalizeVelocity(value: unknown): MotionSpringPluginVars['velocity'] {
+  if (value === undefined) return undefined;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      throw new TypeError('motionSpring velocity must be a finite number');
+    }
+    return value;
+  }
+  const record = normalizeOptionalRecord(value, 'motionSpring velocity')!;
+  const velocities = Object.create(null) as Record<string, number>;
+  for (const [property, velocity] of Object.entries(record)) {
+    validateMapProperty(property);
+    if (typeof velocity !== 'number' || !Number.isFinite(velocity)) {
+      throw new TypeError(`Velocity for ${property} must be a finite number`);
+    }
+    velocities[property] = velocity;
+  }
+  return velocities;
+}
+
+function normalizeMotionSpringVars(
+  value: unknown,
+  context = 'motionSpring',
+): MotionSpringPluginVars {
+  if (!isRecord(value)) {
+    throw new TypeError(`${context} requires a configuration object`);
+  }
+  const own = { ...value };
+  if (!isRecord(own['parameters'])) {
+    throw new TypeError(`${context} requires a parameters object`);
+  }
+  const parameters = { ...own['parameters'] };
+  if (parameters['settle'] !== undefined) {
+    if (!isRecord(parameters['settle'])) {
+      throw new TypeError(`${context} parameters.settle must be an object`);
+    }
+    parameters['settle'] = { ...parameters['settle'] };
+  }
+
+  const normalized = {
+    ...own,
+    parameters,
+    values: normalizeTargets(own['values'], `${context} values`),
+    properties: normalizeProperties(own['properties']),
+    adapters: normalizeAdapters(own['adapters']),
+    units: normalizeUnits(own['units']),
+    velocity: normalizeVelocity(own['velocity']),
+  } as unknown as MotionSpringPluginVars;
+
+  for (const callback of [
+    'onLogicalComplete',
+    'onSettle',
+    'onUnsettled',
+  ] as const) {
+    const callbackValue = normalized[callback];
+    if (callbackValue !== undefined && typeof callbackValue !== 'function') {
+      throw new TypeError(`${context} ${callback} must be a function`);
+    }
+  }
+  if (normalized.unsettled !== undefined) {
+    validateUnsettledPolicy(normalized.unsettled, `${context} unsettled`);
+  }
+  return normalized;
+}
+
+function pluginTargetsFrom(
+  vars: MotionSpringPluginVars,
+): Record<string, RequestedTarget> {
   const requested = Object.create(null) as Record<string, RequestedTarget>;
   for (const property of SUPPORTED_PROPERTIES) {
-    const value = vars[property];
-    if (value !== undefined) requested[property] = parseNumericValue(value, property);
+    const value = Object.hasOwn(vars, property) ? vars[property] : undefined;
+    if (value !== undefined)
+      requested[property] = parseNumericValue(value, property);
   }
   for (const [property, value] of Object.entries(vars.values ?? {})) {
     requested[property] = parseNumericValue(value, property);
@@ -174,7 +354,8 @@ function explicitStateFrom(
   from: SpringTargets | undefined,
   property: SpringProperty,
 ): RequestedTarget | undefined {
-  const value = from?.[property];
+  const value =
+    from && Object.hasOwn(from, property) ? from[property] : undefined;
   return value === undefined ? undefined : parseNumericValue(value, property);
 }
 
@@ -185,7 +366,9 @@ function preflightTarget(
 ): PreparedTarget {
   const requested = pluginTargetsFrom(vars);
   if (Object.keys(requested).length === 0) {
-    throw new TypeError('motionSpring requires at least one numeric target property');
+    throw new TypeError(
+      'motionSpring requires at least one numeric target property',
+    );
   }
 
   const config = trackConfigFrom(vars);
@@ -224,8 +407,8 @@ function preflightTarget(
       to: destination.value,
       velocity:
         inherited?.velocity ??
-        vars.properties?.[property]?.velocity ??
-        velocityFor(vars.velocity, property),
+        config.properties?.[property]?.velocity ??
+        velocityFor(config.velocity, property),
       ...optionsFor(config, property),
     });
     const settling = spring.getSettlingResult();
@@ -250,10 +433,10 @@ function preflightTarget(
  */
 export function createMotionSpringTween(
   targets: gsap.TweenTarget,
-  vars: MotionSpringEffectVars,
+  rawVars: MotionSpringEffectVars,
   instance: typeof gsap = gsap,
 ): gsap.core.Tween {
-  if (!vars || typeof vars !== 'object') {
+  if (!isRecord(rawVars)) {
     throw new TypeError('motionSpring effect requires a configuration object');
   }
   const resolvedTargets = instance.utils.toArray<object>(targets);
@@ -261,7 +444,15 @@ export function createMotionSpringTween(
     throw new TypeError('motionSpring effect requires at least one target');
   }
 
-  const { from, tween: tweenOptions, ...pluginVars } = vars;
+  const ownVars = { ...rawVars } as Record<string, unknown>;
+  const from = normalizeTargets(ownVars['from'], 'motionSpring effect from');
+  const tweenOptions = normalizeOptionalRecord(
+    ownVars['tween'],
+    'motionSpring effect tween',
+  ) as MotionSpringEffectTweenVars | undefined;
+  delete ownVars['from'];
+  delete ownVars['tween'];
+  const pluginVars = normalizeMotionSpringVars(ownVars, 'motionSpring effect');
   const preparedTargets = new WeakMap<object, PreparedTarget>();
   let finiteDuration = 0;
   let hasUnsettled = false;
@@ -279,7 +470,9 @@ export function createMotionSpringTween(
     'motionSpring unsettled',
   );
   if (policy === 'error' && hasUnsettled) {
-    throw new RangeError('motionSpring cannot start an unsettled spring in error mode');
+    throw new RangeError(
+      'motionSpring cannot start an unsettled spring in error mode',
+    );
   }
   const infinite = policy === 'continue' && hasUnsettled;
   preparedMotionSprings.set(pluginVars, {
@@ -338,7 +531,9 @@ function snapshotAt(
     states[track.property] = springTrackState(track, time, scope.policy);
   }
   return {
-    elapsed: Number.isFinite(scope.duration) ? Math.min(time, scope.duration) : time,
+    elapsed: Number.isFinite(scope.duration)
+      ? Math.min(time, scope.duration)
+      : time,
     duration: scope.duration,
     states: states as SpringStateMap,
   };
@@ -431,20 +626,22 @@ const pluginDefinition = {
   init(
     this: MotionSpringPluginScope,
     target: object,
-    value: MotionSpringPluginVars,
+    rawValue: MotionSpringPluginVars,
     tween: gsap.core.Tween,
     _targetIndex: number,
   ): boolean {
-    if (!value || typeof value !== 'object') {
-      throw new TypeError('motionSpring requires a configuration object');
-    }
+    const prepared = isRecord(rawValue)
+      ? preparedMotionSprings.get(rawValue as MotionSpringPluginVars)
+      : undefined;
+    const value = normalizeMotionSpringVars(rawValue);
     const requested = pluginTargetsFrom(value);
     if (Object.keys(requested).length === 0) {
-      throw new TypeError('motionSpring requires at least one numeric target property');
+      throw new TypeError(
+        'motionSpring requires at least one numeric target property',
+      );
     }
 
     const config = trackConfigFrom(value);
-    const prepared = preparedMotionSprings.get(value);
     const coordinator = beginPluginTweenInit(tween, target, {
       baseDuration:
         prepared?.baseDuration ??
@@ -458,7 +655,8 @@ const pluginDefinition = {
     const preparedTarget = prepared?.targets.get(target);
     if (
       preparedTarget !== undefined &&
-      (Object.keys(preparedTarget.tracks).length !== Object.keys(requested).length ||
+      (Object.keys(preparedTarget.tracks).length !==
+        Object.keys(requested).length ||
         Object.keys(requested).some(
           (property) => preparedTarget.tracks[property] === undefined,
         ))
@@ -480,7 +678,8 @@ const pluginDefinition = {
       if (
         prepared !== undefined &&
         (destination.value !== prepared.target ||
-          (destination.unit !== undefined && destination.unit !== prepared.unit))
+          (destination.unit !== undefined &&
+            destination.unit !== prepared.unit))
       ) {
         throw new TypeError(
           'A preflighted motionSpring configuration cannot change before init; create a new effect tween instead',
@@ -526,8 +725,8 @@ const pluginDefinition = {
           to: destination.value,
           velocity:
             inherited?.velocity ??
-            value.properties?.[property]?.velocity ??
-            velocityFor(value.velocity, property),
+            config.properties?.[property]?.velocity ??
+            velocityFor(config.velocity, property),
           ...optionsFor(config, property),
         });
       const settling = prepared?.settling ?? spring.getSettlingResult();
@@ -550,16 +749,16 @@ const pluginDefinition = {
     );
     const timing = timingFor(tracks, policy);
     if (policy === 'error' && timing.hasUnsettled) {
-      throw new RangeError('motionSpring cannot start an unsettled spring in error mode');
+      throw new RangeError(
+        'motionSpring cannot start an unsettled spring in error mode',
+      );
     }
     const infinite = policy === 'continue' && timing.hasUnsettled;
 
     this.tracks = tracks;
     this.tween = tween;
     this.policy = policy;
-    this.duration = infinite
-      ? Number.POSITIVE_INFINITY
-      : timing.finiteDuration;
+    this.duration = infinite ? Number.POSITIVE_INFINITY : timing.finiteDuration;
     this.finiteDuration = timing.finiteDuration;
     this.logicalDuration = timing.logicalDuration;
     this.unsettledAt = timing.unsettledAt;
@@ -621,10 +820,7 @@ const pluginDefinition = {
     });
     return true;
   },
-  render(
-    _ratio: number,
-    data: gsap.PluginScope,
-  ): void {
+  render(_ratio: number, data: gsap.PluginScope): void {
     const scope = data as MotionSpringPluginScope;
     renderAt(scope, currentTime(scope));
   },
@@ -652,7 +848,8 @@ const pluginDefinition = {
   },
 };
 
-export const MotionCoreSpringPlugin = pluginDefinition as unknown as gsap.Plugin;
+export const MotionCoreSpringPlugin =
+  pluginDefinition as unknown as gsap.Plugin;
 
 export function registerMotionCoreSpringPlugin(
   instance: typeof gsap = gsap,
