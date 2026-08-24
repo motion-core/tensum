@@ -7,7 +7,11 @@ import type {
   SpringState,
 } from '../types.js';
 import { gsap } from 'gsap';
-import { activeTrackState, registerActiveTrack } from './active-tracks.js';
+import {
+  activeTrackState,
+  reconcileActiveTrackHandoff,
+  registerActiveTrack,
+} from './active-tracks.js';
 import type { ActiveTrackRegistration } from './active-tracks.js';
 import { localTimeAt } from './gsap-time.js';
 import {
@@ -463,12 +467,18 @@ export function springTo(
 
     for (const [property, requested] of Object.entries(targets)) {
       const to = requested.value;
-      const inherited = activeTrackState(springTarget, property);
+      let inherited = activeTrackState(springTarget, property);
       const resolvedRequest =
         requested.unit === undefined && inherited?.unit !== undefined
           ? { ...requested, unit: inherited.unit }
           : requested;
       const access = accessFor(springTarget, property, resolvedRequest, vars);
+      inherited = reconcileActiveTrackHandoff(
+        springTarget,
+        property,
+        inherited,
+        access.from,
+      );
       if (
         inherited?.unit !== undefined &&
         access.unit !== undefined &&
