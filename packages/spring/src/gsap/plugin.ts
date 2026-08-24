@@ -15,10 +15,23 @@ import type { ActiveTrackRegistration } from './active-tracks.js';
 import { globalTimeAt, localCycleAt, localTimeAt } from './gsap-time.js';
 import {
   beginPluginTweenInit,
-  gsapSafeDuration,
   registerPluginTweenParticipant,
 } from './plugin-tween-coordinator.js';
 import type { PluginTweenRegistration } from './plugin-tween-coordinator.js';
+import {
+  gsapSafeDuration,
+  springTrackState,
+  springTrackTiming,
+  validateUnsettledPolicy,
+} from './spring-track-policy.js';
+import type {
+  SpringTrackTiming,
+  UnsettledPolicy,
+} from './spring-track-policy.js';
+import {
+  retireActiveTrackRegistrations,
+  syncActiveTrackRegistration,
+} from './track-lifecycle.js';
 import {
   SUPPORTED_PROPERTIES,
   accessFor,
@@ -37,7 +50,6 @@ import type {
   SpringToSnapshot,
   SpringTrackConfig,
   SpringVelocities,
-  UnsettledPolicy,
 } from './spring-to.js';
 
 export interface MotionSpringPluginVars {
@@ -48,9 +60,9 @@ export interface MotionSpringPluginVars {
   values?: SpringTargets;
   parameters: SpringParameters & { settle?: SpringSettleInput };
   velocity?: number | SpringVelocities;
-  properties?: Readonly<Record<SpringProperty, SpringPropertyOptions>>;
-  adapters?: Readonly<Record<SpringProperty, SpringPropertyAdapter>>;
-  units?: Readonly<Record<SpringProperty, string>>;
+  properties?: Readonly<Partial<Record<SpringProperty, SpringPropertyOptions>>>;
+  adapters?: Readonly<Partial<Record<SpringProperty, SpringPropertyAdapter>>>;
+  units?: Readonly<Partial<Record<SpringProperty, string>>>;
   unsettled?: UnsettledPolicy;
   onLogicalComplete?: (snapshot: SpringToSnapshot) => void;
   onSettle?: (snapshot: SpringToSnapshot) => void;
@@ -247,7 +259,10 @@ export function createMotionSpringTween(
     }
   }
 
-  const policy = pluginVars.unsettled ?? 'stop';
+  const policy = validateUnsettledPolicy(
+    pluginVars.unsettled ?? 'stop',
+    'motionSpring unsettled',
+  );
   if (policy === 'error' && hasUnsettled) {
     throw new RangeError('motionSpring cannot start an unsettled spring in error mode');
   }
@@ -273,22 +288,6 @@ export function createMotionSpringTween(
   });
 }
 
-function stateFor(
-  track: PluginTrack,
-  time: number,
-  policy: UnsettledPolicy,
-): SpringState {
-  if (track.settling.settled && time >= track.duration) {
-    return { position: track.target, velocity: 0 };
-  }
-  if (!track.settling.settled && time >= track.duration) {
-    if (policy === 'snap') return { position: track.target, velocity: 0 };
-    if (policy === 'continue') return track.spring.stateAt(time);
-    return track.spring.stateAt(track.duration);
-  }
-  return track.spring.stateAt(time);
-}
-
 function currentTime(scope: MotionSpringPluginScope): number {
   return scope.policy === 'continue' && scope.hasUnsettled
     ? scope.tween.totalTime()
@@ -298,32 +297,8 @@ function currentTime(scope: MotionSpringPluginScope): number {
 function timingFor(
   tracks: readonly PluginTrack[],
   policy: UnsettledPolicy,
-): {
-  finiteDuration: number;
-  hasUnsettled: boolean;
-  logicalDuration: number;
-  unsettledAt: number;
-} {
-  const finiteDuration = Math.max(...tracks.map((track) => track.duration), 0);
-  const hasUnsettled = tracks.some((track) => !track.settling.settled);
-  const requestedLogicalDuration = Math.max(
-    ...tracks.map((track) => track.spring.timing.perceptualDuration),
-    0,
-  );
-  return {
-    finiteDuration,
-    hasUnsettled,
-    logicalDuration:
-      policy === 'continue' && hasUnsettled
-        ? requestedLogicalDuration
-        : Math.min(requestedLogicalDuration, finiteDuration),
-    unsettledAt: Math.max(
-      ...tracks
-        .filter((track) => !track.settling.settled)
-        .map((track) => track.duration),
-      0,
-    ),
-  };
+): SpringTrackTiming {
+  return springTrackTiming(tracks, policy);
 }
 
 function updateScopeTiming(scope: MotionSpringPluginScope): void {
@@ -345,7 +320,7 @@ function snapshotAt(
 ): SpringToSnapshot {
   const states: Record<string, SpringState> = {};
   for (const track of tracks) {
-    states[track.property] = stateFor(track, time, scope.policy);
+    states[track.property] = springTrackState(track, time, scope.policy);
   }
   return {
     elapsed: Number.isFinite(scope.duration) ? Math.min(time, scope.duration) : time,
@@ -360,15 +335,19 @@ function renderAt(scope: MotionSpringPluginScope, time: number): void {
   for (const track of scope.tracks) {
     const registration = track.registration;
     if (!registration) continue;
-    if (time <= 0 && track.lastTime > 0 && registration.isActive()) {
-      const restored = registration.release();
-      track.lastTime = time;
-      if (!restored) track.write(stateFor(track, 0, scope.policy).position);
+    const transition = syncActiveTrackRegistration(
+      registration,
+      time,
+      track.lastTime,
+    );
+    track.lastTime = time;
+    if (transition.releasedAtStart) {
+      if (!transition.restoredPrevious) {
+        track.write(springTrackState(track, 0, scope.policy).position);
+      }
       continue;
     }
-    if (time > 0 && !registration.isActive()) registration.activate();
-    track.lastTime = time;
-    if (registration.isOwner()) owners.push(track);
+    if (transition.isOwner) owners.push(track);
   }
   if (owners.length === 0) return;
 
@@ -409,9 +388,9 @@ function renderAt(scope: MotionSpringPluginScope, time: number): void {
     scope.tween.repeat() >= 0 &&
     scope.tween.totalTime() >= scope.tween.totalDuration()
   ) {
-    for (const track of scope.tracks) {
-      track.registration?.release({ restore: false });
-    }
+    retireActiveTrackRegistrations(
+      scope.tracks.map((track) => track.registration),
+    );
   }
 }
 
@@ -541,7 +520,10 @@ const pluginDefinition = {
     }
 
     const hasUnsettled = tracks.some((track) => !track.settling.settled);
-    const policy = value.unsettled ?? 'stop';
+    const policy = validateUnsettledPolicy(
+      value.unsettled ?? 'stop',
+      'motionSpring unsettled',
+    );
     if (policy === 'error' && hasUnsettled) {
       throw new RangeError('motionSpring cannot start an unsettled spring in error mode');
     }
@@ -596,7 +578,7 @@ const pluginDefinition = {
               direction = cycle.direction;
             }
           }
-          const state = stateFor(track, time, this.policy);
+          const state = springTrackState(track, time, this.policy);
           return {
             ...state,
             velocity: state.velocity * direction,
@@ -604,7 +586,9 @@ const pluginDefinition = {
           };
         },
         restore: () => {
-          track.write(stateFor(track, currentTime(this), this.policy).position);
+          track.write(
+            springTrackState(track, currentTime(this), this.policy).position,
+          );
         },
       });
     }

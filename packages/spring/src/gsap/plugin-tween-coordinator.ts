@@ -22,12 +22,6 @@ export interface PluginTweenState {
 }
 
 const states = new WeakMap<gsap.core.Tween, PluginTweenState>();
-const GSAP_TIME_PRECISION = 1e7;
-
-export function gsapSafeDuration(duration: number): number {
-  return Math.ceil(duration * GSAP_TIME_PRECISION) / GSAP_TIME_PRECISION;
-}
-
 function applyTiming(state: PluginTweenState): void {
   let finiteDuration = 0;
   let infinite = false;
@@ -115,3 +109,4 @@ export function registerPluginTweenParticipant(
     },
   };
 }
+import { gsapSafeDuration } from './spring-track-policy.js';
