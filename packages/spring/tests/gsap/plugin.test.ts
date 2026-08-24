@@ -483,6 +483,25 @@ describe('MotionCoreSpringPlugin', () => {
     expect(onInterrupt).toHaveBeenCalledOnce();
   });
 
+  it('calls the host onInterrupt once for a multi-target tween after invalidate', () => {
+    const targets = [{ score: 0 }, { score: 20 }];
+    const onInterrupt = vi.fn();
+    const tween = gsap.to(targets, {
+      paused: true,
+      onInterrupt,
+      motionSpring: {
+        values: { score: 100 },
+        parameters,
+      },
+    });
+
+    tween.time(0.1, true);
+    tween.invalidate().time(0.1, true);
+    tween.kill();
+
+    expect(onInterrupt).toHaveBeenCalledOnce();
+  });
+
   it('shares automatic handoff between springTo and the timeline plugin', () => {
     const target = { score: 0 };
     const controller = springTo(target, {
@@ -825,12 +844,14 @@ describe('MotionCoreSpringPlugin', () => {
 
   it('keeps multi-target lifecycle callbacks explicitly target-scoped', () => {
     const targets = [{ score: 0 }, { score: 20 }];
+    const onLogicalComplete = vi.fn();
     const onSettle = vi.fn();
     const tween = gsap.to(targets, {
       paused: true,
       motionSpring: {
         values: { score: 100 },
         parameters,
+        onLogicalComplete,
         onSettle,
       },
     });
@@ -838,6 +859,7 @@ describe('MotionCoreSpringPlugin', () => {
     tween.time(0.01, true);
     tween.time(tween.duration(), true);
 
+    expect(onLogicalComplete).toHaveBeenCalledTimes(targets.length);
     expect(onSettle).toHaveBeenCalledTimes(targets.length);
   });
 
@@ -872,6 +894,73 @@ describe('MotionCoreSpringPlugin', () => {
     timeline.time(timeline.duration(), true);
     expect(target.score).toBe(200);
     second!.kill();
+
+    expect(target.score).toBe(200);
+  });
+
+  it('preserves capped unsettled position and velocity for terminal handoff', () => {
+    const target = { score: 0 };
+    const cappedParameters = {
+      ...parameters,
+      damping: 0,
+      settle: { maxDuration: 0.2 },
+    };
+    const firstSpring = createSpring({
+      from: 0,
+      to: 100,
+      velocity: 0,
+      ...cappedParameters,
+    });
+    const terminal = firstSpring.stateAt(0.2);
+    const first = gsap.to(target, {
+      paused: true,
+      motionSpring: {
+        values: { score: 100 },
+        parameters: cappedParameters,
+      },
+    });
+
+    first.time(0.01, true).time(first.duration(), true);
+    const redirected = createSpring({
+      from: terminal.position,
+      to: 200,
+      velocity: terminal.velocity,
+      ...parameters,
+    });
+    const second = gsap.to(target, {
+      paused: true,
+      motionSpring: {
+        values: { score: 200 },
+        parameters,
+      },
+    });
+
+    second.time(0.01, true);
+
+    expect(target.score).toBeCloseTo(redirected.positionAt(0.01), 10);
+  });
+
+  it('does not let retired covered history reclaim ownership on a forward tick', () => {
+    const target = { score: 0 };
+    const first = gsap.to(target, {
+      paused: true,
+      motionSpring: {
+        values: { score: 100 },
+        parameters,
+      },
+    });
+    first.time(0.2, true);
+    const second = gsap.to(target, {
+      paused: true,
+      motionSpring: {
+        values: { score: 200 },
+        parameters,
+      },
+    });
+    second.time(0.01, true).time(second.duration(), true);
+    expect(target.score).toBe(200);
+
+    first.time(0.3, true);
 
     expect(target.score).toBe(200);
   });
@@ -959,5 +1048,31 @@ describe('MotionCoreSpringPlugin', () => {
     afterRevert.time(0.01, true);
     const fresh = createSpring({ from: 10, to: 30, velocity: 0, ...parameters });
     expect(target.score).toBeCloseTo(fresh.positionAt(0.01), 10);
+  });
+
+  it('reverts an invalidated multi-target context with one host interrupt', () => {
+    const targets = [{ score: 10 }, { score: 20 }];
+    const onInterrupt = vi.fn();
+    let tween: gsap.core.Tween | undefined;
+    const context = gsap.context(() => {
+      tween = gsap.to(targets, {
+        paused: true,
+        onInterrupt,
+        motionSpring: {
+          values: { score: 100 },
+          parameters,
+        },
+      });
+    });
+
+    tween!.time(0.1, true);
+    const baseline = targets.map((target) => target.score);
+    tween!.invalidate().time(0.2, true);
+    context.revert();
+
+    // Mirrors native GSAP: invalidate establishes the current values as the
+    // new revert baseline for the next init generation.
+    expect(targets.map((target) => target.score)).toEqual(baseline);
+    expect(onInterrupt).toHaveBeenCalledOnce();
   });
 });

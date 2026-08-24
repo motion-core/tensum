@@ -65,8 +65,11 @@ export interface MotionSpringPluginVars {
   adapters?: Readonly<Partial<Record<SpringProperty, SpringPropertyAdapter>>>;
   units?: Readonly<Partial<Record<SpringProperty, string>>>;
   unsettled?: UnsettledPolicy;
+  /** Target-scoped: target arrays invoke this hook once per target. */
   onLogicalComplete?: (snapshot: SpringToSnapshot) => void;
+  /** Target-scoped: target arrays invoke this hook once per target. */
   onSettle?: (snapshot: SpringToSnapshot) => void;
+  /** Target-scoped: target arrays invoke this hook once per target. */
   onUnsettled?: (snapshot: SpringToSnapshot) => void;
 }
 
