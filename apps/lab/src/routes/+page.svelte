@@ -4,12 +4,9 @@
 	import { resolve } from '$app/paths';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
 	import { Separator } from '$lib/components/ui/separator';
+	import HeroPlayground from '$lib/landing/HeroPlayground.svelte';
 	import InstallExample from '$lib/landing/InstallExample.svelte';
-	import ParameterPlayground from '$lib/landing/ParameterPlayground.svelte';
-	import SpringStudio from '$lib/landing/SpringStudio.svelte';
-	import TimelineDemo from '$lib/landing/TimelineDemo.svelte';
 
 	const features = [
 		{
@@ -65,7 +62,7 @@
 		</div>
 
 		<div class="absolute left-1/2 hidden -translate-x-1/2 items-center md:flex">
-			<Button href="#physics" variant="ghost">Physics</Button>
+			<Button href="#playground" variant="ghost">Playground</Button>
 			<Button href="#features" variant="ghost">Features</Button>
 			<Button href="#timeline" variant="ghost">GSAP</Button>
 			<Button href="#start" variant="ghost">Install</Button>
@@ -79,7 +76,10 @@
 </header>
 
 <main id="main-content">
-	<section class="mx-auto max-w-4xl px-4 pt-12 pb-12 sm:pt-16 sm:pb-16">
+	<section
+		class="mx-auto max-w-4xl scroll-mt-16 px-4 pt-12 pb-12 sm:pt-16 sm:pb-16"
+		id="playground"
+	>
 		<div class="mx-auto max-w-3xl text-center">
 			<Badge variant="outline">Physics-first motion toolkit</Badge>
 			<h1 class="mt-4 font-heading text-5xl font-semibold tracking-tight text-balance">
@@ -99,7 +99,7 @@
 		</div>
 
 		<div class="mt-10">
-			<SpringStudio />
+			<HeroPlayground />
 		</div>
 	</section>
 
@@ -120,7 +120,31 @@
 				</p>
 			</div>
 
-			<ParameterPlayground />
+			<div class="grid border-y border-border md:grid-cols-3">
+				<article class="py-5 md:pr-5">
+					<p class="font-mono text-xs text-muted-foreground">duration + bounce</p>
+					<h3 class="mt-2 font-heading font-medium">Start from the feel</h3>
+					<p class="mt-2 leading-relaxed text-muted-foreground">
+						Use product-facing controls, then inspect the resolved mass, stiffness and damping.
+					</p>
+				</article>
+				<article class="border-t border-border py-5 md:border-t-0 md:border-l md:px-5">
+					<p class="font-mono text-xs text-muted-foreground">stateAt(t) → x, v</p>
+					<h3 class="mt-2 font-heading font-medium">Sample complete state</h3>
+					<p class="mt-2 leading-relaxed text-muted-foreground">
+						Position and velocity come from absolute time, independent of the browser's frame
+						history.
+					</p>
+				</article>
+				<article class="border-t border-border py-5 md:border-t-0 md:border-l md:pl-5">
+					<p class="font-mono text-xs text-muted-foreground">retarget(x, v)</p>
+					<h3 class="mt-2 font-heading font-medium">Interrupt without a seam</h3>
+					<p class="mt-2 leading-relaxed text-muted-foreground">
+						A new target inherits the exact current position and velocity instead of restarting
+						motion.
+					</p>
+				</article>
+			</div>
 		</div>
 	</section>
 
@@ -139,67 +163,45 @@
 				</p>
 			</div>
 
-			<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+			<div class="grid gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
 				{#each features as feature (feature.title)}
-					<Card.Root size="sm">
-						<Card.Content>
-							<div
-								class="flex min-h-24 items-center justify-center rounded-md border border-border bg-muted"
-								aria-hidden="true"
-							>
-								{#if feature.visual === 'samples'}
-									<div class="grid w-full grid-cols-3 gap-2 text-center">
-										<div>
-											<p class="text-muted-foreground">60 fps</p>
-											<p class="font-mono text-foreground tabular-nums">0.742</p>
-										</div>
-										<div>
-											<p class="text-muted-foreground">120 fps</p>
-											<p class="font-mono text-foreground tabular-nums">0.742</p>
-										</div>
-										<div>
-											<p class="text-muted-foreground">240 fps</p>
-											<p class="font-mono text-foreground tabular-nums">0.742</p>
-										</div>
+					<article>
+						<div class="flex h-16 items-center" aria-hidden="true">
+							{#if feature.visual === 'samples'}
+								<p class="font-mono text-muted-foreground tabular-nums">
+									60 = 120 = 240 <span class="text-xs">fps</span>
+								</p>
+							{:else if feature.visual === 'handoff'}
+								<div class="w-full">
+									<div class="relative h-5 border-b border-border">
+										<div
+											class="absolute right-1/3 bottom-0 h-8 border-l border-dashed border-muted-foreground"
+										></div>
+										<div class="absolute bottom-1 left-1/3 h-4 w-8 rounded-sm bg-primary"></div>
 									</div>
-								{:else if feature.visual === 'handoff'}
-									<div class="w-full space-y-2 px-3">
-										<div class="relative h-5">
-											<div class="absolute inset-x-0 top-1/2 border-t border-border"></div>
-											<div
-												class="absolute top-1/2 left-2/3 h-8 -translate-y-full border-l border-dashed border-muted-foreground"
-											></div>
-											<div
-												class="absolute bottom-1/2 left-1/3 mb-1 h-4 w-8 rounded-sm bg-primary"
-											></div>
-										</div>
-										<div class="flex justify-between font-mono text-muted-foreground tabular-nums">
-											<span>x 184.2</span>
-											<span>v +612.8</span>
-										</div>
+									<div
+										class="mt-2 flex justify-between font-mono text-xs text-muted-foreground tabular-nums"
+									>
+										<span>x 184.2</span><span>v +612.8</span>
 									</div>
-								{:else if feature.visual === 'layers'}
-									<div class="flex flex-wrap items-center justify-center gap-2">
-										<Badge variant="secondary">core</Badge>
-										<span class="text-muted-foreground">→</span>
-										<Badge variant="outline">runtime</Badge>
-										<Badge variant="outline">GSAP</Badge>
-									</div>
-								{:else}
-									<div class="w-full space-y-2 px-3 font-mono">
-										<div class="rounded-sm bg-secondary px-2 py-1">linear(0, …, 1)</div>
-										<div class="ml-8 rounded-sm bg-primary px-2 py-1 text-primary-foreground">
-											motionSpring
-										</div>
-									</div>
-								{/if}
-							</div>
-						</Card.Content>
-						<Card.Header>
-							<Card.Title>{feature.title}</Card.Title>
-							<Card.Description>{feature.description}</Card.Description>
-						</Card.Header>
-					</Card.Root>
+								</div>
+							{:else if feature.visual === 'layers'}
+								<div class="flex flex-wrap items-center gap-2">
+									<Badge variant="secondary">core</Badge>
+									<span class="text-muted-foreground">→</span>
+									<Badge variant="outline">runtime</Badge>
+									<Badge variant="outline">GSAP</Badge>
+								</div>
+							{:else}
+								<div class="font-mono text-xs leading-relaxed">
+									<p>linear(0, …, 1)</p>
+									<p class="text-muted-foreground">motionSpring: &#123; x: 320 &#125;</p>
+								</div>
+							{/if}
+						</div>
+						<h3 class="font-heading font-medium">{feature.title}</h3>
+						<p class="mt-2 leading-relaxed text-muted-foreground">{feature.description}</p>
+					</article>
 				{/each}
 			</div>
 		</div>
@@ -222,7 +224,41 @@
 				</p>
 			</div>
 
-			<TimelineDemo />
+			<div
+				class="grid gap-6 border-y border-border py-6 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]"
+			>
+				<pre class="overflow-x-auto font-mono text-xs leading-relaxed text-muted-foreground"><code
+						><span class="text-foreground">const</span> timeline = gsap.timeline()
+
+timeline.to(node, &#123;
+  motionSpring: &#123; x: 320 &#125;
+&#125;)
+
+timeline.to(node, &#123;
+  motionSpring: &#123; x: 80 &#125;
+&#125;, <span class="text-foreground">'&lt;0.35'</span>)</code
+					></pre>
+				<dl class="grid gap-4 md:border-l md:border-border md:pl-6">
+					<div>
+						<dt class="font-heading font-medium">One parent clock</dt>
+						<dd class="mt-1 text-muted-foreground">
+							Play, pause, seek and reverse through GSAP itself.
+						</dd>
+					</div>
+					<div>
+						<dt class="font-heading font-medium">Analytical duration</dt>
+						<dd class="mt-1 text-muted-foreground">
+							Every child reports the duration its spring actually needs.
+						</dd>
+					</div>
+					<div>
+						<dt class="font-heading font-medium">Stateful overlap</dt>
+						<dd class="mt-1 text-muted-foreground">
+							The next spring takes ownership with inherited position and velocity.
+						</dd>
+					</div>
+				</dl>
+			</div>
 		</div>
 	</section>
 
@@ -253,7 +289,7 @@
 	>
 		<p>Motion Core / Spring · MIT licensed</p>
 		<nav class="flex flex-wrap gap-3" aria-label="Package links">
-			<a class="hover:text-foreground" href="#physics">Spring core</a>
+			<a class="hover:text-foreground" href="#playground">Spring core</a>
 			<a class="hover:text-foreground" href="#features">Runtime</a>
 			<a class="hover:text-foreground" href="#timeline">GSAP adapter</a>
 			<a class="hover:text-foreground" href={resolve('/lab')}>Lab</a>
