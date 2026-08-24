@@ -236,6 +236,83 @@ describe('GSAP browser integration', () => {
     first.kill();
   });
 
+  it('reconciles a same-number external unit change for springTo', () => {
+    const target = createTarget();
+    target.style.setProperty('--distance', '0px');
+    const first = springTo(target, {
+      targets: { '--distance': '100px' },
+      spring: parameters,
+    });
+    first.pause();
+    first.seek(first.duration);
+    expect(target.style.getPropertyValue('--distance')).toContain('px');
+
+    target.style.setProperty('--distance', '100deg');
+    const second = springTo(target, {
+      targets: { '--distance': '200deg' },
+      spring: parameters,
+    });
+    second.pause();
+
+    expect(second.springs['--distance']!.stateAt(0)).toEqual({
+      position: 100,
+      velocity: 0,
+    });
+    const expected = createSpring({
+      from: 100,
+      to: 200,
+      velocity: 0,
+      ...parameters,
+    });
+    second.seek(0.05);
+    expect(
+      Number.parseFloat(target.style.getPropertyValue('--distance')),
+    ).toBeCloseTo(expected.positionAt(0.05), 8);
+    expect(target.style.getPropertyValue('--distance')).toContain('deg');
+
+    second.kill();
+    first.kill();
+  });
+
+  it('reconciles a same-number external unit change for the lazy plugin', () => {
+    const target = createTarget();
+    target.style.setProperty('--distance', '0px');
+    const first = gsap.to(target, {
+      paused: true,
+      motionSpring: {
+        values: { '--distance': '100px' },
+        parameters,
+      },
+    });
+    first.time(0.01, true).time(first.duration(), true);
+    expect(target.style.getPropertyValue('--distance')).toContain('px');
+
+    target.style.setProperty('--distance', '100deg');
+    const second = gsap.to(target, {
+      paused: true,
+      motionSpring: {
+        values: { '--distance': '200deg' },
+        parameters,
+      },
+    });
+    const expected = createSpring({
+      from: 100,
+      to: 200,
+      velocity: 0,
+      ...parameters,
+    });
+
+    second.time(0.05, true);
+
+    expect(
+      Number.parseFloat(target.style.getPropertyValue('--distance')),
+    ).toBeCloseTo(expected.positionAt(0.05), 8);
+    expect(target.style.getPropertyValue('--distance')).toContain('deg');
+
+    second.kill();
+    first.kill();
+  });
+
 	it(
     'rejects incompatible CSS units before starting a controller',
     () => {
