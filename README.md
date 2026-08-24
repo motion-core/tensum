@@ -32,7 +32,63 @@ import { gsap } from 'gsap';
 import { SpringPlugin, springPresets } from '@motion-core/spring';
 
 gsap.registerPlugin(SpringPlugin);
+```
 
+`registerSpringPlugin(gsap)` is available when an application prefers an explicit registration helper. The previous `MotionCoreSpringPlugin` and `registerMotionCoreSpringPlugin` names remain as compatibility aliases.
+
+## Compose springs in a GSAP timeline
+
+Use the registered `timeline.motionSpring()` effect when a spring's derived
+duration affects timeline layout. The effect calculates the duration before
+GSAP inserts the tween, so sequential children, staggered targets, and nested
+timelines have their final timing immediately.
+
+```ts
+const timeline = gsap.timeline();
+
+timeline
+  .motionSpring(element, {
+    x: 320,
+    from: { x: 0 },
+    parameters: { mass: 1, stiffness: 180, damping: 24 },
+  })
+  .motionSpring(element, {
+    x: 80,
+    from: { x: 320 },
+    parameters: { mass: 1, stiffness: 240, damping: 26 },
+  });
+```
+
+`from` snapshots the state from which preflight should calculate. Omit it when
+the target already has the right value while the effect is being created. Set
+it when an earlier timeline child will change that value before this spring
+starts. Use the existing `velocity` option when the future state also has a
+known velocity.
+
+Pass ordinary GSAP options through `tween`. The effect owns `duration`, `ease`,
+and `motionSpring`; options such as `stagger`, `repeat`, and `yoyo` remain
+available.
+
+```ts
+const entrance = gsap.timeline().motionSpring(cards, {
+  y: 0,
+  from: { y: -24 },
+  parameters: springPresets.snappy(),
+  tween: { stagger: 0.06, repeat: 1, yoyo: true },
+});
+
+masterTimeline.add(entrance, 0.4);
+```
+
+`createMotionSpringTween(targets, vars)` exposes the same preflight step when
+code needs the tween itself rather than the extended timeline method.
+
+### Legacy special-property syntax
+
+The original special property remains available for direct tweens and timeline
+children whose positions do not depend on its duration:
+
+```ts
 gsap.to(element, {
   motionSpring: {
     x: 600,
@@ -42,35 +98,11 @@ gsap.to(element, {
 });
 ```
 
-`registerSpringPlugin(gsap)` is available when an application prefers an explicit registration helper. The previous `MotionCoreSpringPlugin` and `registerMotionCoreSpringPlugin` names remain as compatibility aliases.
-
-## Use springs in a GSAP timeline
-
-`motionSpring` is a GSAP special property. It participates in normal timeline positioning, pause, seek, reverse, `timeScale`, context cleanup, and property-level ownership.
-
-```ts
-const timeline = gsap.timeline();
-
-timeline
-  .to(element, {
-    motionSpring: {
-      x: 320,
-      parameters: { mass: 1, stiffness: 180, damping: 24 },
-    },
-  })
-  .to(
-    element,
-    {
-      motionSpring: {
-        x: 80,
-        parameters: { mass: 1, stiffness: 240, damping: 26 },
-      },
-    },
-    '<0.2',
-  );
-```
-
-When two Motion Core springs overlap on the same target and property, the newer spring inherits the analytical position and velocity of the active track. Only the current owner writes that property. Seeking directly across the handoff produces the same state as playing through it frame by frame.
+GSAP initializes special properties lazily. The spring therefore cannot replace
+the placeholder duration before a timeline positions the next sequential child.
+Use `timeline.motionSpring()` when duration affects layout. Existing timelines
+with numeric or otherwise explicit child positions may keep the special-property
+syntax.
 
 ## Use the controller API
 
@@ -101,7 +133,11 @@ animation.resume();
 
 Built-in transform properties are `x`, `y`, `scale`, and `rotation`. Use `targets` for other numeric GSAP properties or `adapters` for custom read/write behavior. Numeric strings may contain one unit, such as `24px` or `30deg`. A unit mismatch throws before animation starts.
 
-Starting another `springTo()` or `motionSpring` animation on the same target and property performs an automatic velocity-preserving handoff.
+Starting another `springTo()` animation, or a lazily initialized `motionSpring`
+special-property tween, on the same target and property performs an automatic
+velocity-preserving handoff. A preflighted effect instead uses its construction
+snapshot; provide `from` and `velocity` for a state that will only exist later in
+the timeline.
 
 ## Physical and perceptual parameters
 

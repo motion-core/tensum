@@ -89,11 +89,39 @@ try {
   writeFileSync(
     join(consumerDirectory, 'runtime.mjs'),
     `import assert from 'node:assert/strict';
-import { SpringPlugin, createSpring } from '@motion-core/spring';
+import { gsap } from 'gsap';
+import {
+  SpringPlugin,
+  createMotionSpringTween,
+  createSpring,
+} from '@motion-core/spring';
 import { springToCSSLinear } from '@motion-core/spring/css';
 import { createCoupledSpringSystem } from '@motion-core/spring/coupled';
 
 assert.equal(SpringPlugin.name, 'motionSpring');
+gsap.registerPlugin(SpringPlugin);
+assert.equal(typeof gsap.effects.motionSpring, 'function');
+
+const effectTarget = { x: 0 };
+const effectTween = createMotionSpringTween(effectTarget, {
+  x: 100,
+  from: { x: 0 },
+  parameters: { mass: 1, stiffness: 180, damping: 24 },
+  tween: { paused: true },
+});
+assert.equal(effectTween.duration() > 0, true);
+
+const effectTimeline = gsap.timeline({ paused: true }).motionSpring(
+  { x: 0 },
+  {
+    x: 100,
+    from: { x: 0 },
+    parameters: { mass: 1, stiffness: 180, damping: 24 },
+  },
+);
+assert.equal(effectTimeline.duration(), effectTween.duration());
+effectTween.kill();
+effectTimeline.kill();
 
 const spring = createSpring({
   from: 0,
@@ -153,7 +181,10 @@ for (const packageId of [
     `import { gsap } from 'gsap';
 import {
   SpringPlugin,
+  createMotionSpringTween,
   createSpring,
+  type MotionSpringEffectTweenVars,
+  type MotionSpringEffectVars,
   type MotionSpringPluginVars,
   type SpringParameters,
 } from '@motion-core/spring';
@@ -176,8 +207,20 @@ const pluginVars: MotionSpringPluginVars = {
   parameters,
 };
 const tweenVars: gsap.TweenVars = { motionSpring: pluginVars };
+const effectTweenVars: MotionSpringEffectTweenVars = { paused: true, repeat: 1 };
+const effectVars: MotionSpringEffectVars = {
+  x: 100,
+  from: { x: 0 },
+  parameters,
+  tween: effectTweenVars,
+};
 
 gsap.registerPlugin(SpringPlugin);
+const effectTween = createMotionSpringTween({ x: 0 }, effectVars);
+const effectTimeline = gsap.timeline({ paused: true }).motionSpring(
+  { x: 0 },
+  effectVars,
+);
 const spring = createSpring({ from: 0, to: 1, ...parameters });
 const css: CSSLinearSpring = springToCSSLinear(spring);
 const coupled: CoupledSpringSystem = createCoupledSpringSystem({
@@ -186,6 +229,8 @@ const coupled: CoupledSpringSystem = createCoupledSpringSystem({
 });
 
 void tweenVars;
+void effectTween;
+void effectTimeline;
 void css;
 void coupled;
 `,
