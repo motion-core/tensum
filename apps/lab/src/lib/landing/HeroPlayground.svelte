@@ -7,7 +7,13 @@
 		springParameters,
 		springPresets
 	} from '@motion-core/spring';
-	import type { SpringController, SpringToSnapshot } from '@motion-core/spring';
+	import type {
+		SpringController,
+		SpringParameters,
+		SpringSolution,
+		SpringState,
+		SpringToSnapshot
+	} from '@motion-core/spring';
 	import { PauseIcon, PlayIcon, Refresh01Icon } from '@hugeicons/core-free-icons';
 	import { HugeiconsIcon } from '@hugeicons/svelte';
 	import { gsap } from 'gsap';
@@ -17,10 +23,23 @@
 	import { Slider } from '$lib/components/ui/slider';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import ParameterField from '$lib/lab/ParameterField.svelte';
+	import TrajectoryGraph from '$lib/lab/TrajectoryGraph.svelte';
+	import type { TrajectorySample } from '$lib/lab/model.js';
 
 	type Scenario = 'distance' | 'rotation' | 'timeline';
 	type InputMode = 'perceptual' | 'physics';
 	type Segment = { start: number; end: number };
+	type TimelineMotion = {
+		far: number;
+		near: number;
+		firstParameters: Readonly<SpringParameters>;
+		secondParameters: Readonly<SpringParameters>;
+		first: SpringSolution;
+		second: SpringSolution;
+		firstEnd: number;
+		secondEnd: number;
+		duration: number;
+	};
 
 	const handoffTime = 0.35;
 	const scenarios = [
@@ -39,6 +58,80 @@
 		{ label: 'Far', ratio: 1 }
 	] as const;
 	const rotationTargets = [-90, 0, 90] as const;
+	const trajectorySampleCount = 160;
+
+	function createTimelineMotion(trackWidth: number): TimelineMotion {
+		const available = Math.max(trackWidth - 96, 0);
+		const far = available * 0.82;
+		const near = available * 0.22;
+		const firstParameters = springPresets.snappy();
+		const secondParameters = springPresets.bouncy();
+		const first = createSpring({ from: 0, to: far, ...firstParameters });
+		const handoff = first.stateAt(handoffTime);
+		const second = createSpring({
+			from: handoff.position,
+			to: near,
+			velocity: handoff.velocity,
+			...secondParameters
+		});
+		const firstEnd = first.getSettlingDuration();
+		const secondEnd = handoffTime + second.getSettlingDuration();
+
+		return {
+			far,
+			near,
+			firstParameters,
+			secondParameters,
+			first,
+			second,
+			firstEnd,
+			secondEnd,
+			duration: Math.max(firstEnd, secondEnd)
+		};
+	}
+
+	function sampleStates(
+		duration: number,
+		stateAt: (time: number) => SpringState
+	): TrajectorySample[] {
+		const displayDuration = Math.max(duration, 0.25);
+		return Array.from({ length: trajectorySampleCount + 1 }, (_, index) => {
+			const time = (displayDuration * index) / trajectorySampleCount;
+			return { time, ...stateAt(time) };
+		});
+	}
+
+	function createTrajectory(
+		scenario: Scenario,
+		parameters: Readonly<SpringParameters>,
+		initialState: SpringState,
+		distanceTarget: number,
+		rotationTarget: number,
+		timelineMotion: TimelineMotion
+	): { samples: TrajectorySample[]; target: number } {
+		if (scenario === 'timeline') {
+			return {
+				target: timelineMotion.near,
+				samples: sampleStates(timelineMotion.duration, (time) =>
+					time < handoffTime
+						? timelineMotion.first.stateAt(time)
+						: timelineMotion.second.stateAt(time - handoffTime)
+				)
+			};
+		}
+
+		const target = scenario === 'rotation' ? rotationTarget : distanceTarget;
+		const spring = createSpring({
+			from: initialState.position,
+			to: target,
+			velocity: initialState.velocity,
+			...parameters
+		});
+		return {
+			target,
+			samples: sampleStates(spring.getSettlingDuration(), (time) => spring.stateAt(time))
+		};
+	}
 
 	let scenario = $state<Scenario>('distance');
 	let inputMode = $state<InputMode>('perceptual');
@@ -55,6 +148,7 @@
 	let prefersReducedMotion = $state(false);
 	let runtimeStatus = $state('ready');
 	let telemetry = $state({ position: 0, velocity: 0 });
+	let trajectoryInitialState = $state<SpringState>({ position: 0, velocity: 0 });
 	let runtimeController: SpringController | undefined;
 	const controllers: SpringController[] = [];
 
@@ -77,7 +171,18 @@
 	let settlingDuration = $derived(
 		createSpring({ from: 0, to: 1, ...parameters }).getSettlingDuration()
 	);
-	let timelineProgress = $derived(timelineDuration === 0 ? 0 : currentTime / timelineDuration);
+	let timelineMotion = $derived(createTimelineMotion(trackWidth));
+	let trajectory = $derived(
+		createTrajectory(
+			scenario,
+			parameters,
+			trajectoryInitialState,
+			distanceFor(distanceTargetIndex),
+			rotationTarget,
+			timelineMotion
+		)
+	);
+	let timelineIsRunning = $derived(timelineStatus === 'playing' || timelineStatus === 'reversing');
 	let timelineOwner = $derived(
 		currentTime <= 0 ? 'ready' : currentTime < segments.b.start ? 'Spring A' : 'Spring B'
 	);
@@ -104,10 +209,6 @@
 		return `calc(${ratio * 100}% + ${48 - ratio * 96}px)`;
 	}
 
-	function timelinePercentage(time: number): number {
-		return timelineDuration === 0 ? 0 : (time / timelineDuration) * 100;
-	}
-
 	function readBodyX(): number {
 		if (!body) return 0;
 		const value = gsap.getProperty(body, 'x');
@@ -125,6 +226,11 @@
 		const isRetarget = runtimeStatus === 'moving' || runtimeStatus === 'retargeted';
 
 		if (prefersReducedMotion) {
+			const value = gsap.getProperty(body, property);
+			trajectoryInitialState = {
+				position: typeof value === 'number' ? value : Number.parseFloat(String(value)) || 0,
+				velocity: 0
+			};
 			gsap.set(body, { [property]: target });
 			telemetry = { position: target, velocity: 0 };
 			runtimeStatus = 'reduced motion';
@@ -132,7 +238,7 @@
 		}
 
 		runtimeStatus = isRetarget ? 'retargeted' : 'moving';
-		runtimeController = springTo(body, {
+		const controller = springTo(body, {
 			[property]: target,
 			spring: parameters,
 			onUpdate: (snapshot) => updateRuntimeTelemetry(snapshot, property),
@@ -145,7 +251,15 @@
 				runtimeStatus = 'settled';
 			}
 		});
-		controllers.push(runtimeController);
+		const spring = controller.springs[property];
+		if (spring) {
+			trajectoryInitialState = {
+				position: spring.initialState.position,
+				velocity: spring.initialState.velocity
+			};
+		}
+		runtimeController = controller;
+		controllers.push(controller);
 	}
 
 	function setDistanceTarget(index: number): void {
@@ -197,26 +311,12 @@
 		gsap.set(body, { clearProps: 'transform' });
 		gsap.set(body, { x: 0, rotation: 0 });
 
-		const available = Math.max(trackWidth - 96, 0);
-		const far = available * 0.82;
-		const near = available * 0.22;
-		const firstParameters = springPresets.snappy();
-		const secondParameters = springPresets.bouncy();
-		const first = createSpring({ from: 0, to: far, ...firstParameters });
-		const handoff = first.stateAt(handoffTime);
-		const second = createSpring({
-			from: handoff.position,
-			to: near,
-			velocity: handoff.velocity,
-			...secondParameters
-		});
-		const firstEnd = first.getSettlingDuration();
-		const secondEnd = handoffTime + second.getSettlingDuration();
+		const motion = createTimelineMotion(trackWidth);
 
-		timelineDuration = Math.max(firstEnd, secondEnd);
+		timelineDuration = motion.duration;
 		segments = {
-			a: { start: 0, end: firstEnd },
-			b: { start: handoffTime, end: secondEnd }
+			a: { start: 0, end: motion.firstEnd },
+			b: { start: handoffTime, end: motion.secondEnd }
 		};
 		timeline = gsap
 			.timeline({
@@ -235,18 +335,18 @@
 			})
 			.to(body, {
 				motionSpring: {
-					x: far,
+					x: motion.far,
 					rotation: 8,
-					parameters: firstParameters
+					parameters: motion.firstParameters
 				}
 			})
 			.to(
 				body,
 				{
 					motionSpring: {
-						x: near,
+						x: motion.near,
 						rotation: -6,
-						parameters: secondParameters
+						parameters: motion.secondParameters
 					}
 				},
 				`<${handoffTime}`
@@ -273,9 +373,18 @@
 		timeline.play();
 	}
 
-	function toggleTimelinePause(): void {
-		if (!timeline || timelineStatus === 'ready' || timelineStatus === 'settled') return;
-		if (timeline.paused()) {
+	function toggleTimelinePlayback(): void {
+		if (
+			!timeline ||
+			timelineStatus === 'ready' ||
+			timelineStatus === 'settled' ||
+			timelineStatus === 'reduced motion'
+		) {
+			playTimeline();
+			return;
+		}
+
+		if (timelineStatus === 'paused') {
 			timelineStatus = timeline.reversed() ? 'reversing' : 'playing';
 			timeline.resume();
 		} else {
@@ -315,10 +424,12 @@
 	async function setScenario(nextScenario: Scenario): Promise<void> {
 		if (nextScenario === scenario) return;
 		runtimeController?.kill();
+		runtimeController = undefined;
 		timeline?.kill();
 		scenario = nextScenario;
 		runtimeStatus = 'ready';
 		telemetry = { position: 0, velocity: 0 };
+		trajectoryInitialState = { position: 0, velocity: 0 };
 		await tick();
 		if (!body) return;
 		gsap.set(body, { clearProps: 'transform' });
@@ -386,7 +497,6 @@
 	>
 		<header class="flex h-10 items-center justify-between gap-2 border-b border-border px-3">
 			<h2 class="font-heading text-sm font-medium" id="playground-scenes-heading">Scenes</h2>
-			<span class="font-mono text-xs text-muted-foreground">03</span>
 		</header>
 		<div class="p-2">
 			<nav class="grid grid-cols-3 gap-1 lg:grid-cols-1" aria-label="Playground scene">
@@ -559,50 +669,12 @@
 	>
 		<header class="flex h-10 items-center justify-between gap-2 border-b border-border px-3">
 			<h2 class="font-heading text-sm font-medium" id="playground-inspector-heading">Inspector</h2>
-			<span class="font-mono text-xs text-muted-foreground">
-				{scenario === 'timeline' ? 'GSAP' : inputMode === 'perceptual' ? 'Feel' : 'Physics'}
-			</span>
 		</header>
 
 		{#if scenario === 'timeline'}
 			<div class="flex flex-1 flex-col gap-3 p-2.5">
 				<div class="space-y-2">
-					<div class="flex justify-between font-mono text-xs text-muted-foreground tabular-nums">
-						<span>0s</span>
-						<span>{timelineDuration.toFixed(3)}s</span>
-					</div>
-					<div class="grid grid-cols-[1rem_minmax(0,1fr)] items-center gap-2">
-						<span class="font-mono text-xs text-muted-foreground">A</span>
-						<div class="relative h-6 overflow-hidden rounded-md bg-muted">
-							<div
-								class="absolute inset-y-1 rounded-sm bg-primary/25 ring-1 ring-primary/40"
-								style:left={`${timelinePercentage(segments.a.start)}%`}
-								style:width={`${timelinePercentage(segments.a.end - segments.a.start)}%`}
-							></div>
-							<div
-								class="absolute inset-y-0 w-px bg-primary"
-								style:left={`${timelineProgress * 100}%`}
-							></div>
-						</div>
-					</div>
-					<div class="grid grid-cols-[1rem_minmax(0,1fr)] items-center gap-2">
-						<span class="font-mono text-xs text-muted-foreground">B</span>
-						<div class="relative h-6 overflow-hidden rounded-md bg-muted">
-							<div
-								class="absolute inset-y-1 rounded-sm bg-primary"
-								style:left={`${timelinePercentage(segments.b.start)}%`}
-								style:width={`${timelinePercentage(segments.b.end - segments.b.start)}%`}
-							></div>
-							<div
-								class="absolute inset-y-0 w-px bg-primary"
-								style:left={`${timelineProgress * 100}%`}
-							></div>
-						</div>
-					</div>
-				</div>
-
-				<div class="space-y-2">
-					<div class="flex items-center justify-between gap-2">
+					<div class="flex items-center justify-between gap-2 text-xs">
 						<label for="hero-timeline-time">Timeline time</label>
 						<output class="font-mono text-muted-foreground tabular-nums" for="hero-timeline-time">
 							{currentTime.toFixed(3)}s
@@ -621,17 +693,14 @@
 				</div>
 
 				<div class="flex flex-wrap gap-1">
-					<Button onclick={playTimeline}>
-						<HugeiconsIcon icon={PlayIcon} strokeWidth={2} data-icon="inline-start" />
-						Play
-					</Button>
-					<Button
-						variant="outline"
-						size="icon"
-						onclick={toggleTimelinePause}
-						aria-label="Pause timeline"
-					>
-						<HugeiconsIcon icon={PauseIcon} strokeWidth={2} />
+					<Button onclick={toggleTimelinePlayback}>
+						{#if timelineIsRunning}
+							<HugeiconsIcon icon={PauseIcon} strokeWidth={2} data-icon="inline-start" />
+							Pause
+						{:else}
+							<HugeiconsIcon icon={PlayIcon} strokeWidth={2} data-icon="inline-start" />
+							Play
+						{/if}
 					</Button>
 					<Button variant="outline" onclick={reverseTimeline}>Reverse</Button>
 					<Button variant="ghost" size="icon" onclick={resetTimeline} aria-label="Reset timeline">
@@ -719,7 +788,12 @@
 					{/if}
 				</div>
 
-				<dl class="mt-auto grid grid-cols-2 gap-3 border-t border-border pt-3">
+				<Button class="w-full" onclick={moveToNextTarget}>
+					<HugeiconsIcon icon={PlayIcon} strokeWidth={2} data-icon="inline-start" />
+					Run spring
+				</Button>
+
+				<dl class="mt-auto grid grid-cols-2 gap-3 border-t border-border pt-3 text-xs">
 					<div>
 						<dt class="text-xs text-muted-foreground">Damping ratio</dt>
 						<dd class="font-mono tabular-nums">{characteristics.dampingRatio.toFixed(3)}</dd>
@@ -732,4 +806,14 @@
 			</div>
 		{/if}
 	</section>
+
+	<div class="order-4 col-span-full min-w-0 border-t border-border">
+		<TrajectoryGraph
+			samples={trajectory.samples}
+			target={trajectory.target}
+			positionUnit={stageUnit}
+			{velocityUnit}
+			embedded
+		/>
+	</div>
 </section>

@@ -29,7 +29,7 @@
 </script>
 
 <div class="space-y-1">
-	<div class="flex items-center justify-between gap-2">
+	<div class="flex items-center justify-between gap-2 text-xs">
 		<label class="truncate font-medium" for={id} title={description}>{label}</label>
 		<output class="shrink-0 text-muted-foreground tabular-nums" for={id}>{formattedValue}</output>
 		<span class="sr-only" id={`${id}-description`}>{description}</span>
