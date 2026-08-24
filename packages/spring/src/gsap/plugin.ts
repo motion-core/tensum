@@ -20,6 +20,10 @@ import {
 } from './plugin-tween-coordinator.js';
 import type { PluginTweenRegistration } from './plugin-tween-coordinator.js';
 import {
+  retireActiveTrackRegistrations,
+  syncActiveTrackRegistration,
+} from './track-lifecycle.js';
+import {
   SUPPORTED_PROPERTIES,
   accessFor,
   optionsFor,
@@ -52,8 +56,11 @@ export interface MotionSpringPluginVars {
   adapters?: Readonly<Record<SpringProperty, SpringPropertyAdapter>>;
   units?: Readonly<Record<SpringProperty, string>>;
   unsettled?: UnsettledPolicy;
+  /** Target-scoped: target arrays invoke this hook once per target. */
   onLogicalComplete?: (snapshot: SpringToSnapshot) => void;
+  /** Target-scoped: target arrays invoke this hook once per target. */
   onSettle?: (snapshot: SpringToSnapshot) => void;
+  /** Target-scoped: target arrays invoke this hook once per target. */
   onUnsettled?: (snapshot: SpringToSnapshot) => void;
 }
 
@@ -360,15 +367,19 @@ function renderAt(scope: MotionSpringPluginScope, time: number): void {
   for (const track of scope.tracks) {
     const registration = track.registration;
     if (!registration) continue;
-    if (time <= 0 && track.lastTime > 0 && registration.isActive()) {
-      const restored = registration.release();
-      track.lastTime = time;
-      if (!restored) track.write(stateFor(track, 0, scope.policy).position);
+    const transition = syncActiveTrackRegistration(
+      registration,
+      time,
+      track.lastTime,
+    );
+    track.lastTime = time;
+    if (transition.releasedAtStart) {
+      if (!transition.restoredPrevious) {
+        track.write(stateFor(track, 0, scope.policy).position);
+      }
       continue;
     }
-    if (time > 0 && !registration.isActive()) registration.activate();
-    track.lastTime = time;
-    if (registration.isOwner()) owners.push(track);
+    if (transition.isOwner) owners.push(track);
   }
   if (owners.length === 0) return;
 
@@ -409,9 +420,9 @@ function renderAt(scope: MotionSpringPluginScope, time: number): void {
     scope.tween.repeat() >= 0 &&
     scope.tween.totalTime() >= scope.tween.totalDuration()
   ) {
-    for (const track of scope.tracks) {
-      track.registration?.release({ restore: false });
-    }
+    retireActiveTrackRegistrations(
+      scope.tracks.map((track) => track.registration),
+    );
   }
 }
 
