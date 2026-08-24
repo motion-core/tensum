@@ -152,11 +152,10 @@
 			>
 				<div class="space-y-1">
 					<h3 class="font-heading text-sm font-medium" id="model-heading">Input model</h3>
-					<p class="text-muted-foreground">Describe the feel or provide physical constants.</p>
 				</div>
 
-				<Tabs.Root value={mode} onValueChange={(value) => setMode(value as InputMode)}>
-					<Tabs.List aria-label="Spring input model">
+				<Tabs.Root class="w-full" value={mode} onValueChange={(value) => setMode(value as InputMode)}>
+					<Tabs.List class="w-full" aria-label="Spring input model">
 						<Tabs.Trigger value="perceptual">Feel</Tabs.Trigger>
 						<Tabs.Trigger value="physics">Physics</Tabs.Trigger>
 					</Tabs.List>
@@ -184,11 +183,7 @@
 						<h3 class="font-heading text-sm font-medium" id="material-preview-heading">
 							Material preview
 						</h3>
-						<p class="text-muted-foreground">Preset changes run the next target automatically.</p>
 					</div>
-					<Badge variant={status === 'moving' ? 'default' : 'secondary'}
-						>{characteristics.regime}</Badge
-					>
 				</div>
 
 				<div
@@ -224,10 +219,6 @@
 							Move right
 						</Button>
 					</div>
-					<div class="flex gap-3 font-mono text-muted-foreground tabular-nums">
-						<span>x {telemetry.position.toFixed(1)}</span>
-						<span>v {telemetry.velocity.toFixed(1)}</span>
-					</div>
 				</div>
 			</section>
 
@@ -237,11 +228,7 @@
 			>
 				<div class="space-y-1">
 					<h3 class="font-heading text-sm font-medium" id="parameter-heading">Parameters</h3>
-					<p class="text-muted-foreground">
-						{mode === 'perceptual'
-							? 'High-level controls resolve to physics.'
-							: 'Direct physical controls.'}
-					</p>
+
 				</div>
 
 				<div class="grid gap-4">
@@ -302,37 +289,6 @@
 							description="Energy loss"
 							onValue={(value) => (damping = value)}
 						/>
-					{/if}
-				</div>
-
-				<div class="grid grid-cols-2 gap-3 text-muted-foreground">
-					{#if mode === 'perceptual'}
-						<div>
-							<p>Mass</p>
-							<p class="font-mono text-foreground tabular-nums">{parameters.mass.toFixed(2)}</p>
-						</div>
-					{/if}
-					<div>
-						<p>Damping ratio</p>
-						<p class="font-mono text-foreground tabular-nums">
-							{characteristics.dampingRatio.toFixed(3)}
-						</p>
-					</div>
-					<div>
-						<p>Settling</p>
-						<p class="font-mono text-foreground tabular-nums">{settlingDuration.toFixed(3)} s</p>
-					</div>
-					{#if mode === 'perceptual'}
-						<div>
-							<p>Stiffness</p>
-							<p class="font-mono text-foreground tabular-nums">
-								{parameters.stiffness.toFixed(1)}
-							</p>
-						</div>
-						<div>
-							<p>Damping</p>
-							<p class="font-mono text-foreground tabular-nums">{parameters.damping.toFixed(1)}</p>
-						</div>
 					{/if}
 				</div>
 			</section>
