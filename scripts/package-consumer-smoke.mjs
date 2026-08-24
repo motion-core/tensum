@@ -91,15 +91,19 @@ try {
     `import assert from 'node:assert/strict';
 import { gsap } from 'gsap';
 import {
+  SUPPORTED_PROPERTIES,
   SpringPlugin,
   createMotionSpringTween,
   createSpring,
+  registerSpringPlugin,
+  springTo,
 } from '@motion-core/spring';
 import { springToCSSLinear } from '@motion-core/spring/css';
 import { createCoupledSpringSystem } from '@motion-core/spring/coupled';
 
 assert.equal(SpringPlugin.name, 'motionSpring');
-gsap.registerPlugin(SpringPlugin);
+assert.deepEqual(SUPPORTED_PROPERTIES, ['x', 'y', 'scale', 'rotation']);
+registerSpringPlugin(gsap);
 assert.equal(typeof gsap.effects.motionSpring, 'function');
 
 const effectTarget = { x: 0 };
@@ -122,6 +126,16 @@ const effectTimeline = gsap.timeline({ paused: true }).motionSpring(
 assert.equal(effectTimeline.duration(), effectTween.duration());
 effectTween.kill();
 effectTimeline.kill();
+
+const controllerTarget = { score: 0 };
+const controller = springTo(controllerTarget, {
+  targets: { score: 80 },
+  spring: { mass: 1, stiffness: 180, damping: 24 },
+});
+controller.pause();
+controller.seek(controller.duration);
+assert.equal(controllerTarget.score, 80);
+controller.kill();
 
 const spring = createSpring({
   from: 0,
@@ -183,10 +197,14 @@ import {
   SpringPlugin,
   createMotionSpringTween,
   createSpring,
+  springTo,
   type MotionSpringEffectTweenVars,
   type MotionSpringEffectVars,
   type MotionSpringPluginVars,
   type SpringParameters,
+  type SpringPropertyAdapter,
+  type SpringToVars,
+  type SpringTweenTarget,
 } from '@motion-core/spring';
 import {
   springToCSSLinear,
@@ -214,6 +232,20 @@ const effectVars: MotionSpringEffectVars = {
   parameters,
   tween: effectTweenVars,
 };
+const adapter: SpringPropertyAdapter = {
+  read: (target) => Number((target as { progress: number }).progress),
+  write: (target, value) => {
+    (target as { progress: number }).progress = value;
+  },
+};
+const resolvedTarget: SpringTweenTarget = { progress: 0 };
+const controllerVars: SpringToVars = {
+  targets: { progress: 1 },
+  spring: parameters,
+  adapters: { progress: adapter },
+};
+// @ts-expect-error SpringTweenTarget represents an already resolved object.
+const unresolvedTarget: SpringTweenTarget = '.selector';
 
 gsap.registerPlugin(SpringPlugin);
 const effectTween = createMotionSpringTween({ x: 0 }, effectVars);
@@ -221,6 +253,7 @@ const effectTimeline = gsap.timeline({ paused: true }).motionSpring(
   { x: 0 },
   effectVars,
 );
+const controller = springTo(resolvedTarget, controllerVars);
 const spring = createSpring({ from: 0, to: 1, ...parameters });
 const css: CSSLinearSpring = springToCSSLinear(spring);
 const coupled: CoupledSpringSystem = createCoupledSpringSystem({
@@ -231,6 +264,8 @@ const coupled: CoupledSpringSystem = createCoupledSpringSystem({
 void tweenVars;
 void effectTween;
 void effectTimeline;
+void controller;
+void unresolvedTarget;
 void css;
 void coupled;
 `,
@@ -278,6 +313,35 @@ void coupled;
     readFileSync(join(installedPackage, 'package.json'), 'utf8'),
   );
   assert.equal(installedManifest.license, 'MIT');
+  assert.equal(installedManifest.type, 'module');
+  assert.equal(installedManifest.types, './dist/index.d.ts');
+  assert.deepEqual(installedManifest.exports['.'], {
+    types: './dist/index.d.ts',
+    import: './dist/index.js',
+  });
+
+  for (const artifact of ['index.js', 'index.d.ts']) {
+    const artifactPath = join(installedPackage, 'dist', artifact);
+    const artifactSource = readFileSync(artifactPath, 'utf8');
+    const sourceMapReference = artifactSource.match(
+      /\/\/# sourceMappingURL=([^\s]+)/,
+    )?.[1];
+    assert.ok(sourceMapReference, `${artifact} must reference a source map`);
+    const sourceMapPath = resolve(dirname(artifactPath), sourceMapReference);
+    assert.equal(existsSync(sourceMapPath), true);
+    const sourceMap = JSON.parse(readFileSync(sourceMapPath, 'utf8'));
+    assert.equal(sourceMap.file, artifact);
+    assert.deepEqual(sourceMap.sources, ['../src/index.ts']);
+    for (const source of sourceMap.sources) {
+      assert.equal(
+        existsSync(
+          resolve(dirname(sourceMapPath), sourceMap.sourceRoot ?? '', source),
+        ),
+        true,
+        `${artifact} source map must resolve ${source}`,
+      );
+    }
+  }
 
   run('Run ESM exports', process.execPath, ['runtime.mjs'], consumerDirectory);
   run(

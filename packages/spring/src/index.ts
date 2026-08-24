@@ -83,6 +83,7 @@ export type {
   SpringStateMap,
   SpringTargetValue,
   SpringTargets,
+  SpringTweenTarget,
   SpringToSnapshot,
   SpringToVars,
   SpringVelocities,
