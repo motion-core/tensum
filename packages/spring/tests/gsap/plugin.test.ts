@@ -28,6 +28,134 @@ describe('MotionCoreSpringPlugin', () => {
     expect((gsap.plugins as Record<string, unknown>)['motionSpring']).toBeDefined();
   });
 
+  it('preflights derived durations before laying out sequential timeline effects', () => {
+    const target = { x: 0 };
+    const first = createSpring({ from: 0, to: 100, velocity: 0, ...parameters });
+    const second = createSpring({ from: 100, to: 240, velocity: 0, ...parameters });
+    const timeline = gsap.timeline({ paused: true });
+
+    timeline
+      .motionSpring(target, {
+        x: 100,
+        from: { x: 0 },
+        parameters,
+      })
+      .motionSpring(target, {
+        x: 240,
+        from: { x: 100 },
+        parameters,
+      });
+
+    const [firstTween, secondTween] = timeline.getChildren(
+      false,
+      true,
+      false,
+    ) as gsap.core.Tween[];
+
+    expect(firstTween!.duration()).toBeCloseTo(first.getSettlingDuration(), 6);
+    expect(secondTween!.startTime()).toBeCloseTo(firstTween!.endTime(false), 7);
+    expect(secondTween!.duration()).toBeCloseTo(second.getSettlingDuration(), 6);
+    expect(timeline.duration()).toBeCloseTo(
+      firstTween!.duration() + secondTween!.duration(),
+      7,
+    );
+
+    timeline.time(firstTween!.duration() + 0.08, true);
+    expect(Number.parseFloat(String(target.x))).toBeCloseTo(
+      second.positionAt(0.08),
+      9,
+    );
+  });
+
+  it('preflights array targets before GSAP builds a stagger timeline', () => {
+    const targets = [{ x: 0 }, { x: 20 }, { x: -30 }];
+    const springs = targets.map((target) =>
+      createSpring({ from: target.x, to: 100, velocity: 0, ...parameters }),
+    );
+    const driverDuration = Math.max(
+      ...springs.map((spring) => spring.getSettlingDuration()),
+    );
+    const timeline = gsap.timeline({ paused: true });
+
+    timeline.motionSpring(targets, {
+      x: 100,
+      parameters,
+      tween: { stagger: 0.2 },
+    });
+
+    expect(timeline.duration()).toBeCloseTo(driverDuration + 0.4, 6);
+    timeline.time(timeline.duration(), true);
+    expect(targets.map((target) => Number.parseFloat(String(target.x)))).toEqual([
+      100,
+      100,
+      100,
+    ]);
+  });
+
+  it('exposes a settled duration to a parent before adding a nested timeline', () => {
+    const target = { rotation: 0 };
+    const spring = createSpring({ from: 0, to: 90, velocity: 0, ...parameters });
+    const child = gsap.timeline();
+
+    child.motionSpring(target, {
+      rotation: 90,
+      from: { rotation: 0 },
+      parameters,
+    });
+
+    const durationBeforeNesting = child.duration();
+    const parent = gsap.timeline({ paused: true }).add(child, 0.35);
+
+    expect(durationBeforeNesting).toBeCloseTo(spring.getSettlingDuration(), 6);
+    expect(parent.duration()).toBeCloseTo(0.35 + durationBeforeNesting, 7);
+  });
+
+  it('keeps a preflight duration stable across invalidate and native repeats', () => {
+    const target = { x: 0 };
+    const spring = createSpring({ from: 0, to: 100, velocity: 0, ...parameters });
+    const timeline = gsap.timeline({ paused: true });
+
+    timeline.motionSpring(target, {
+      x: 100,
+      from: { x: 0 },
+      parameters,
+      tween: { repeat: 1, yoyo: true },
+    });
+
+    const tween = timeline.getChildren(false, true, false)[0] as gsap.core.Tween;
+    const duration = tween.duration();
+    expect(duration).toBeCloseTo(spring.getSettlingDuration(), 6);
+    expect(tween.totalDuration()).toBeCloseTo(duration * 2, 7);
+
+    tween.time(0.1, true);
+    tween.invalidate().time(0.1, true);
+
+    expect(tween.duration()).toBe(duration);
+    expect(tween.totalDuration()).toBeCloseTo(duration * 2, 7);
+  });
+
+  it('documents why the lazy special property cannot sequence derived durations', () => {
+    const firstTarget = { x: 0 };
+    const secondTarget = { x: 0 };
+    const timeline = gsap
+      .timeline({ paused: true })
+      .to(firstTarget, {
+        motionSpring: { x: 100, parameters },
+      })
+      .to(secondTarget, {
+        motionSpring: { x: 100, parameters },
+      });
+    const [firstTween, secondTween] = timeline.getChildren(
+      false,
+      true,
+      false,
+    ) as gsap.core.Tween[];
+
+    expect(secondTween!.startTime()).toBe(0.5);
+    firstTween!.time(0.01, true);
+    expect(firstTween!.duration()).toBeGreaterThan(secondTween!.startTime());
+  });
+
   it('derives tween duration and samples raw GSAP time instead of eased ratio', () => {
     const target = { score: 0 };
     const tween = gsap.to(target, {

@@ -51,6 +51,25 @@ export interface MotionSpringPluginVars {
   onUnsettled?: (snapshot: SpringToSnapshot) => void;
 }
 
+export type MotionSpringEffectTweenVars = Omit<
+  gsap.TweenVars,
+  'duration' | 'ease' | 'motionSpring'
+>;
+
+/**
+ * Configuration for the preflighted GSAP effect. Unlike the lazy special
+ * property, the effect resolves its driver duration before GSAP inserts the
+ * returned tween into a timeline.
+ *
+ * `from` snapshots an explicit future starting state. Supply it when building
+ * a timeline whose target will be changed by an earlier child; without it,
+ * preflight intentionally reads the target at effect-construction time.
+ */
+export interface MotionSpringEffectVars extends MotionSpringPluginVars {
+  from?: SpringTargets;
+  tween?: MotionSpringEffectTweenVars;
+}
+
 interface PluginTrack {
   property: SpringProperty;
   target: number;
@@ -87,7 +106,28 @@ interface TweenTimingState {
   infinite: boolean;
 }
 
+interface PreparedTrack {
+  target: number;
+  unit?: string;
+  duration: number;
+  settling: SettlingResult;
+  spring: SpringSolution;
+  write(value: number): void;
+}
+
+interface PreparedTarget {
+  tracks: Readonly<Record<SpringProperty, PreparedTrack>>;
+}
+
+interface PreparedMotionSpring {
+  targets: WeakMap<object, PreparedTarget>;
+}
+
 const tweenTiming = new WeakMap<gsap.core.Tween, TweenTimingState>();
+const preparedMotionSprings = new WeakMap<
+  MotionSpringPluginVars,
+  PreparedMotionSpring
+>();
 const GSAP_TIME_PRECISION = 1e7;
 
 function gsapSafeDuration(duration: number): number {
@@ -114,6 +154,120 @@ function trackConfigFrom(vars: MotionSpringPluginVars): SpringTrackConfig {
     ...(vars.adapters === undefined ? {} : { adapters: vars.adapters }),
     ...(vars.units === undefined ? {} : { units: vars.units }),
   };
+}
+
+function explicitStateFrom(
+  from: SpringTargets | undefined,
+  property: SpringProperty,
+): RequestedTarget | undefined {
+  const value = from?.[property];
+  return value === undefined ? undefined : parseNumericValue(value, property);
+}
+
+function preflightTarget(
+  target: object,
+  vars: MotionSpringPluginVars,
+  from: SpringTargets | undefined,
+): PreparedTarget {
+  const requested = pluginTargetsFrom(vars);
+  if (Object.keys(requested).length === 0) {
+    throw new TypeError('motionSpring requires at least one numeric target property');
+  }
+
+  const config = trackConfigFrom(vars);
+  const tracks: Record<SpringProperty, PreparedTrack> = {};
+  for (const [property, destination] of Object.entries(requested)) {
+    const explicit = explicitStateFrom(from, property);
+    const inherited = explicit === undefined ? activeTrackState(target, property) : undefined;
+    const initialUnit = explicit?.unit ?? inherited?.unit;
+    const resolvedDestination =
+      destination.unit === undefined && initialUnit !== undefined
+        ? { ...destination, unit: initialUnit }
+        : destination;
+    const access = accessFor(target, property, resolvedDestination, config);
+    if (
+      initialUnit !== undefined &&
+      access.unit !== undefined &&
+      initialUnit !== access.unit
+    ) {
+      throw new TypeError(
+        `Unit mismatch for ${property}: expected ${initialUnit}, received ${access.unit}`,
+      );
+    }
+    const spring = createSpring({
+      from: explicit?.value ?? inherited?.position ?? access.from,
+      to: destination.value,
+      velocity:
+        inherited?.velocity ??
+        vars.properties?.[property]?.velocity ??
+        velocityFor(vars.velocity, property),
+      ...optionsFor(config, property),
+    });
+    const settling = spring.getSettlingResult();
+    tracks[property] = {
+      target: destination.value,
+      ...(access.unit === undefined ? {} : { unit: access.unit }),
+      duration: settling.duration,
+      settling,
+      spring,
+      write: access.write,
+    };
+  }
+  return { tracks };
+}
+
+/**
+ * Creates a preflighted GSAP tween whose duration is final before it is added
+ * to a timeline. Prefer the registered `timeline.motionSpring()` effect for
+ * sequential, staggered, or nested composition. The raw `motionSpring` special
+ * property remains available for direct tweens, but its lazy `init()` cannot
+ * retroactively repair positions that a timeline has already resolved.
+ */
+export function createMotionSpringTween(
+  targets: gsap.TweenTarget,
+  vars: MotionSpringEffectVars,
+  instance: typeof gsap = gsap,
+): gsap.core.Tween {
+  if (!vars || typeof vars !== 'object') {
+    throw new TypeError('motionSpring effect requires a configuration object');
+  }
+  const resolvedTargets = instance.utils.toArray<object>(targets);
+  if (resolvedTargets.length === 0) {
+    throw new TypeError('motionSpring effect requires at least one target');
+  }
+
+  const { from, tween: tweenOptions, ...pluginVars } = vars;
+  const preparedTargets = new WeakMap<object, PreparedTarget>();
+  let finiteDuration = 0;
+  let hasUnsettled = false;
+  for (const target of resolvedTargets) {
+    const prepared = preflightTarget(target, pluginVars, from);
+    preparedTargets.set(target, prepared);
+    for (const track of Object.values(prepared.tracks)) {
+      finiteDuration = Math.max(finiteDuration, track.duration);
+      hasUnsettled ||= !track.settling.settled;
+    }
+  }
+
+  const policy = pluginVars.unsettled ?? 'stop';
+  if (policy === 'error' && hasUnsettled) {
+    throw new RangeError('motionSpring cannot start an unsettled spring in error mode');
+  }
+  const infinite = policy === 'continue' && hasUnsettled;
+  preparedMotionSprings.set(pluginVars, { targets: preparedTargets });
+
+  const safeTweenOptions = { ...(tweenOptions ?? {}) } as gsap.TweenVars;
+  delete safeTweenOptions.duration;
+  delete safeTweenOptions.ease;
+  delete safeTweenOptions.motionSpring;
+  if (infinite) safeTweenOptions.repeat = -1;
+
+  return instance.to(resolvedTargets, {
+    ...safeTweenOptions,
+    duration: infinite ? 1 : gsapSafeDuration(finiteDuration),
+    ease: 'none',
+    motionSpring: pluginVars,
+  });
 }
 
 function stateFor(
@@ -257,11 +411,25 @@ function configureTweenDuration(
   }
 }
 
+function registerMotionSpringEffect(instance: typeof gsap): void {
+  instance.registerEffect({
+    name: 'motionSpring',
+    plugins: 'motionSpring',
+    extendTimeline: true,
+    effect(targets: object[], vars: MotionSpringEffectVars): gsap.core.Tween {
+      return createMotionSpringTween(targets, vars, instance);
+    },
+  });
+}
+
 const pluginDefinition = {
   version: '0.1.0',
   name: 'motionSpring',
   headless: true,
   rawVars: 1,
+  register(instance: typeof gsap): void {
+    registerMotionSpringEffect(instance);
+  },
   init(
     this: MotionSpringPluginScope,
     target: object,
@@ -277,37 +445,75 @@ const pluginDefinition = {
     }
 
     const config = trackConfigFrom(value);
+    const preparedTarget = preparedMotionSprings.get(value)?.targets.get(target);
+    if (
+      preparedTarget !== undefined &&
+      (Object.keys(preparedTarget.tracks).length !== Object.keys(requested).length ||
+        Object.keys(requested).some(
+          (property) => preparedTarget.tracks[property] === undefined,
+        ))
+    ) {
+      throw new TypeError(
+        'A preflighted motionSpring configuration cannot change before init; create a new effect tween instead',
+      );
+    }
     const handoffTime = globalTimeAt(tween, 0);
     const tracks: PluginTrack[] = [];
     for (const [property, destination] of Object.entries(requested)) {
-      const inherited = activeTrackState(target, property, handoffTime);
-      const resolvedDestination =
-        destination.unit === undefined && inherited?.unit !== undefined
-          ? { ...destination, unit: inherited.unit }
-          : destination;
-      const access = accessFor(target, property, resolvedDestination, config);
+      const prepared = preparedTarget?.tracks[property];
+      const inherited =
+        prepared === undefined
+          ? activeTrackState(target, property, handoffTime)
+          : undefined;
+      const inheritedUnit = prepared?.unit ?? inherited?.unit;
       if (
-        inherited?.unit !== undefined &&
-        access.unit !== undefined &&
-        inherited.unit !== access.unit
+        prepared !== undefined &&
+        (destination.value !== prepared.target ||
+          (destination.unit !== undefined && destination.unit !== prepared.unit))
       ) {
         throw new TypeError(
-          `Unit mismatch for ${property}: expected ${inherited.unit}, received ${access.unit}`,
+          'A preflighted motionSpring configuration cannot change before init; create a new effect tween instead',
         );
       }
-      const spring = createSpring({
-        from: inherited?.position ?? access.from,
-        to: destination.value,
-        velocity:
-          inherited?.velocity ??
-          value.properties?.[property]?.velocity ??
-          velocityFor(value.velocity, property),
-        ...optionsFor(config, property),
-      });
-      const settling = spring.getSettlingResult();
+      const access = prepared
+        ? {
+            from: prepared.spring.positionAt(0),
+            ...(prepared.unit === undefined ? {} : { unit: prepared.unit }),
+            write: prepared.write,
+          }
+        : accessFor(
+            target,
+            property,
+            destination.unit === undefined && inheritedUnit !== undefined
+              ? { ...destination, unit: inheritedUnit }
+              : destination,
+            config,
+          );
+      if (
+        prepared === undefined &&
+        inheritedUnit !== undefined &&
+        access.unit !== undefined &&
+        inheritedUnit !== access.unit
+      ) {
+        throw new TypeError(
+          `Unit mismatch for ${property}: expected ${inheritedUnit}, received ${access.unit}`,
+        );
+      }
+      const spring =
+        prepared?.spring ??
+        createSpring({
+          from: inherited?.position ?? access.from,
+          to: destination.value,
+          velocity:
+            inherited?.velocity ??
+            value.properties?.[property]?.velocity ??
+            velocityFor(value.velocity, property),
+          ...optionsFor(config, property),
+        });
+      const settling = prepared?.settling ?? spring.getSettlingResult();
       tracks.push({
         property,
-        target: destination.value,
+        target: prepared?.target ?? destination.value,
         ...(access.unit === undefined ? {} : { unit: access.unit }),
         duration: settling.duration,
         settling,
@@ -386,7 +592,9 @@ const pluginDefinition = {
       );
     });
 
-    configureTweenDuration(tween, finiteDuration, infinite);
+    if (preparedTarget === undefined) {
+      configureTweenDuration(tween, finiteDuration, infinite);
+    }
     return true;
   },
   render(
@@ -422,8 +630,25 @@ export function registerMotionCoreSpringPlugin(
 
 declare global {
   namespace gsap {
+    interface EffectsMap {
+      motionSpring(
+        targets: TweenTarget,
+        vars: MotionSpringEffectVars,
+      ): core.Tween;
+    }
+
     interface TweenVars {
       motionSpring?: MotionSpringPluginVars;
+    }
+
+    namespace core {
+      interface Timeline {
+        motionSpring(
+          targets: TweenTarget,
+          vars: MotionSpringEffectVars,
+          position?: Position,
+        ): this;
+      }
     }
   }
 }
