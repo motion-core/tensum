@@ -23,7 +23,6 @@ export const docsNavigation: DocsNavigationGroup[] = [
 		items: [
 			{ id: 'timelinemotionspring', label: 'timeline.motionSpring()', code: true },
 			{ id: 'starting-state', label: 'Starting state' },
-			{ id: 'legacy-plugin', label: 'Legacy plugin' },
 			{ id: 'springto', label: 'springTo()', code: true }
 		]
 	},
