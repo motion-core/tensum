@@ -3,13 +3,13 @@
 </script>
 
 <div
-	class="outputs-illustration relative flex h-64 items-center justify-center overflow-hidden p-3"
+	class="outputs-illustration relative flex h-64 items-center justify-center overflow-hidden p-6"
 	data-paused={paused}
 	aria-hidden="true"
 >
 	<div class="relative h-48 w-[90%] max-w-xl">
 		<div
-			class="absolute inset-s-1/2 top-0 z-10 flex h-13 w-32 -translate-x-1/2 items-start justify-between rounded-lg bg-muted p-2.5 shadow-sm dark:bg-muted/50"
+			class="absolute inset-s-1/2 top-0 z-10 flex h-13 w-32 -translate-x-1/2 items-start justify-between rounded-lg bg-background p-2.5 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)] dark:bg-card/64 dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]"
 		>
 			<div>
 				<p class="font-mono text-[0.5625rem] text-muted-foreground">analytical core</p>
@@ -121,7 +121,7 @@
 		</svg>
 
 		<div
-			class="absolute inset-s-0 top-26 z-10 h-19 w-[30%] rounded-lg bg-muted p-2.5 shadow-sm dark:bg-muted/50"
+			class="absolute inset-s-0 top-26 z-10 h-19 w-[30%] rounded-lg bg-background p-2.5 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)] dark:bg-card/64 dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]"
 		>
 			<div class="flex items-center justify-between">
 				<span class="font-mono text-[0.5625rem] text-muted-foreground">01</span>
@@ -132,7 +132,7 @@
 		</div>
 
 		<div
-			class="absolute inset-s-1/2 top-26 z-10 h-19 w-[30%] -translate-x-1/2 rounded-lg bg-muted p-2.5 shadow-sm dark:bg-muted/50"
+			class="absolute inset-s-1/2 top-26 z-10 h-19 w-[30%] -translate-x-1/2 rounded-lg bg-background p-2.5 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)] dark:bg-card/64 dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]"
 		>
 			<div class="flex items-center justify-between">
 				<span class="font-mono text-[0.5625rem] text-muted-foreground">02</span>
@@ -143,7 +143,7 @@
 		</div>
 
 		<div
-			class="absolute inset-e-0 top-26 z-10 h-19 w-[30%] rounded-lg bg-muted p-2.5 shadow-sm dark:bg-muted/50"
+			class="absolute inset-e-0 top-26 z-10 h-19 w-[30%] rounded-lg bg-background p-2.5 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)] dark:bg-card/64 dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]"
 		>
 			<div class="flex items-center justify-between">
 				<span class="font-mono text-[0.5625rem] text-muted-foreground">03</span>
@@ -175,7 +175,7 @@
 	}
 
 	.connector-base {
-		stroke: var(--border);
+		stroke: var(--separator);
 		stroke-width: 2;
 	}
 

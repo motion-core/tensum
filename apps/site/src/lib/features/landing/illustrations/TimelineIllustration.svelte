@@ -3,13 +3,15 @@
 </script>
 
 <div
-	class="timeline-illustration relative flex h-56 items-center justify-center overflow-hidden p-3"
+	class="timeline-illustration relative flex h-56 items-center justify-center overflow-hidden p-6"
 	data-paused={paused}
 	aria-hidden="true"
 >
-	<div class="w-full overflow-hidden rounded-lg bg-muted shadow-sm dark:bg-muted/50">
+	<div
+		class="w-full overflow-hidden rounded-lg bg-background shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)] dark:bg-card/64 dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]"
+	>
 		<div
-			class="flex h-8 items-center justify-between border-b border-border px-2.5 text-[0.625rem]"
+			class="flex h-8 items-center justify-between border-b border-border/64 px-2.5 text-[0.625rem] dark:border-card/80"
 		>
 			<span class="font-medium">timeline.motionSpring()</span>
 			<span class="font-mono text-muted-foreground">2.48 s</span>
@@ -24,9 +26,9 @@
 				</div>
 			</div>
 
-			<div class="grid grid-cols-[3.25rem_1fr] border-b border-border">
+			<div class="grid grid-cols-[3.25rem_1fr] border-b border-border/64 dark:border-card/80">
 				<span
-					class="flex h-10 items-center border-e border-border px-2 font-mono text-[0.5625rem] text-muted-foreground"
+					class="flex h-10 items-center border-e border-border/64 px-2 font-mono text-[0.5625rem] text-muted-foreground dark:border-card/80"
 					>card</span
 				>
 				<div class="relative h-10">
@@ -38,9 +40,9 @@
 				</div>
 			</div>
 
-			<div class="grid grid-cols-[3.25rem_1fr] border-b border-border">
+			<div class="grid grid-cols-[3.25rem_1fr] border-b border-border/64 dark:border-card/80">
 				<span
-					class="flex h-10 items-center border-e border-border px-2 font-mono text-[0.5625rem] text-muted-foreground"
+					class="flex h-10 items-center border-e border-border/64 px-2 font-mono text-[0.5625rem] text-muted-foreground dark:border-card/80"
 					>detail</span
 				>
 				<div class="relative h-10">
@@ -54,7 +56,7 @@
 
 			<div class="grid grid-cols-[3.25rem_1fr]">
 				<span
-					class="flex h-10 items-center border-e border-border px-2 font-mono text-[0.5625rem] text-muted-foreground"
+					class="flex h-10 items-center border-e border-border/64 px-2 font-mono text-[0.5625rem] text-muted-foreground dark:border-card/80"
 					>items</span
 				>
 				<div class="relative h-10">

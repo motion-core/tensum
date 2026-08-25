@@ -23,9 +23,11 @@
 	/>
 
 	<SectionPanel class="grid lg:grid-cols-5">
-		<div class="flex flex-col border-b border-border p-3 lg:col-span-2 lg:border-e lg:border-b-0">
+		<div
+			class="flex flex-col border-b border-border/64 p-6 lg:col-span-2 lg:border-e lg:border-b-0 dark:border-card/80"
+		>
 			<div>
-				<p class="text-sm font-medium">1. Install the package</p>
+				<p class="font-semibold">1. Install the package</p>
 				<CodeBlock
 					code={installCommand}
 					htmlLight={commandHtmlLight}
@@ -33,16 +35,16 @@
 					label="Package installation command"
 					lineNumbers={false}
 					compact
-					class="mt-2"
+					class="mt-3 bg-background! shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)]! dark:bg-card/64!"
 				/>
-				<p class="mt-2 text-xs leading-relaxed text-muted-foreground">
+				<p class="mt-3 text-sm leading-relaxed text-muted-foreground">
 					GSAP is a peer dependency, so the application and plugin share one timeline instance.
 				</p>
 			</div>
 
-			<div class="mt-6 border-t border-border pt-4 lg:mt-auto">
-				<p class="text-sm font-medium">2. Register and compose</p>
-				<p class="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+			<div class="mt-8 border-t border-border/64 pt-6 lg:mt-auto dark:border-card/80">
+				<p class="font-semibold">2. Register and compose</p>
+				<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
 					The effect resolves duration before GSAP inserts the tween.
 				</p>
 			</div>
@@ -55,7 +57,7 @@
 				{htmlDark}
 				label="GSAP spring setup example"
 				framed={false}
-				class="h-full"
+				class="h-full bg-background dark:bg-card/64"
 			/>
 		</div>
 	</SectionPanel>

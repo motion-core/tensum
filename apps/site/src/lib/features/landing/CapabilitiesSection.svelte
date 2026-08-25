@@ -31,7 +31,7 @@
 	/>
 
 	<SectionPanel class="relative grid sm:grid-cols-2">
-		<div class="absolute top-2 right-2 z-30">
+		<div class="absolute top-3 right-3 z-30">
 			<ActionTooltip content={animationAction}>
 				{#snippet trigger({ props })}
 					<Button
@@ -39,7 +39,7 @@
 						type="button"
 						variant="ghost"
 						size="icon-md"
-						class="bg-card/80 backdrop-blur-sm"
+						class="bg-card/80 shadow-xs backdrop-blur-sm dark:bg-card/64 dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)] dark:hover:bg-card/80"
 						aria-label={animationAction}
 						onclick={toggleAnimations}
 					>
@@ -57,7 +57,7 @@
 		<CapabilityCard
 			eyebrow="VELOCITY HANDOFF"
 			title="Retarget without restarting."
-			class="sm:border-e sm:border-border"
+			class="sm:border-e sm:border-border/64 dark:sm:border-card/80"
 		>
 			{#snippet visual()}<MomentumIllustration paused={animationsPaused} />{/snippet}
 			{#snippet description()}
@@ -69,28 +69,28 @@
 		<CapabilityCard
 			eyebrow="GSAP COMPOSITION"
 			title="Let the spring set the duration."
-			class="border-t border-border sm:border-t-0"
+			class="border-t border-border/64 sm:border-t-0 dark:border-card/80"
 		>
 			{#snippet visual()}<TimelineIllustration paused={animationsPaused} />{/snippet}
 			{#snippet description()}
-				<code class="text-xs text-foreground">timeline.motionSpring()</code> resolves settling before
-				GSAP places sequential, staggered, or nested children.
+				<code class="font-mono text-sm text-foreground">timeline.motionSpring()</code> resolves settling
+				before GSAP places sequential, staggered, or nested children.
 			{/snippet}
 		</CapabilityCard>
 
-		<article class="min-w-0 border-t border-border sm:col-span-2">
+		<article class="min-w-0 border-t border-border/64 sm:col-span-2 dark:border-card/80">
 			<OutputsIllustration paused={animationsPaused} />
-			<div class="grid min-h-28 gap-3 border-t border-border p-4 sm:grid-cols-5 sm:items-start">
+			<div
+				class="grid min-h-32 gap-6 border-t border-border/64 p-6 sm:grid-cols-5 sm:items-start dark:border-card/80"
+			>
 				<div class="sm:col-span-2">
-					<p class="font-mono text-[10px] tracking-wider text-muted-foreground">
-						ONE ANALYTICAL CORE
-					</p>
-					<h3 class="mt-1.5 text-base font-medium">The same spring at every output.</h3>
+					<p class="font-mono text-xs text-muted-foreground">ONE ANALYTICAL CORE</p>
+					<h3 class="mt-2 text-lg font-semibold">The same spring at every output.</h3>
 				</div>
 				<p class="max-w-xl text-sm leading-relaxed text-pretty text-muted-foreground sm:col-span-3">
 					Use one closed-form solution for GSAP playback, direct controllers, deterministic
-					keyframes, and CSS <code class="text-xs text-foreground">linear()</code> export. Seeking and
-					frame rate do not alter the path.
+					keyframes, and CSS <code class="font-mono text-sm text-foreground">linear()</code> export. Seeking
+					and frame rate do not alter the path.
 				</p>
 			</div>
 		</article>

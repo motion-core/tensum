@@ -32,22 +32,24 @@
 
 <main id="main-content">
 	<PageSection id="playground">
-		<div class="mx-auto max-w-3xl text-center">
+		<div class="mx-auto max-w-4xl text-center">
 			<Badge variant="link">Physics-first motion toolkit</Badge>
-			<h1 class="mt-4 font-heading text-4xl font-semibold tracking-tight text-balance">
+			<h1
+				class="mt-5 font-heading text-5xl leading-none font-semibold tracking-tight text-balance sm:text-6xl"
+			>
 				Spring motion that keeps its momentum.
 			</h1>
-			<p class="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-pretty text-muted-foreground">
+			<p class="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-pretty text-muted-foreground">
 				Analytical spring physics for JavaScript, from deterministic sampling to reactive values and
 				GSAP timelines. Interrupt motion without inventing the next velocity.
 			</p>
-			<div class="mt-6 flex flex-wrap items-center justify-center gap-2">
+			<div class="mt-8 flex flex-wrap items-center justify-center gap-3">
 				<Button href="#capabilities">Explore capabilities</Button>
 				<Button href="#get-started" variant="ghost">Install the package</Button>
 			</div>
 		</div>
 
-		<div class="mt-10">
+		<div class="mt-12">
 			<SpringPlayground />
 		</div>
 	</PageSection>
@@ -64,7 +66,7 @@
 </main>
 
 <footer>
-	<PageContainer class="pb-8 text-xs">
+	<PageContainer class="pb-8 text-sm">
 		<Separator />
 		<div
 			class="flex flex-col gap-3 py-6 text-muted-foreground sm:flex-row sm:items-center sm:justify-between"

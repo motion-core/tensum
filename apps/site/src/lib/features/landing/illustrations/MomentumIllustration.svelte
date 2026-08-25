@@ -3,13 +3,13 @@
 </script>
 
 <div
-	class="momentum-illustration relative flex h-56 items-center justify-center overflow-hidden p-3"
+	class="momentum-illustration relative flex h-56 items-center justify-center overflow-hidden p-6"
 	data-paused={paused}
 	aria-hidden="true"
 >
 	<div>
 		<div class="relative mt-3 h-25">
-			<div class="absolute inset-x-0 top-12 h-px bg-border"></div>
+			<div class="absolute inset-x-0 top-12 h-px bg-border/64 dark:bg-card/80"></div>
 			<div
 				class="spring-trail absolute inset-s-[82%] top-12 h-px w-12 -translate-x-full -translate-y-1/2 bg-linear-to-r from-transparent to-chart-6/70"
 			></div>
@@ -37,7 +37,7 @@
 
 			<div class="spring-body absolute inset-s-[82%] top-12 z-10 -translate-x-1/2 -translate-y-1/2">
 				<span
-					class="block size-3 rounded-full border-2 border-background bg-foreground shadow-[0_0_0_1px_var(--border)]"
+					class="block size-3 rounded-full border-2 border-background bg-foreground shadow-[0_0_0_1px_var(--separator)]"
 				></span>
 				<div
 					class="absolute inset-s-4 top-1/2 flex -translate-y-1/2 items-center whitespace-nowrap"
@@ -52,8 +52,10 @@
 			</div>
 		</div>
 
-		<div class="grid grid-cols-3 overflow-hidden rounded-lg bg-muted shadow-sm dark:bg-muted/50">
-			<div class="border-e border-border px-2.5 py-2">
+		<div
+			class="grid grid-cols-3 overflow-hidden rounded-lg bg-background shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)] dark:bg-card/64 dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]"
+		>
+			<div class="border-e border-border/64 px-2.5 py-2 dark:border-card/80">
 				<p class="font-mono text-[0.5rem] tracking-widest text-muted-foreground uppercase">
 					target
 				</p>
@@ -62,7 +64,7 @@
 					<span class="target-value-new absolute inset-0 text-chart-6">480 px</span>
 				</div>
 			</div>
-			<div class="border-e border-border px-2.5 py-2">
+			<div class="border-e border-border/64 px-2.5 py-2 dark:border-card/80">
 				<p class="font-mono text-[0.5rem] tracking-widest text-muted-foreground uppercase">
 					handoff
 				</p>
