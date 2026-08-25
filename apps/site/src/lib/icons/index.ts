@@ -7,5 +7,6 @@ export { default as MenuIcon } from './MenuIcon.svelte';
 export { default as PauseIcon } from './PauseIcon.svelte';
 export { default as PlayIcon } from './PlayIcon.svelte';
 export { default as ResetIcon } from './ResetIcon.svelte';
+export { default as ThemeIcon } from './ThemeIcon.svelte';
 export { default as WarningIcon } from './WarningIcon.svelte';
 export type { IconComponent, IconProps } from './types';

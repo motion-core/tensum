@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
+	import { ThemeToggle } from '$lib/components/theme-toggle';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -21,7 +22,6 @@
 		<a
 			href={resolve('/')}
 			class="group inline-flex min-h-8 min-w-0 items-center gap-2 rounded-md font-medium tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-			aria-label="Spring home"
 		>
 			<span class="relative grid size-5 shrink-0 place-items-center" aria-hidden="true">
 				<span class="absolute size-3.5 rounded-full border border-foreground/35"></span>
@@ -29,7 +29,7 @@
 					class="size-1.5 rounded-full bg-foreground transition-transform duration-150 group-hover:scale-75 motion-reduce:transition-none"
 				></span>
 			</span>
-			<span class="truncate">@motion-core/spring</span>
+			<span class="truncate">@motion-core/spring</span><span class="sr-only"> home</span>
 		</a>
 
 		<div class="flex items-center gap-1">
@@ -42,6 +42,7 @@
 				variant="ghost"
 				class={hideDefaultActionsOnMobile ? 'hidden sm:inline-flex' : undefined}>Docs</Button
 			>
+			<ThemeToggle />
 			{@render trailingAction?.()}
 		</div>
 	</nav>
