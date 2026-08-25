@@ -33,7 +33,7 @@
 <main id="main-content">
 	<PageSection id="playground">
 		<div class="mx-auto max-w-3xl text-center">
-			<Badge variant="outline">Physics-first motion toolkit</Badge>
+			<Badge variant="link">Physics-first motion toolkit</Badge>
 			<h1 class="mt-4 font-heading text-4xl font-semibold tracking-tight text-balance">
 				Spring motion that keeps its momentum.
 			</h1>
@@ -43,7 +43,7 @@
 			</p>
 			<div class="mt-6 flex flex-wrap items-center justify-center gap-2">
 				<Button href="#capabilities">Explore capabilities</Button>
-				<Button href="#get-started" variant="outline">Install the package</Button>
+				<Button href="#get-started" variant="ghost">Install the package</Button>
 			</div>
 		</div>
 

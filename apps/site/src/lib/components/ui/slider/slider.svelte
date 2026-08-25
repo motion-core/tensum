@@ -41,7 +41,7 @@ get along, so we shut typescript up by casting `value` to `never`.
 	aria-describedby={ariaDescribedby}
 	class={cn(
 		isMeter
-			? 'group/slider relative flex h-7 w-full cursor-pointer touch-none items-center rounded-md border border-border/70 text-xs shadow-xs transition-colors select-none hover:bg-muted/30 data-disabled:cursor-not-allowed data-disabled:opacity-50'
+			? 'group/slider relative flex h-7 w-full cursor-pointer touch-none items-center rounded-md text-xs shadow-xs transition-colors select-none hover:bg-muted/30 data-disabled:cursor-not-allowed data-disabled:opacity-50'
 			: 'relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col',
 		className
 	)}
@@ -53,7 +53,7 @@ get along, so we shut typescript up by casting `value` to `never`.
 			data-orientation={orientation}
 			class={cn(
 				isMeter
-					? 'relative h-full w-full grow overflow-hidden rounded-sm'
+					? 'relative h-full w-full grow overflow-hidden rounded-[inherit]'
 					: 'relative grow overflow-hidden rounded-md bg-muted data-horizontal:h-1 data-horizontal:w-full data-vertical:h-full data-vertical:w-1'
 			)}
 		>
