@@ -7,7 +7,7 @@
 				<p class="font-mono text-[0.5625rem] text-muted-foreground">analytical core</p>
 				<p class="mt-0.5 text-xs font-medium">state(t)</p>
 			</div>
-			<span class="size-1.5 rounded-full bg-emerald-500"></span>
+			<span class="size-1.5 rounded-full bg-chart-6"></span>
 		</div>
 
 		<svg
@@ -37,10 +37,10 @@
 						keySplines="0.16 1 0.3 1"
 						repeatCount="indefinite"
 					/>
-					<stop offset="0" stop-color="var(--foreground)" stop-opacity="0" />
-					<stop offset="0.2" stop-color="var(--foreground)" stop-opacity="0.95" />
-					<stop offset="0.55" stop-color="var(--foreground)" stop-opacity="0.95" />
-					<stop offset="1" stop-color="var(--foreground)" stop-opacity="0" />
+					<stop offset="0" stop-color="var(--chart-6)" stop-opacity="0" />
+					<stop offset="0.2" stop-color="var(--chart-6)" stop-opacity="0.95" />
+					<stop offset="0.55" stop-color="var(--chart-6)" stop-opacity="0.95" />
+					<stop offset="1" stop-color="var(--chart-6)" stop-opacity="0" />
 				</linearGradient>
 
 				<linearGradient
@@ -61,10 +61,10 @@
 						keySplines="0.16 1 0.3 1"
 						repeatCount="indefinite"
 					/>
-					<stop offset="0" stop-color="var(--foreground)" stop-opacity="0" />
-					<stop offset="0.2" stop-color="var(--foreground)" stop-opacity="0.95" />
-					<stop offset="0.55" stop-color="var(--foreground)" stop-opacity="0.95" />
-					<stop offset="1" stop-color="var(--foreground)" stop-opacity="0" />
+					<stop offset="0" stop-color="var(--chart-2)" stop-opacity="0" />
+					<stop offset="0.2" stop-color="var(--chart-2)" stop-opacity="0.95" />
+					<stop offset="0.55" stop-color="var(--chart-2)" stop-opacity="0.95" />
+					<stop offset="1" stop-color="var(--chart-2)" stop-opacity="0" />
 				</linearGradient>
 
 				<linearGradient
@@ -85,10 +85,10 @@
 						keySplines="0.16 1 0.3 1"
 						repeatCount="indefinite"
 					/>
-					<stop offset="0" stop-color="var(--foreground)" stop-opacity="0" />
-					<stop offset="0.2" stop-color="var(--foreground)" stop-opacity="0.95" />
-					<stop offset="0.55" stop-color="var(--foreground)" stop-opacity="0.95" />
-					<stop offset="1" stop-color="var(--foreground)" stop-opacity="0" />
+					<stop offset="0" stop-color="var(--chart-4)" stop-opacity="0" />
+					<stop offset="0.2" stop-color="var(--chart-4)" stop-opacity="0.95" />
+					<stop offset="0.55" stop-color="var(--chart-4)" stop-opacity="0.95" />
+					<stop offset="1" stop-color="var(--chart-4)" stop-opacity="0" />
 				</linearGradient>
 			</defs>
 			<g>
@@ -162,7 +162,7 @@
 
 	.connector-base {
 		stroke: var(--border);
-		stroke-width: 1;
+		stroke-width: 2;
 	}
 
 	.flow-trace {

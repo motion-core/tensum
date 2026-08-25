@@ -25,7 +25,7 @@
 				>
 				<div class="relative h-10">
 					<div
-						class="absolute inset-y-2 inset-s-[5%] flex w-[34%] items-center rounded-md border border-sky-500/40 bg-sky-500/10 px-2 font-mono text-[0.5625rem] text-sky-400"
+						class="absolute inset-y-2 inset-s-[5%] flex w-[34%] items-center rounded-md border border-chart-1/40 bg-chart-1/10 px-2 font-mono text-[0.5625rem] text-chart-1"
 					>
 						x 320
 					</div>
@@ -39,9 +39,9 @@
 				>
 				<div class="relative h-10">
 					<div
-						class="absolute inset-y-2 inset-s-[32%] flex w-[43%] items-center justify-between rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 font-mono text-[0.5625rem] text-emerald-400"
+						class="absolute inset-y-2 inset-s-[32%] flex w-[43%] items-center justify-between rounded-md border border-chart-6/40 bg-chart-6/10 px-2 font-mono text-[0.5625rem] text-chart-6"
 					>
-						<span>rotate 18°</span><span class="text-emerald-400/60">1.14s</span>
+						<span>rotate 18°</span><span class="text-chart-6/60">1.14s</span>
 					</div>
 				</div>
 			</div>
@@ -53,7 +53,7 @@
 				>
 				<div class="relative h-10">
 					<div
-						class="absolute inset-y-2 inset-s-[63%] flex w-[30%] items-center rounded-md border border-violet-500/40 bg-violet-500/10 px-2 font-mono text-[0.5625rem] text-violet-400"
+						class="absolute inset-y-2 inset-s-[63%] flex w-[30%] items-center rounded-md border border-chart-4/40 bg-chart-4/10 px-2 font-mono text-[0.5625rem] text-chart-4"
 					>
 						stagger × 6
 					</div>

@@ -3,26 +3,26 @@
 		<div class="relative mt-3 h-25">
 			<div class="absolute inset-x-0 top-12 h-px bg-border"></div>
 			<div class="absolute inset-x-0 top-12 h-px overflow-hidden">
-				<div class="handoff-progress h-full origin-left bg-emerald-500/55"></div>
+				<div class="handoff-progress h-full origin-left bg-chart-6/55"></div>
 			</div>
 
 			<div class="old-target absolute inset-s-[42%] top-0 -translate-x-1/2 text-center">
-				<p class="font-mono text-[0.5rem] tracking-[0.12em] text-sky-400 uppercase">previous</p>
-				<p class="mt-0.5 font-mono text-[0.625rem] text-sky-300">240 px</p>
+				<p class="font-mono text-[0.5rem] tracking-[0.12em] text-chart-1 uppercase">previous</p>
+				<p class="mt-0.5 font-mono text-[0.625rem] text-chart-1/80">240 px</p>
 				<span
-					class="absolute inset-s-1/2 top-8 h-8 -translate-x-1/2 border-s border-dashed border-sky-500/55"
+					class="absolute inset-s-1/2 top-8 h-8 -translate-x-1/2 border-s border-dashed border-chart-1/55"
 				></span>
 			</div>
 
 			<div class="new-target absolute inset-s-[82%] top-0 -translate-x-1/2 text-center">
-				<p class="font-mono text-[0.5rem] tracking-[0.12em] text-emerald-400 uppercase">next</p>
-				<p class="mt-0.5 font-mono text-[0.625rem] text-emerald-300">480 px</p>
-				<span class="absolute inset-s-1/2 top-8 h-8 -translate-x-1/2 border-s border-emerald-500/60"
+				<p class="font-mono text-[0.5rem] tracking-[0.12em] text-chart-6 uppercase">next</p>
+				<p class="mt-0.5 font-mono text-[0.625rem] text-chart-6/80">480 px</p>
+				<span class="absolute inset-s-1/2 top-8 h-8 -translate-x-1/2 border-s border-chart-6/60"
 				></span>
 			</div>
 
 			<div
-				class="retarget-event absolute inset-s-[30%] top-[4.15rem] -translate-x-1/2 font-mono text-[0.5rem] tracking-[0.12em] text-violet-400 uppercase"
+				class="retarget-event absolute inset-s-[30%] top-[4.15rem] -translate-x-1/2 font-mono text-[0.5rem] tracking-[0.12em] text-chart-4 uppercase"
 			>
 				retarget
 			</div>
@@ -34,12 +34,12 @@
 				<div
 					class="absolute inset-s-4 top-1/2 flex -translate-y-1/2 items-center whitespace-nowrap"
 				>
-					<span class="relative h-px w-5 bg-emerald-400">
+					<span class="relative h-px w-5 bg-chart-6">
 						<span
-							class="absolute inset-e-0 top-1/2 size-1.5 -translate-y-1/2 rotate-45 border-e border-t border-emerald-400"
+							class="absolute inset-e-0 top-1/2 size-1.5 -translate-y-1/2 rotate-45 border-e border-t border-chart-6"
 						></span>
 					</span>
-					<span class="ms-2 font-mono text-[0.5rem] text-emerald-400">+612 px/s</span>
+					<span class="ms-2 font-mono text-[0.5rem] text-chart-6">+612 px/s</span>
 				</div>
 			</div>
 		</div>
@@ -52,8 +52,8 @@
 					target
 				</p>
 				<div class="relative mt-0.5 h-4 font-mono text-[0.625rem]">
-					<span class="target-value-old absolute inset-0 text-sky-400">240 px</span>
-					<span class="target-value-new absolute inset-0 text-emerald-400">480 px</span>
+					<span class="target-value-old absolute inset-0 text-chart-1">240 px</span>
+					<span class="target-value-new absolute inset-0 text-chart-6">480 px</span>
 				</div>
 			</div>
 			<div class="border-e border-border px-2.5 py-2">
@@ -66,7 +66,7 @@
 				<p class="font-mono text-[0.5rem] tracking-widest text-muted-foreground uppercase">
 					result
 				</p>
-				<p class="mt-0.5 font-mono text-[0.625rem] text-emerald-400">no restart</p>
+				<p class="mt-0.5 font-mono text-[0.625rem] text-chart-6">no restart</p>
 			</div>
 		</div>
 	</div>
