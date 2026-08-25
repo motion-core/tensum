@@ -39,7 +39,7 @@
 	<CopyCodeButton
 		value={code}
 		label={`Copy ${label.toLowerCase()}`}
-		class="absolute inset-e-1 top-1 z-10 bg-card/80 backdrop-blur-sm"
+		class="absolute inset-e-1 top-1 z-10"
 	/>
 
 	<div class="shiki-theme-light">

@@ -61,7 +61,7 @@ get along, so we shut typescript up by casting `value` to `never`.
 				data-slot="slider-range"
 				class={cn(
 					'absolute select-none data-horizontal:h-full data-vertical:w-full',
-					isMeter ? 'z-10 bg-muted' : 'bg-primary'
+					isMeter ? 'z-10 bg-muted dark:bg-muted/50' : 'bg-primary'
 				)}
 			/>
 			{#if isMeter}

@@ -15,7 +15,7 @@
 </script>
 
 <aside
-	class="mt-7 flex items-start gap-3 rounded-lg border border-border bg-card p-2"
+	class="mt-7 flex items-start gap-3 rounded-lg border border-border bg-card p-2 shadow-sm"
 	aria-label={title}
 >
 	<span
