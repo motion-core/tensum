@@ -10,10 +10,7 @@
 	}: TabsPrimitive.ContentProps = $props();
 </script>
 
-<TabsPrimitive.Content
-	bind:ref
-	{...restProps}
->
+<TabsPrimitive.Content bind:ref {...restProps}>
 	{#snippet child({ props })}
 		<div
 			{...props}

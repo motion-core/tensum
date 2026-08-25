@@ -56,7 +56,7 @@
 				{...props}
 				type="button"
 				class={cn(
-					buttonVariants({ variant: 'ghost', size: 'icon-md' }),
+					buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
 					'ms-1 align-middle text-muted-foreground opacity-0 transition-[opacity,color,background-color,box-shadow] duration-150 group-hover/heading:opacity-100 hover:text-foreground focus-visible:opacity-100 motion-reduce:transition-none'
 				)}
 				data-copied={copied}
