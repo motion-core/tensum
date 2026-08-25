@@ -34,6 +34,8 @@
 						values="0 0;-209.3 57.3"
 						begin="0s"
 						dur="2.4s"
+						calcMode="spline"
+						keyTimes="0;1"
 						keySplines="0.16 1 0.3 1"
 						repeatCount="indefinite"
 					/>
@@ -58,7 +60,9 @@
 						values="0 0;0 77"
 						begin="0s"
 						dur="2.4s"
-						keySplines="0.16 1 0.3 1"
+						calcMode="spline"
+						keyTimes="0;1"
+						keySplines="0.65 0 0.35 1"
 						repeatCount="indefinite"
 					/>
 					<stop offset="0" stop-color="var(--chart-2)" stop-opacity="0" />
@@ -82,7 +86,9 @@
 						values="0 0;209.3 57.3"
 						begin="0s"
 						dur="2.4s"
-						keySplines="0.16 1 0.3 1"
+						calcMode="spline"
+						keyTimes="0;1"
+						keySplines="0.22 1 0.36 1"
 						repeatCount="indefinite"
 					/>
 					<stop offset="0" stop-color="var(--chart-4)" stop-opacity="0" />

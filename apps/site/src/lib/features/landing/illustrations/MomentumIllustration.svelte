@@ -1,10 +1,13 @@
-<div class="relative flex h-56 items-center justify-center overflow-hidden p-3" aria-hidden="true">
+<div
+	class="momentum-illustration relative flex h-56 items-center justify-center overflow-hidden p-3"
+	aria-hidden="true"
+>
 	<div>
 		<div class="relative mt-3 h-25">
 			<div class="absolute inset-x-0 top-12 h-px bg-border"></div>
-			<div class="absolute inset-x-0 top-12 h-px overflow-hidden">
-				<div class="handoff-progress h-full origin-left bg-chart-6/55"></div>
-			</div>
+			<div
+				class="spring-trail absolute inset-s-[82%] top-12 h-px w-12 -translate-x-full -translate-y-1/2 bg-linear-to-r from-transparent to-chart-6/70"
+			></div>
 
 			<div class="old-target absolute inset-s-[42%] top-0 -translate-x-1/2 text-center">
 				<p class="font-mono text-[0.5rem] tracking-[0.12em] text-chart-1 uppercase">previous</p>
@@ -22,12 +25,12 @@
 			</div>
 
 			<div
-				class="retarget-event absolute inset-s-[30%] top-[4.15rem] -translate-x-1/2 font-mono text-[0.5rem] tracking-[0.12em] text-chart-4 uppercase"
+				class="retarget-event absolute inset-s-[35%] top-[4.15rem] -translate-x-1/2 font-mono text-[0.5rem] tracking-[0.12em] text-chart-4 uppercase"
 			>
 				retarget
 			</div>
 
-			<div class="spring-body absolute inset-s-[30%] top-12 z-10 -translate-x-1/2 -translate-y-1/2">
+			<div class="spring-body absolute inset-s-[82%] top-12 z-10 -translate-x-1/2 -translate-y-1/2">
 				<span
 					class="block size-3 rounded-full border-2 border-background bg-foreground shadow-[0_0_0_1px_var(--border)]"
 				></span>
@@ -73,63 +76,121 @@
 </div>
 
 <style>
+	.momentum-illustration {
+		--momentum-duration: 4.2s;
+	}
+
+	/* Sampled from two analytical springs with continuous position and velocity at 19.31%. */
 	@keyframes spring-body {
 		0% {
 			inset-inline-start: 8%;
 			opacity: 0;
 		}
 		5% {
+			inset-inline-start: 8%;
 			opacity: 1;
 		}
-		30% {
-			inset-inline-start: 30%;
+		7.86% {
+			inset-inline-start: 10.46%;
 		}
-		62% {
-			inset-inline-start: 82%;
+		10.72% {
+			inset-inline-start: 16.07%;
 		}
-		72% {
-			inset-inline-start: 87%;
+		13.59% {
+			inset-inline-start: 22.74%;
 		}
-		82% {
-			inset-inline-start: 80.5%;
+		16.45% {
+			inset-inline-start: 29.15%;
 		}
-		90% {
+		19.31% {
+			inset-inline-start: 34.55%;
+		}
+		22.17% {
+			inset-inline-start: 44.69%;
+		}
+		25.03% {
+			inset-inline-start: 60.66%;
+		}
+		27.9% {
+			inset-inline-start: 76.28%;
+		}
+		30.76% {
+			inset-inline-start: 87.69%;
+		}
+		33.62% {
+			inset-inline-start: 93.52%;
+		}
+		36.48% {
+			inset-inline-start: 94.31%;
+		}
+		39.34% {
+			inset-inline-start: 91.67%;
+		}
+		42.21% {
+			inset-inline-start: 87.53%;
+		}
+		45.07% {
+			inset-inline-start: 83.48%;
+		}
+		47.93% {
+			inset-inline-start: 80.52%;
+		}
+		50.79% {
+			inset-inline-start: 79.01%;
+		}
+		53.66% {
+			inset-inline-start: 78.81%;
+		}
+		56.52% {
+			inset-inline-start: 79.49%;
+		}
+		59.38% {
+			inset-inline-start: 80.57%;
+		}
+		62.24% {
+			inset-inline-start: 81.62%;
+		}
+		65.1% {
+			inset-inline-start: 82.39%;
+		}
+		67.97% {
+			inset-inline-start: 82.78%;
+		}
+		70.83% {
+			inset-inline-start: 82.83%;
+		}
+		73.69% {
+			inset-inline-start: 82.65%;
+		}
+		76.55% {
+			inset-inline-start: 82.37%;
+		}
+		79.41% {
+			inset-inline-start: 82.1%;
+		}
+		82.28% {
+			inset-inline-start: 81.9%;
+		}
+		85.14% {
+			inset-inline-start: 81.8%;
+		}
+		88%,
+		92% {
 			inset-inline-start: 82%;
 			opacity: 1;
 		}
 		100% {
 			inset-inline-start: 82%;
-			opacity: 0;
-		}
-	}
-
-	@keyframes handoff-progress {
-		0% {
-			transform: scaleX(0.08);
-			opacity: 0;
-		}
-		5% {
-			opacity: 1;
-		}
-		62% {
-			transform: scaleX(0.82);
-		}
-		90% {
-			transform: scaleX(0.82);
-			opacity: 1;
-		}
-		100% {
-			transform: scaleX(0.82);
 			opacity: 0;
 		}
 	}
 
 	@keyframes previous-target {
 		0%,
-		27% {
+		17% {
 			opacity: 1;
 		}
-		34%,
+		24%,
 		100% {
 			opacity: 0.28;
 		}
@@ -137,10 +198,10 @@
 
 	@keyframes next-target {
 		0%,
-		27% {
+		17% {
 			opacity: 0.28;
 		}
-		34%,
+		24%,
 		94% {
 			opacity: 1;
 		}
@@ -151,16 +212,16 @@
 
 	@keyframes retarget-event {
 		0%,
-		25% {
+		16% {
 			opacity: 0;
 			transform: translateX(-50%) translateY(0.25rem);
 		}
-		30%,
-		40% {
+		20%,
+		30% {
 			opacity: 1;
 			transform: translateX(-50%) translateY(0);
 		}
-		48%,
+		38%,
 		100% {
 			opacity: 0;
 			transform: translateX(-50%) translateY(-0.25rem);
@@ -169,11 +230,11 @@
 
 	@keyframes target-value-old {
 		0%,
-		27% {
+		17% {
 			opacity: 1;
 			transform: translateY(0);
 		}
-		34%,
+		24%,
 		100% {
 			opacity: 0;
 			transform: translateY(-0.25rem);
@@ -182,11 +243,11 @@
 
 	@keyframes target-value-new {
 		0%,
-		27% {
+		17% {
 			opacity: 0;
 			transform: translateY(0.25rem);
 		}
-		34%,
+		24%,
 		100% {
 			opacity: 1;
 			transform: translateY(0);
@@ -197,8 +258,9 @@
 		opacity: 0.28;
 	}
 
-	.handoff-progress {
-		transform: scaleX(0.3);
+	.spring-trail,
+	.retarget-event {
+		opacity: 0;
 	}
 
 	.target-value-old {
@@ -206,32 +268,29 @@
 	}
 
 	@media (prefers-reduced-motion: no-preference) {
-		.spring-body {
-			animation: spring-body 5.2s linear infinite;
-		}
-
-		.handoff-progress {
-			animation: handoff-progress 5.2s linear infinite;
+		.spring-body,
+		.spring-trail {
+			animation: spring-body var(--momentum-duration) linear infinite;
 		}
 
 		.old-target {
-			animation: previous-target 5.2s ease-out infinite;
+			animation: previous-target var(--momentum-duration) cubic-bezier(0.2, 0, 0, 1) infinite;
 		}
 
 		.new-target {
-			animation: next-target 5.2s ease-out infinite;
+			animation: next-target var(--momentum-duration) cubic-bezier(0.2, 0, 0, 1) infinite;
 		}
 
 		.retarget-event {
-			animation: retarget-event 5.2s ease-out infinite;
+			animation: retarget-event var(--momentum-duration) cubic-bezier(0.16, 1, 0.3, 1) infinite;
 		}
 
 		.target-value-old {
-			animation: target-value-old 5.2s ease-out infinite;
+			animation: target-value-old var(--momentum-duration) cubic-bezier(0.16, 1, 0.3, 1) infinite;
 		}
 
 		.target-value-new {
-			animation: target-value-new 5.2s ease-out infinite;
+			animation: target-value-new var(--momentum-duration) cubic-bezier(0.16, 1, 0.3, 1) infinite;
 		}
 	}
 </style>

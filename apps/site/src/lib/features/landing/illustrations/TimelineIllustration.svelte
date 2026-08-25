@@ -75,7 +75,7 @@
 
 	@media (prefers-reduced-motion: no-preference) {
 		.timeline-cursor {
-			animation: timeline-cursor 5s linear infinite;
+			animation: timeline-cursor 5s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 		}
 	}
 </style>
