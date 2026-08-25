@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import { ActionTooltip } from '$lib/components/action-tooltip';
 	import { CopyFeedbackIcon } from '$lib/components/copy-feedback';
 	import { Button, type ButtonSize } from '$lib/components/ui/button';
 	import { CopyIcon } from '$lib/icons';
@@ -25,8 +26,10 @@
 	}: Props = $props();
 
 	let copied = $state(false);
+	let failed = $state(false);
 	let announcement = $state('');
 	let resetTimer: ReturnType<typeof setTimeout> | undefined;
+	let tooltipLabel = $derived(failed ? 'Could not copy code' : copied ? copiedLabel : label);
 
 	async function copy() {
 		try {
@@ -36,25 +39,38 @@
 			clearTimeout(resetTimer);
 			resetTimer = setTimeout(() => {
 				copied = false;
+				failed = false;
 				announcement = '';
-			}, 2000);
+			}, 3000);
 		} catch {
+			copied = false;
+			failed = true;
 			announcement = failureMessage;
+			clearTimeout(resetTimer);
+			resetTimer = setTimeout(() => {
+				failed = false;
+				announcement = '';
+			}, 3000);
 		}
 	}
 
 	onDestroy(() => clearTimeout(resetTimer));
 </script>
 
-<Button
-	type="button"
-	variant="ghost"
-	{size}
-	class={className}
-	data-copied={copied}
-	aria-label={copied ? copiedLabel : label}
-	onclick={copy}
->
-	<CopyFeedbackIcon {copied} idleIcon={CopyIcon} />
-</Button>
-<span class="sr-only" role="status" aria-live="polite">{announcement}</span>
+<ActionTooltip content={tooltipLabel} disableCloseOnTriggerClick>
+	{#snippet trigger({ props })}
+		<Button
+			{...props}
+			type="button"
+			variant="ghost"
+			{size}
+			class={className}
+			data-copied={copied}
+			aria-label={tooltipLabel}
+			onclick={copy}
+		>
+			<CopyFeedbackIcon {copied} idleIcon={CopyIcon} />
+		</Button>
+	{/snippet}
+</ActionTooltip>
+<span class="sr-only" role="status" aria-atomic="true">{announcement}</span>
