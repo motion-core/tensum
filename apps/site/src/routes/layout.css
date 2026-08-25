@@ -186,3 +186,10 @@
 		transition-duration: 0.01ms !important;
 	}
 }
+
+@media (forced-colors: active) {
+	:focus-visible {
+		outline: 2px solid Highlight !important;
+		outline-offset: 2px;
+	}
+}
