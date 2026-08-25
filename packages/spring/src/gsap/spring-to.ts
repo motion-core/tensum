@@ -173,6 +173,12 @@ function validateSpringToInput(vars: unknown): asserts vars is SpringToVars {
   if (!isRecord(vars['spring'])) {
     throw new TypeError('springTo requires a spring parameters object');
   }
+  if (
+    vars['spring']['settle'] !== undefined &&
+    !isRecord(vars['spring']['settle'])
+  ) {
+    throw new TypeError('springTo spring.settle must be an object');
+  }
 
   validateOptionalRecord(vars['targets'], 'targets');
   validateOptionalRecord(vars['properties'], 'properties');
@@ -203,6 +209,26 @@ function validateSpringToInput(vars: unknown): asserts vars is SpringToVars {
       validatePropertyName(property);
       if (!isRecord(value)) {
         throw new TypeError(`Properties for ${property} must be an object`);
+      }
+      if (value['settle'] !== undefined && !isRecord(value['settle'])) {
+        throw new TypeError(`settle for ${property} must be an object`);
+      }
+      for (const parameter of [
+        'mass',
+        'stiffness',
+        'damping',
+        'velocity',
+      ] as const) {
+        const parameterValue = value[parameter];
+        if (
+          parameterValue !== undefined &&
+          (typeof parameterValue !== 'number' ||
+            !Number.isFinite(parameterValue))
+        ) {
+          throw new TypeError(
+            `${parameter} for ${property} must be a finite number`,
+          );
+        }
       }
     }
   }
@@ -427,9 +453,18 @@ export function optionsFor(
   const propertySettle = propertyOptions?.settle;
 
   return {
-    mass: propertyOptions?.mass ?? vars.spring.mass,
-    stiffness: propertyOptions?.stiffness ?? vars.spring.stiffness,
-    damping: propertyOptions?.damping ?? vars.spring.damping,
+    mass:
+      propertyOptions?.mass === undefined
+        ? vars.spring.mass
+        : propertyOptions.mass,
+    stiffness:
+      propertyOptions?.stiffness === undefined
+        ? vars.spring.stiffness
+        : propertyOptions.stiffness,
+    damping:
+      propertyOptions?.damping === undefined
+        ? vars.spring.damping
+        : propertyOptions.damping,
     ...(commonSettle || propertySettle
       ? { settle: { ...commonSettle, ...propertySettle } }
       : {}),
@@ -599,6 +634,7 @@ export function springTo(
     if (!didLogicalComplete && snapshot.elapsed >= timing.logicalDuration) {
       didLogicalComplete = true;
       vars.onLogicalComplete?.(snapshot);
+      if (killed) return;
     }
     if (
       !timing.hasUnsettled &&
@@ -646,6 +682,7 @@ export function springTo(
     if (killed || didComplete) return;
     clock.elapsed = finiteDuration;
     const snapshot = render(false);
+    if (killed) return;
     retireActiveTrackRegistrations(
       Object.values(active).map((entry) => entry.registration),
     );

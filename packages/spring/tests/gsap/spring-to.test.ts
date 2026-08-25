@@ -666,6 +666,75 @@ describe('springTo', () => {
     expect(() =>
       springTo({ constructor: 0 }, { targets: { constructor: 100 }, spring }),
     ).toThrow(/Invalid spring property/);
+    expect(() =>
+      springTo(
+        { x: 0 },
+        { x: 100, spring: { ...spring, settle: null as never } },
+      ),
+    ).toThrow(/spring.settle must be an object/);
+    expect(() =>
+      springTo(
+        { x: 0 },
+        {
+          x: 100,
+          spring,
+          properties: { x: { settle: 'later' as never } },
+        },
+      ),
+    ).toThrow(/settle for x must be an object/);
+    expect(() =>
+      springTo(
+        { x: 0 },
+        {
+          x: 100,
+          spring,
+          properties: { x: { mass: null as never } },
+        },
+      ),
+    ).toThrow(/mass for x must be a finite number/);
+  });
+
+  it('stops later lifecycle callbacks when a logical callback kills the controller', () => {
+    const events: string[] = [];
+    let controller: ReturnType<typeof springTo>;
+    controller = springTo(
+      { x: 0 },
+      {
+        x: 100,
+        spring,
+        onLogicalComplete: () => {
+          events.push('logical');
+          controller.kill();
+        },
+        onSettle: () => events.push('settle'),
+        onComplete: () => events.push('complete'),
+      },
+    );
+
+    mocks.calls[0]!.vars.onComplete?.();
+
+    expect(events).toEqual(['logical']);
+  });
+
+  it('supports a reentrant handoff from a zero-duration lifecycle callback', () => {
+    const target = { x: 0 };
+    let redirected: ReturnType<typeof springTo> | undefined;
+
+    expect(() =>
+      springTo(target, {
+        x: 0,
+        spring,
+        onSettle: () => {
+          redirected = springTo(target, { x: 100, spring });
+        },
+      }),
+    ).not.toThrow();
+
+    expect(redirected?.springs.x!.stateAt(0)).toEqual({
+      position: 0,
+      velocity: 0,
+    });
+    redirected?.kill();
   });
 
   it('accepts a selector only when GSAP resolves exactly one target', () => {
