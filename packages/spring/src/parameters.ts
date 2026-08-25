@@ -79,7 +79,7 @@ function assertNonNegative(name: string, value: number): void {
 }
 
 function resolvedMass(mass: number | undefined): number {
-  const value = mass ?? DEFAULT_MASS;
+  const value = mass === undefined ? DEFAULT_MASS : mass;
   assertPositive('mass', value);
   return value;
 }
@@ -101,7 +101,18 @@ function fromFrequency(
   assertPositive('angularFrequency', frequency);
   assertNonNegative('dampingRatio', ratio);
   const stiffness = mass * frequency * frequency;
-  const damping = 2 * ratio * mass * frequency;
+  let damping = 2 * ratio * mass * frequency;
+  if (!Number.isFinite(damping) || damping === 0) {
+    const candidates = [
+      2 * mass * ratio * frequency,
+      2 * frequency * mass * ratio,
+      2 * mass * (ratio * frequency),
+    ];
+    const representable = candidates.find(
+      (candidate) => Number.isFinite(candidate) && candidate > 0,
+    );
+    if (representable !== undefined) damping = representable;
+  }
   return freezeParameters({ mass, stiffness, damping });
 }
 
@@ -196,12 +207,16 @@ export const springParameters: SpringParameterConverters = Object.freeze({
 });
 
 function createPreset(baseBounce: number): SpringPreset {
-  return (options: SpringPresetOptions = {}): Readonly<SpringParameters> =>
-    springParameters.fromPerceptualDuration({
-      duration: options.duration ?? 0.5,
-      bounce: baseBounce + (options.extraBounce ?? 0),
+  return (options: SpringPresetOptions = {}): Readonly<SpringParameters> => {
+    const extraBounce =
+      options.extraBounce === undefined ? 0 : options.extraBounce;
+    assertFinite('extraBounce', extraBounce);
+    return springParameters.fromPerceptualDuration({
+      duration: options.duration === undefined ? 0.5 : options.duration,
+      bounce: baseBounce + extraBounce,
       ...(options.mass === undefined ? {} : { mass: options.mass }),
     });
+  };
 }
 
 export const springPresets: SpringPresets = Object.freeze({

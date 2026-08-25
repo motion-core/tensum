@@ -84,6 +84,27 @@ describe('spring parameter converters', () => {
     expect(characteristics.regime).toBe('overdamped');
     expect(Object.isFrozen(characteristics)).toBe(true);
   });
+
+  it('rejects explicit null optional converter inputs', () => {
+    expect(() =>
+      springParameters.fromResponse({
+        response: 0.5,
+        dampingRatio: 0.7,
+        mass: null as never,
+      }),
+    ).toThrow(RangeError);
+  });
+
+  it('keeps representable damping products finite', () => {
+    const parameters = springParameters.fromResponse({
+      response: 2 * Math.PI,
+      dampingRatio: 1e308,
+      mass: 1e-308,
+    });
+
+    expect(parameters.stiffness).toBe(1e-308);
+    expect(parameters.damping).toBeCloseTo(2, 12);
+  });
 });
 
 describe('perceptual spring presets', () => {
@@ -97,5 +118,14 @@ describe('perceptual spring presets', () => {
 
     expect(characteristics.perceptualDuration).toBeCloseTo(0.8, 12);
     expect(characteristics.bounce).toBeCloseTo(baseBounce + 0.05, 12);
+  });
+
+  it('rejects explicit null preset overrides', () => {
+    expect(() => springPresets.smooth({ duration: null as never })).toThrow(
+      RangeError,
+    );
+    expect(() => springPresets.smooth({ extraBounce: null as never })).toThrow(
+      RangeError,
+    );
   });
 });
