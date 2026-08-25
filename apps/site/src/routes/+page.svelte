@@ -1,8 +1,15 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
+	import { PageContainer, PageSection, SiteHeader } from '$lib/components/layout';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
+	import { CapabilitiesSection, InstallationSection } from '$lib/features/landing';
 	import { SpringPlayground } from '$lib/features/playground';
+
+	import type { PageProps } from './$types';
+
+	let { data }: PageProps = $props();
 </script>
 
 <svelte:head>
@@ -21,30 +28,10 @@
 	Skip to content
 </Button>
 
-<header class="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
-	<nav
-		class="relative mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3"
-		aria-label="Main navigation"
-	>
-		<div class="flex items-center gap-2">
-			<Button href="/" variant="ghost" aria-label="Spring home">@motion-core/spring</Button>
-		</div>
-
-		<div class="absolute left-1/2 hidden -translate-x-1/2 items-center md:flex">
-			<Button href="#playground" variant="ghost">Playground</Button>
-		</div>
-
-		<div class="flex items-center gap-2">
-			<Badge class="hidden sm:inline-flex" variant="secondary">v0.1.0</Badge>
-		</div>
-	</nav>
-</header>
+<SiteHeader />
 
 <main id="main-content">
-	<section
-		class="mx-auto max-w-5xl scroll-mt-16 px-4 pt-12 pb-12 sm:pt-16 sm:pb-16"
-		id="playground"
-	>
+	<PageSection id="playground">
 		<div class="mx-auto max-w-3xl text-center">
 			<Badge variant="outline">Physics-first motion toolkit</Badge>
 			<h1 class="mt-4 font-heading text-4xl font-semibold tracking-tight text-balance">
@@ -54,22 +41,41 @@
 				Analytical spring physics for JavaScript, from deterministic sampling to reactive values and
 				GSAP timelines. Interrupt motion without inventing the next velocity.
 			</p>
+			<div class="mt-6 flex flex-wrap items-center justify-center gap-2">
+				<Button href="#capabilities">Explore capabilities</Button>
+				<Button href="#get-started" variant="outline">Install the package</Button>
+			</div>
 		</div>
 
 		<div class="mt-10">
 			<SpringPlayground />
 		</div>
-	</section>
+	</PageSection>
+
+	<CapabilitiesSection />
+	<InstallationSection
+		installCommand={data.installationCommand.raw}
+		setupCode={data.installationCode.raw}
+		commandHtmlLight={data.installationCommand.light}
+		commandHtmlDark={data.installationCommand.dark}
+		htmlLight={data.installationCode.light}
+		htmlDark={data.installationCode.dark}
+	/>
 </main>
 
-<footer class="mx-auto w-full max-w-5xl px-4 pb-8 text-xs">
-	<Separator />
-	<div
-		class="flex flex-col gap-3 py-6 text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
-	>
-		<p>Motion Core / Spring · MIT licensed</p>
-		<nav class="flex flex-wrap gap-3" aria-label="Package links">
-			<a class="hover:text-foreground" href="#playground">Spring core</a>
-		</nav>
-	</div>
+<footer>
+	<PageContainer class="pb-8 text-xs">
+		<Separator />
+		<div
+			class="flex flex-col gap-3 py-6 text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
+		>
+			<p>Motion Core / Spring · MIT licensed</p>
+			<nav class="flex flex-wrap gap-3" aria-label="Package links">
+				<a class="hover:text-foreground" href="#playground">Playground</a>
+				<a class="hover:text-foreground" href="#capabilities">Capabilities</a>
+				<a class="hover:text-foreground" href="#get-started">Get started</a>
+				<a class="hover:text-foreground" href={resolve('/docs')}>Docs</a>
+			</nav>
+		</div>
+	</PageContainer>
 </footer>
