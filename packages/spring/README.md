@@ -344,7 +344,8 @@ import { createCoupledSpringSystem } from "@motion-core/spring/coupled";
 
 ## Compatibility
 
-- Runtime: Node.js 18 or newer and browser environments supported by the
+- Runtime: Node.js 20.19.x or Node.js 22.12 and newer, plus browser
+  environments supported by the
   installed GSAP version.
 - Peer dependency: GSAP `^3.15.0`.
 - Modules: ESM only; CommonJS `require()` is intentionally absent from the

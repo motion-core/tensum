@@ -250,9 +250,8 @@ pnpm benchmark
 pnpm release:check
 ```
 
-The package runtime supports Node.js 18 or newer. Working in this repository
-requires Node.js 20.19.x, or Node.js 22.12 and newer, because the current build
-and test tools no longer run on Node 18. `pnpm release:check` builds every
+The package runtime and this repository require Node.js 20.19.x, or Node.js
+22.12 and newer. `pnpm release:check` builds every
 workspace, runs all checks, validates the package manifest, packs a tarball,
 and installs that tarball in a temporary consumer project. It does not publish
 or tag a release.
