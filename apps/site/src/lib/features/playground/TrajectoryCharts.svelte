@@ -48,6 +48,20 @@
 	]);
 
 	let duration = $derived(samples.at(-1)?.time ?? 0);
+	let initialSample = $derived(samples[0]);
+	let finalSample = $derived(samples.at(-1));
+	let peakVelocity = $derived(
+		samples.reduce(
+			(peak, sample) => (Math.abs(sample.velocity) > Math.abs(peak) ? sample.velocity : peak),
+			0
+		)
+	);
+	let positionSummary = $derived(
+		`Position starts at ${formatMeasurement(initialSample?.position ?? 0, positionUnit)} and ends at ${formatMeasurement(finalSample?.position ?? target, positionUnit)}, near the ${formatMeasurement(target, positionUnit)} target, over ${formatTime(duration)}.`
+	);
+	let velocitySummary = $derived(
+		`Velocity starts at ${formatMeasurement(initialSample?.velocity ?? 0, velocityUnit)}, reaches a peak magnitude of ${formatMeasurement(Math.abs(peakVelocity), velocityUnit)}, and ends at ${formatMeasurement(finalSample?.velocity ?? 0, velocityUnit)} over ${formatTime(duration)}.`
+	);
 	let positionDomain = $derived(domainFor('position'));
 	let velocityDomain = $derived(domainFor('velocity'));
 	let positionAnnotations = $derived([
@@ -116,8 +130,7 @@
 				config={chartConfig}
 				class="aspect-auto min-h-0 w-full flex-1"
 				role="img"
-				aria-label={`Position in ${positionUnit} over time in seconds. Dashed line marks the target position.`}
-				tabindex={0}
+				aria-label={positionSummary}
 			>
 				<LineChart
 					data={samples}
@@ -176,8 +189,7 @@
 				config={chartConfig}
 				class="aspect-auto min-h-0 w-full flex-1"
 				role="img"
-				aria-label={`Velocity in ${velocityUnit} over time in seconds. Dashed line marks zero velocity.`}
-				tabindex={0}
+				aria-label={velocitySummary}
 			>
 				<LineChart
 					data={samples}
