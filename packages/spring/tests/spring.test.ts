@@ -165,4 +165,65 @@ describe('analytical spring', () => {
     expect(retargeted.velocityAt(0)).toBeCloseTo(state.velocity, 10);
     expect(retargeted.initialState.target).toBe(100);
   });
+
+  it('converges at the largest finite sample time without producing NaN', () => {
+    const spring = createSpring({ from: 0, to: 1, ...defaults });
+
+    expect(spring.stateAt(Number.MAX_VALUE)).toEqual({
+      position: 1,
+      velocity: 0,
+    });
+  });
+
+  it('keeps representable critical-damping samples finite when polynomial intermediates overflow', () => {
+    const solver = createAnalyticalSolver(
+      { mass: 1, stiffness: 1, damping: 2 },
+      { position: 0, target: 0, velocity: Number.MAX_VALUE },
+    );
+
+    const state = solver.stateAt(2);
+    const bounds = solver.tailBoundsAt(2);
+    expect(state.position / Number.MAX_VALUE).toBeCloseTo(2 * Math.exp(-2), 12);
+    expect(state.velocity / Number.MAX_VALUE).toBeCloseTo(-Math.exp(-2), 12);
+    expect(Number.isFinite(bounds.position)).toBe(true);
+    expect(Number.isFinite(bounds.velocity)).toBe(true);
+  });
+
+  it('keeps representable overdamped modal coefficients finite', () => {
+    const solver = createAnalyticalSolver(
+      { mass: 1, stiffness: 1, damping: 1e308 },
+      { position: 1e308, target: 0, velocity: 0 },
+    );
+
+    expect(solver.stateAt(0)).toEqual({ position: 1e308, velocity: 0 });
+    const state = solver.stateAt(1);
+    expect(Number.isFinite(state.position)).toBe(true);
+    expect(Number.isFinite(state.velocity)).toBe(true);
+    expect(state.position / 1e308).toBeCloseTo(1, 12);
+  });
+
+  it('snapshots the initial state passed to the public analytical solver', () => {
+    const initial = { position: 0, velocity: 5, target: 100 };
+    const solver = createAnalyticalSolver(defaults, initial);
+    const expected = solver.stateAt(0.5);
+
+    initial.position = -1_000;
+    initial.velocity = -500;
+    initial.target = 2_000;
+
+    expect(solver.stateAt(0)).toEqual({ position: 0, velocity: 5 });
+    expect(solver.stateAt(0.5)).toEqual(expected);
+  });
+
+  it('rejects sampled states and bounds outside the finite numeric range', () => {
+    const solver = createAnalyticalSolver(
+      { mass: 1e308, stiffness: 1e-308, damping: 2 },
+      { position: 0, velocity: 1e308, target: 0 },
+    );
+
+    expect(() => solver.stateAt(1e308)).toThrow(/position must be a finite number/);
+    expect(() => solver.tailBoundsAt(1e308)).toThrow(
+      /position bound must be a finite number/,
+    );
+  });
 });

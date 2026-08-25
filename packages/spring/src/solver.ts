@@ -38,6 +38,29 @@ export function validateInitialState(initial: SpringInitialState): void {
   assertFinite('target', initial.target);
 }
 
+function finiteState(
+  position: number,
+  velocity: number,
+  suffix = '',
+): SpringState {
+  assertFinite(`position${suffix}`, position);
+  assertFinite(`velocity${suffix}`, velocity);
+  return { position, velocity };
+}
+
+function multiplyDivide(
+  first: number,
+  second: number,
+  divisor: number,
+): number {
+  const firstQuotient = (first / divisor) * second;
+  const secondQuotient = first * (second / divisor);
+  if (Number.isFinite(firstQuotient)) {
+    if (firstQuotient !== 0 || secondQuotient === 0) return firstQuotient;
+  }
+  return secondQuotient;
+}
+
 /**
  * Solves m·x″ + c·x′ + k·(x - target) = 0 in closed form.
  * Every sample is calculated from the initial conditions and absolute time.
@@ -48,6 +71,12 @@ export function createAnalyticalSolver(
 ): AnalyticalSolver {
   validateSpringParameters(parameters);
   validateInitialState(initial);
+
+  // Keep the public solver deterministic if the caller later reuses and
+  // mutates its input object.
+  const initialPosition = initial.position;
+  const initialVelocity = initial.velocity;
+  const target = initial.target;
 
   const omega0 = angularFrequency(parameters);
   const alpha = dampingDecayRate(parameters);
@@ -61,8 +90,8 @@ export function createAnalyticalSolver(
   }
 
   const regime = classifyDamping(zeta);
-  const y0 = initial.position - initial.target;
-  const v0 = initial.velocity;
+  const y0 = initialPosition - target;
+  const v0 = initialVelocity;
 
   assertFinite('initial displacement', y0);
 
@@ -94,25 +123,30 @@ export function createAnalyticalSolver(
       stateAt(time) {
         assertNonNegativeTime(time);
         if (time === 0) {
-          return { position: initial.position, velocity: initial.velocity };
+          return { position: initialPosition, velocity: initialVelocity };
         }
         const decay = Math.exp(-alpha * time);
-        const phase = omegaD * time;
+        if (decay === 0) return { position: target, velocity: 0 };
+        const rawPhase = omegaD * time;
+        const phase = Number.isFinite(rawPhase)
+          ? rawPhase
+          : (time % ((2 * Math.PI) / omegaD)) * omegaD;
         const cosine = Math.cos(phase);
         const sine = Math.sin(phase);
 
-        return {
-          position: initial.target + decay * (a * cosine + b * sine),
-          velocity: decay * (velocityCos * cosine + velocitySin * sine),
-        };
+        return finiteState(
+          target + decay * (a * cosine + b * sine),
+          decay * (velocityCos * cosine + velocitySin * sine),
+        );
       },
       tailBoundsAt(time) {
         assertNonNegativeTime(time);
         const decay = Math.exp(-alpha * time);
-        return {
-          position: decay * positionAmplitude,
-          velocity: decay * velocityAmplitude,
-        };
+        return finiteState(
+          decay * positionAmplitude,
+          decay * velocityAmplitude,
+          ' bound',
+        );
       },
       tailBoundsMonotonicAfter: 0,
     };
@@ -139,22 +173,27 @@ export function createAnalyticalSolver(
       stateAt(time) {
         assertNonNegativeTime(time);
         if (time === 0) {
-          return { position: initial.position, velocity: initial.velocity };
+          return { position: initialPosition, velocity: initialVelocity };
         }
         const decay = Math.exp(-omega0 * time);
-        return {
-          position: initial.target + decay * (a + b * time),
-          velocity: decay * (velocityConstant + velocityLinear * time),
-        };
+        if (decay === 0) return { position: target, velocity: 0 };
+        const timeDecay = time * decay;
+        return finiteState(
+          target + decay * a + timeDecay * b,
+          decay * velocityConstant + timeDecay * velocityLinear,
+        );
       },
       tailBoundsAt(time) {
         assertNonNegativeTime(time);
         const decay = Math.exp(-omega0 * time);
-        return {
-          position: decay * (Math.abs(a) + Math.abs(b) * time),
-          velocity:
-            decay * (Math.abs(velocityConstant) + Math.abs(velocityLinear) * time),
-        };
+        if (decay === 0) return { position: 0, velocity: 0 };
+        const timeDecay = time * decay;
+        return finiteState(
+          decay * Math.abs(a) + timeDecay * Math.abs(b),
+          decay * Math.abs(velocityConstant) +
+            timeDecay * Math.abs(velocityLinear),
+          ' bound',
+        );
       },
       // Every t·exp(-ωt) term decreases after t = 1/ω.
       tailBoundsMonotonicAfter: 1 / omega0,
@@ -171,8 +210,11 @@ export function createAnalyticalSolver(
   // -alpha + sqrt(alpha² - omega0²).
   const rootSlow = -omega0 * (omega0 / rootFastMagnitude);
   const rootSeparation = rootSlow - rootFast;
-  const coefficientSlow = (v0 - rootFast * y0) / rootSeparation;
-  const coefficientFast = (rootSlow * y0 - v0) / rootSeparation;
+  const normalizedVelocity = v0 / rootSeparation;
+  const coefficientSlow =
+    normalizedVelocity - multiplyDivide(rootFast, y0, rootSeparation);
+  const coefficientFast =
+    multiplyDivide(rootSlow, y0, rootSeparation) - normalizedVelocity;
 
   for (const [name, value] of [
     ['overdampedSlowRoot', rootSlow],
@@ -194,26 +236,26 @@ export function createAnalyticalSolver(
     stateAt(time) {
       assertNonNegativeTime(time);
       if (time === 0) {
-        return { position: initial.position, velocity: initial.velocity };
+        return { position: initialPosition, velocity: initialVelocity };
       }
       const slow = coefficientSlow * Math.exp(rootSlow * time);
       const fast = coefficientFast * Math.exp(rootFast * time);
-      return {
-        position: initial.target + slow + fast,
-        velocity: rootSlow * slow + rootFast * fast,
-      };
+      return finiteState(
+        target + slow + fast,
+        rootSlow * slow + rootFast * fast,
+      );
     },
     tailBoundsAt(time) {
       assertNonNegativeTime(time);
       const slowDecay = Math.exp(rootSlow * time);
       const fastDecay = Math.exp(rootFast * time);
-      return {
-        position:
-          Math.abs(coefficientSlow) * slowDecay + Math.abs(coefficientFast) * fastDecay,
-        velocity:
-          Math.abs(rootSlow * coefficientSlow) * slowDecay +
+      return finiteState(
+        Math.abs(coefficientSlow) * slowDecay +
+          Math.abs(coefficientFast) * fastDecay,
+        Math.abs(rootSlow * coefficientSlow) * slowDecay +
           Math.abs(rootFast * coefficientFast) * fastDecay,
-      };
+        ' bound',
+      );
     },
     tailBoundsMonotonicAfter: 0,
   };
