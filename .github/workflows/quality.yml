@@ -49,6 +49,7 @@ jobs:
           name: tensum-package
           path: .artifacts/*.tgz
           if-no-files-found: error
+          include-hidden-files: true
 
   runtime-support:
     name: Runtime smoke (Node ${{ matrix.node }})
