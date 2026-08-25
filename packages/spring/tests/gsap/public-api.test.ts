@@ -7,12 +7,14 @@ import type {
 } from '../../src/index.js';
 
 describe('GSAP public API', () => {
-  it('exposes the complete plugin surface from the single package entry point', () => {
-    expect(spring.MotionCoreSpringPlugin.name).toBe('motionSpring');
-    expect(spring.SpringPlugin).toBe(spring.MotionCoreSpringPlugin);
-    expect(spring.SUPPORTED_PROPERTIES).toEqual(['x', 'y', 'scale', 'rotation']);
-    expect(spring.registerMotionCoreSpringPlugin).toBeTypeOf('function');
-    expect(spring.registerSpringPlugin).toBe(spring.registerMotionCoreSpringPlugin);
+  it('exposes the complete GSAP surface from the single package entry point', () => {
+    expect(spring.SUPPORTED_PROPERTIES).toEqual([
+      'x',
+      'y',
+      'scale',
+      'rotation',
+    ]);
+    expect(spring.registerSpringPlugin).toBeTypeOf('function');
     expect(spring.createMotionSpringTween).toBeTypeOf('function');
     expect(spring.springTo).toBeTypeOf('function');
   });
@@ -20,6 +22,9 @@ describe('GSAP public API', () => {
   it('exposes the preflighted effect and helper through the root entry point', () => {
     spring.registerSpringPlugin(gsap);
     expect(gsap.effects['motionSpring']).toBeTypeOf('function');
+    expect(
+      (gsap.plugins as Record<string, unknown>)['motionSpring'],
+    ).toBeUndefined();
 
     const tweenOptions: MotionSpringEffectTweenVars = { paused: true };
     const vars: MotionSpringEffectVars = {

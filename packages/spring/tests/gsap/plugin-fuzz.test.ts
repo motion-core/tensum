@@ -3,7 +3,7 @@ import { gsap } from 'gsap';
 import {
   createMotionSpringTween,
   createSpring,
-  registerMotionCoreSpringPlugin,
+  registerSpringPlugin,
 } from '../../src/index.js';
 import type { MotionSpringEffectVars } from '../../src/index.js';
 
@@ -50,7 +50,7 @@ function expectFiniteTargets(
 }
 
 beforeAll(() => {
-  registerMotionCoreSpringPlugin(gsap);
+  registerSpringPlugin(gsap);
   gsap.ticker.sleep();
 });
 
@@ -59,7 +59,7 @@ afterEach(() => {
   gsap.ticker.sleep();
 });
 
-describe('MotionCoreSpringPlugin deterministic fuzz', () => {
+describe('motionSpring effect deterministic fuzz', () => {
   it('stays finite through adversarial multi-target seek, reverse, yoyo, and invalidate', () => {
     const random = randomSequence(0xa11ce);
     const targets = Array.from({ length: 6 }, (_, index) => ({
@@ -138,29 +138,22 @@ describe('MotionCoreSpringPlugin deterministic fuzz', () => {
     tween.kill();
   });
 
-  it('keeps killed properties frozen and restores host timing after the final participant', () => {
+  it('keeps killed unsettled properties frozen and restores finite repeat timing', () => {
     const random = randomSequence(0xc1ea4);
     const targets = Array.from({ length: 5 }, (_, index) => ({
       score: index * 10,
       drift: index * -5,
       opacity: 1,
     }));
-    const hostDuration = 0.37;
     const hostRepeat = 2;
-    const tween = gsap.to(targets, {
-      paused: true,
-      duration: hostDuration,
-      repeat: hostRepeat,
-      yoyo: true,
-      opacity: 0.2,
-      motionSpring: {
-        values: { score: 100, drift: 50 },
-        parameters,
-        properties: {
-          drift: { damping: 0, settle: { maxDuration: 0.15 } },
-        },
-        unsettled: 'continue',
+    const tween = createMotionSpringTween(targets, {
+      values: { score: 100, drift: 50 },
+      parameters,
+      properties: {
+        drift: { damping: 0, settle: { maxDuration: 0.15 } },
       },
+      unsettled: 'continue',
+      tween: { paused: true, repeat: hostRepeat, yoyo: true },
     });
 
     tween.totalTime(0.01, true);
@@ -169,63 +162,38 @@ describe('MotionCoreSpringPlugin deterministic fuzz', () => {
     tween.invalidate().totalTime(0.03, true);
     expect(tween.repeat()).toBe(-1);
 
-    const frozen = new Map<string, number>();
-    for (const property of ['drift', 'score'] as const) {
-      const shuffledTargets = shuffled(targets, random);
-      for (const target of shuffledTargets) {
-        tween.kill(target, property);
-        const key = `${targets.indexOf(target)}:${property}`;
-        frozen.set(key, target[property]);
-        tween.time((random() / 0xffff_ffff) * tween.duration(), true);
-
-        for (const [frozenKey, value] of frozen) {
-          const [targetIndex, frozenProperty] = frozenKey.split(':') as [
-            string,
-            'drift' | 'score',
-          ];
-          expect(targets[Number(targetIndex)]![frozenProperty]).toBe(value);
-        }
-        expectFiniteTargets(targets, ['score', 'drift', 'opacity']);
-      }
-
-      if (property === 'drift') {
-        expect(tween.repeat()).toBe(hostRepeat);
-        expect(tween.duration()).toBeGreaterThan(hostDuration);
-      }
-    }
-
-    expect(tween.repeat()).toBe(hostRepeat);
-    expect(tween.duration()).toBe(hostDuration);
-    tween.totalTime(tween.totalDuration(), true);
-    expect(targets.map((target) => target.opacity)).toEqual(
-      targets.map(() => 0.2),
-    );
-
-    for (const target of targets) {
-      tween.kill(target, 'score');
+    const frozen = new Map<number, number>();
+    for (const target of shuffled(targets, random)) {
       tween.kill(target, 'drift');
+      frozen.set(targets.indexOf(target), target.drift);
+      tween.time((random() / 0xffff_ffff) * tween.duration(), true);
+
+      for (const [targetIndex, value] of frozen) {
+        expect(targets[targetIndex]!.drift).toBe(value);
+      }
+      expectFiniteTargets(targets, ['score', 'drift']);
     }
+
     expect(tween.repeat()).toBe(hostRepeat);
-    expect(tween.duration()).toBe(hostDuration);
+    expect(tween.duration()).toBeGreaterThan(0);
+    tween.totalTime(tween.totalDuration(), true);
+    expect(targets.map((target) => target.score)).toEqual(
+      targets.map(() => 100),
+    );
     tween.kill();
     tween.kill();
   });
 
-  it('rebuilds a target-scoped property kill from its current value after invalidate', () => {
+  it('rebuilds a target-scoped property kill from its preflight snapshot after invalidate', () => {
     const targets = [{ score: 0 }, { score: 20 }];
-    const hostDuration = 0.25;
-    const tween = gsap.to(targets, {
-      paused: true,
-      duration: hostDuration,
-      motionSpring: {
-        values: { score: 100 },
-        parameters,
-      },
+    const tween = createMotionSpringTween(targets, {
+      values: { score: 100 },
+      parameters,
+      tween: { paused: true },
     });
 
     tween.time(0.05, true);
     tween.kill(targets[0], 'score');
-    const killedValue = targets[0]!.score;
     const liveValue = targets[1]!.score;
 
     tween.invalidate().time(0.01, true);
@@ -233,7 +201,7 @@ describe('MotionCoreSpringPlugin deterministic fuzz', () => {
 
     expect(targets[0]!.score).toBeCloseTo(
       createSpring({
-        from: killedValue,
+        from: 0,
         to: 100,
         velocity: 0,
         ...parameters,
@@ -244,7 +212,6 @@ describe('MotionCoreSpringPlugin deterministic fuzz', () => {
     expect(Number.isFinite(targets[1]!.score)).toBe(true);
     tween.kill(targets[0], 'score');
     tween.kill(targets[1], 'score');
-    expect(tween.duration()).toBe(hostDuration);
   });
 
   it('does not replay covered history after hundreds of multi-target handoffs', () => {
@@ -253,12 +220,10 @@ describe('MotionCoreSpringPlugin deterministic fuzz', () => {
     const layers: gsap.core.Tween[] = [];
 
     for (let layer = 0; layer < 256; layer += 1) {
-      const tween = gsap.to(targets, {
-        paused: true,
-        motionSpring: {
-          values: { score: (random() % 2_001) - 1_000 },
-          parameters,
-        },
+      const tween = createMotionSpringTween(targets, {
+        values: { score: (random() % 2_001) - 1_000 },
+        parameters,
+        tween: { paused: true },
       });
       tween.time(0.02, true);
       layers.push(tween);
@@ -283,15 +248,14 @@ describe('MotionCoreSpringPlugin deterministic fuzz', () => {
     const inheritedLazy = Object.assign(Object.create({ x: 100 }), {
       parameters,
     });
-    const lazyTarget = { x: 0 };
-    const lazyTween = gsap.to(lazyTarget, {
-      paused: true,
-      motionSpring: inheritedLazy,
-    });
-    expect(() => lazyTween.time(0.01, true)).toThrow(
-      /requires at least one numeric target property/,
-    );
-    expect(lazyTarget.x).toBe(0);
+    const inheritedTarget = { x: 0 };
+    expect(() =>
+      createMotionSpringTween(inheritedTarget, {
+        ...inheritedLazy,
+        tween: { paused: true },
+      }),
+    ).toThrow(/requires at least one numeric target property/);
+    expect(inheritedTarget.x).toBe(0);
 
     const inheritedFrom = Object.assign(
       Object.create({ from: { score: 900 } }),
@@ -383,13 +347,10 @@ describe('MotionCoreSpringPlugin deterministic fuzz', () => {
   it('cleans repeated invalidation and interruption exactly once', () => {
     const targets = [{ score: 10 }, { score: 20 }, { score: 30 }];
     const onInterrupt = vi.fn();
-    const tween = gsap.to(targets, {
-      paused: true,
-      onInterrupt,
-      motionSpring: {
-        values: { score: 100 },
-        parameters,
-      },
+    const tween = createMotionSpringTween(targets, {
+      values: { score: 100 },
+      parameters,
+      tween: { paused: true, onInterrupt },
     });
 
     for (let generation = 0; generation < 100; generation += 1) {

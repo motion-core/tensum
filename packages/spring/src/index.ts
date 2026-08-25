@@ -62,15 +62,12 @@ export type {
 } from './vector.js';
 export {
   createMotionSpringTween,
-  MotionCoreSpringPlugin,
-  MotionCoreSpringPlugin as SpringPlugin,
-  registerMotionCoreSpringPlugin,
-  registerMotionCoreSpringPlugin as registerSpringPlugin,
+  registerSpringPlugin,
 } from './gsap/plugin.js';
 export type {
   MotionSpringEffectTweenVars,
   MotionSpringEffectVars,
-  MotionSpringPluginVars,
+  MotionSpringVars,
 } from './gsap/plugin.js';
 export { SUPPORTED_PROPERTIES, springTo } from './gsap/spring-to.js';
 export type {

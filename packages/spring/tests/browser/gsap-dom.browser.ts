@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { gsap } from 'gsap';
 import {
+  createMotionSpringTween,
   createSpring,
   registerSpringPlugin,
   springTo,
@@ -43,14 +44,12 @@ afterEach(() => {
 describe('GSAP browser integration', () => {
   it('writes multi-property transforms through CSSPlugin with px and deg units', () => {
     const target = createTarget();
-    const tween = gsap.to(target, {
-      paused: true,
-      motionSpring: {
-        x: '120px',
-        y: '-80px',
-        rotation: '90deg',
-        parameters,
-      },
+    const tween = createMotionSpringTween(target, {
+      x: '120px',
+      y: '-80px',
+      rotation: '90deg',
+      parameters,
+      tween: { paused: true },
     });
 
     tween.time(0.01, true);
@@ -66,14 +65,12 @@ describe('GSAP browser integration', () => {
     tween.kill();
   });
 
-	it('writes scale through the CSSPlugin transform cache', () => {
+  it('writes scale through the CSSPlugin transform cache', () => {
     const target = createTarget();
-    const tween = gsap.to(target, {
-      paused: true,
-      motionSpring: {
-        scale: 1.75,
-        parameters,
-      },
+    const tween = createMotionSpringTween(target, {
+      scale: 1.75,
+      parameters,
+      tween: { paused: true },
     });
 
     tween.time(0.01, true);
@@ -86,13 +83,11 @@ describe('GSAP browser integration', () => {
 
   it('keeps DOM output deterministic across seek and reverse', () => {
     const target = createTarget();
-    const tween = gsap.to(target, {
-      paused: true,
-      motionSpring: {
-        x: '240px',
-        rotation: '45deg',
-        parameters,
-      },
+    const tween = createMotionSpringTween(target, {
+      x: '240px',
+      rotation: '45deg',
+      parameters,
+      tween: { paused: true },
     });
 
     tween.time(0.01, true);
@@ -119,13 +114,11 @@ describe('GSAP browser integration', () => {
     gsap.set(target, { x: 25, rotation: 10 });
     let tween: gsap.core.Tween | undefined;
     const context = gsap.context(() => {
-      tween = gsap.to(target, {
-        paused: true,
-        motionSpring: {
-          x: '180px',
-          rotation: '70deg',
-          parameters,
-        },
+      tween = createMotionSpringTween(target, {
+        x: '180px',
+        rotation: '70deg',
+        parameters,
+        tween: { paused: true },
       });
     });
 
@@ -155,13 +148,11 @@ describe('GSAP browser integration', () => {
       velocity: 300,
       ...parameters,
     });
-    const first = gsap.to(target, {
-      paused: true,
-      motionSpring: {
-        x: '100px',
-        velocity: { x: 300 },
-        parameters,
-      },
+    const first = createMotionSpringTween(target, {
+      x: '100px',
+      velocity: { x: 300 },
+      parameters,
+      tween: { paused: true },
     });
 
     first.time(handoffTime, true);
@@ -216,13 +207,11 @@ describe('GSAP browser integration', () => {
       velocity: inherited.velocity,
       ...parameters,
     });
-    const redirected = gsap.to(target, {
-      paused: true,
-      motionSpring: {
-        x: '-50px',
-        velocity: { x: -999 },
-        parameters,
-      },
+    const redirected = createMotionSpringTween(target, {
+      x: '-50px',
+      velocity: { x: -999 },
+      parameters,
+      tween: { paused: true },
     });
 
     redirected.time(sampleTime, true);
@@ -274,26 +263,22 @@ describe('GSAP browser integration', () => {
     first.kill();
   });
 
-  it('reconciles a same-number external unit change for the lazy plugin', () => {
+  it('reconciles a same-number external unit change at effect construction', () => {
     const target = createTarget();
     target.style.setProperty('--distance', '0px');
-    const first = gsap.to(target, {
-      paused: true,
-      motionSpring: {
-        values: { '--distance': '100px' },
-        parameters,
-      },
+    const first = createMotionSpringTween(target, {
+      values: { '--distance': '100px' },
+      parameters,
+      tween: { paused: true },
     });
     first.time(0.01, true).time(first.duration(), true);
     expect(target.style.getPropertyValue('--distance')).toContain('px');
 
     target.style.setProperty('--distance', '100deg');
-    const second = gsap.to(target, {
-      paused: true,
-      motionSpring: {
-        values: { '--distance': '200deg' },
-        parameters,
-      },
+    const second = createMotionSpringTween(target, {
+      values: { '--distance': '200deg' },
+      parameters,
+      tween: { paused: true },
     });
     const expected = createSpring({
       from: 100,
@@ -313,18 +298,15 @@ describe('GSAP browser integration', () => {
     first.kill();
   });
 
-	it(
-    'rejects incompatible CSS units before starting a controller',
-    () => {
-      const target = createTarget();
-      target.style.width = '100px';
+  it('rejects incompatible CSS units before starting a controller', () => {
+    const target = createTarget();
+    target.style.width = '100px';
 
-      expect(() =>
-        springTo(target, {
-          targets: { width: '20deg' },
-          spring: parameters,
-        }),
-      ).toThrowError(/Unit mismatch for width/);
-    },
-  );
+    expect(() =>
+      springTo(target, {
+        targets: { width: '20deg' },
+        spring: parameters,
+      }),
+    ).toThrowError(/Unit mismatch for width/);
+  });
 });

@@ -2,7 +2,7 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 import * as core from '../src/index.js';
 import type {
   MotionSpringEffectVars,
-  MotionSpringPluginVars,
+  MotionSpringVars,
   SpringPropertyAdapter,
   SpringToVars,
   SpringTweenTarget,
@@ -17,9 +17,7 @@ describe('single-package public API', () => {
       'DEFAULT_SETTLING_OPTIONS',
       'MOTION_COMPATIBILITY_COMMIT',
       'MOTION_COMPATIBILITY_VERSION',
-      'MotionCoreSpringPlugin',
       'SUPPORTED_PROPERTIES',
-      'SpringPlugin',
       'angularFrequency',
       'classifyDamping',
       'createAdditiveSpringValue',
@@ -36,7 +34,6 @@ describe('single-package public API', () => {
       'motionSpringParameters',
       'normalizedVelocity',
       'physicalVelocity',
-      'registerMotionCoreSpringPlugin',
       'registerSpringPlugin',
       'resolveSettlingOptions',
       'snapToGrid',
@@ -56,7 +53,7 @@ describe('single-package public API', () => {
   });
 
   it('exports the complete GSAP type contract from the root entry point', () => {
-    expectTypeOf<MotionSpringEffectVars>().toMatchTypeOf<MotionSpringPluginVars>();
+    expectTypeOf<MotionSpringEffectVars>().toMatchTypeOf<MotionSpringVars>();
     expectTypeOf<SpringToVars['adapters']>().toMatchTypeOf<
       Readonly<Partial<Record<string, SpringPropertyAdapter>>> | undefined
     >();
