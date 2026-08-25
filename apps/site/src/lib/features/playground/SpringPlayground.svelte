@@ -630,26 +630,74 @@
 					{/if}
 				{/if}
 
-				<div
-					class={scenario === 'rotation'
-						? 'spring-stage-object absolute top-1/2 left-1/2 -mt-3.5 -ml-12 flex h-7 w-24 items-center justify-end rounded-full bg-background shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)] dark:bg-card dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]'
-						: 'spring-stage-object spring-stage-object-linear absolute bottom-1/2 left-6 mb-3 flex h-10 w-12 items-center justify-center rounded-lg bg-background shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)] dark:bg-card dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]'}
-					{@attach captureBody}
-					aria-hidden="true"
-				>
-					{#if scenario === 'rotation'}
-						<span
-							class="absolute left-1/2 size-3 -translate-x-1/2 rounded-full border border-border/64 bg-muted shadow-inner dark:border-card/80"
-						></span>
-						<span
-							class="mr-2 size-2.5 rounded-full bg-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)]"
-						></span>
-					{:else}
+				{#if scenario === 'rotation'}
+					<div
+						class="spring-stage-rotation-frame absolute top-1/2 left-1/2 -mt-14 -ml-14 size-28"
+						aria-hidden="true"
+					>
+						<div class="spring-stage-rotation-shadow-caster">
+							<span
+								class="spring-stage-rotation-shadow-shape"
+								style:rotate={`${telemetry.position}deg`}
+							></span>
+						</div>
+
+						<div
+							class="spring-stage-object spring-stage-object-rotation absolute top-1/2 left-1/2 -mt-3.5 -ml-12 flex h-7 w-24 items-center justify-end rounded-full bg-background shadow-[0_0_0_1px_rgba(0,0,0,0.04)] dark:bg-card"
+							{@attach captureBody}
+						>
+							<span
+								class="absolute left-1/2 z-10 size-3 -translate-x-1/2 rounded-full border border-border/64 bg-muted shadow-inner dark:border-card/80"
+							></span>
+							<span
+								class="z-10 mr-2 size-2.5 rounded-full bg-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)]"
+							></span>
+						</div>
+
+						<svg class="spring-stage-rotation-lighting" viewBox="0 0 112 112" aria-hidden="true">
+							<defs>
+								<mask id="spring-stage-rotation-highlight-mask" maskUnits="userSpaceOnUse">
+									<rect
+										x="8"
+										y="42"
+										width="96"
+										height="28"
+										rx="14"
+										fill="white"
+										transform={`rotate(${telemetry.position} 56 56)`}
+									></rect>
+									<g transform="translate(0 1)">
+										<rect
+											x="8"
+											y="42"
+											width="96"
+											height="28"
+											rx="14"
+											fill="black"
+											transform={`rotate(${telemetry.position} 56 56)`}
+										></rect>
+									</g>
+								</mask>
+							</defs>
+							<rect
+								class="spring-stage-rotation-highlight"
+								width="112"
+								height="112"
+								mask="url(#spring-stage-rotation-highlight-mask)"
+							></rect>
+						</svg>
+					</div>
+				{:else}
+					<div
+						class="spring-stage-object spring-stage-object-linear absolute bottom-1/2 left-6 mb-3 flex h-10 w-12 items-center justify-center rounded-lg bg-background shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)] dark:bg-card dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]"
+						{@attach captureBody}
+						aria-hidden="true"
+					>
 						<span
 							class="size-2.5 rounded-full bg-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)]"
 						></span>
-					{/if}
-				</div>
+					</div>
+				{/if}
 
 				<div
 					class="absolute top-3 right-3 flex gap-3 font-mono text-xs text-muted-foreground tabular-nums"
@@ -936,6 +984,48 @@
 
 	.spring-stage-object {
 		z-index: 10;
+	}
+
+	.spring-stage-rotation-frame {
+		z-index: 10;
+	}
+
+	.spring-stage-rotation-shadow-caster,
+	.spring-stage-rotation-lighting {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+	}
+
+	.spring-stage-rotation-shadow-caster {
+		z-index: 0;
+		filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.05)) drop-shadow(0 2px 2px rgb(0 0 0 / 0.05))
+			drop-shadow(0 2px 4px rgb(0 0 0 / 0.05));
+	}
+
+	.spring-stage-rotation-shadow-shape {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 6rem;
+		height: 1.75rem;
+		translate: -50% -50%;
+		border-radius: 9999px;
+		background: var(--card);
+		will-change: rotate;
+	}
+
+	.spring-stage-rotation-lighting {
+		z-index: 20;
+	}
+
+	.spring-stage-rotation-highlight {
+		fill: rgb(255 255 255 / 0.15);
+		opacity: 0;
+	}
+
+	:global(.dark) .spring-stage-rotation-highlight {
+		opacity: 1;
 	}
 
 	.spring-stage-object-linear::after {
