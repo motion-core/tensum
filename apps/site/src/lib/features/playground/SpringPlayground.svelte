@@ -427,7 +427,7 @@
 				{#each scenarios as item (item.id)}
 					<Button
 						variant="ghost"
-						class="relative z-10 justify-start bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground"
+						class="relative z-10 sm:justify-start bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground"
 						onclick={() => setScenario(item.id)}
 						aria-pressed={scenario === item.id}
 						title={item.detail}
@@ -457,7 +457,7 @@
 						{#each distanceTargets as target, index (target.label)}
 							<Button
 								variant="ghost"
-								class="relative z-10 justify-start bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground"
+								class="relative z-10 sm:justify-start bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground"
 								onclick={() => setDistanceTarget(index)}
 								aria-pressed={distanceTargetIndex === index}
 							>
@@ -478,7 +478,7 @@
 						{#each rotationTargets as target (target)}
 							<Button
 								variant="ghost"
-								class="relative z-10 justify-start bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground"
+								class="relative z-10 sm:justify-start bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground"
 								onclick={() => setRotationTarget(target)}
 								aria-pressed={rotationTarget === target}
 							>
@@ -504,7 +504,7 @@
 							bounce === preset.bounce}
 						<Button
 							variant="ghost"
-							class="relative z-10 justify-start bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground"
+							class="relative z-10 sm:justify-start bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground"
 							onclick={() => applyPreset(preset)}
 							aria-pressed={selected}
 						>
@@ -536,7 +536,7 @@
 		</header>
 		<div class="flex min-h-48 flex-1 flex-col p-3 lg:min-h-96">
 			<div
-				class="spring-stage-canvas relative min-h-32 flex-1 overflow-hidden rounded-lg bg-background shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)] lg:min-h-40 dark:bg-card/64 dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]"
+				class="spring-stage-canvas relative min-h-64 flex-1 overflow-hidden rounded-lg bg-background shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)] lg:min-h-40 dark:bg-card/64 dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]"
 				{@attach captureTrack}
 			>
 				{#if scenario === 'rotation'}
