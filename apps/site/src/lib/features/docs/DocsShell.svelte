@@ -111,7 +111,7 @@
 			</Sheet.Root>
 		</div>
 
-		<div id="docs-content" tabindex="-1" class="outline-none">
+		<div id="docs-content" tabindex="-1" class="mx-auto max-w-2xl outline-none">
 			{@render children()}
 		</div>
 

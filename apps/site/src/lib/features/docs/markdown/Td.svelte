@@ -6,9 +6,6 @@
 	let { children, class: className, ...restProps }: Props = $props();
 </script>
 
-<td
-	{...restProps}
-	class={cn('px-4 py-3 align-top leading-relaxed text-muted-foreground', className)}
->
+<td {...restProps} class={cn('p-2 align-top leading-relaxed text-muted-foreground', className)}>
 	{@render children?.()}
 </td>

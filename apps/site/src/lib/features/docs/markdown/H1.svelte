@@ -13,7 +13,7 @@
 <h1
 	{...restProps}
 	class={cn(
-		'mt-4 font-heading text-4xl leading-none font-semibold tracking-tight text-balance text-foreground',
+		'mt-4 font-heading text-3xl leading-none font-semibold tracking-tight text-balance text-foreground',
 		className
 	)}
 >

@@ -39,9 +39,7 @@
 	<CopyCodeButton
 		value={code}
 		label={`Copy ${label.toLowerCase()}`}
-		class={compact
-			? 'absolute inset-e-1 top-1 z-10 bg-card/80 backdrop-blur-sm'
-			: 'absolute inset-e-2 top-2 z-10 bg-card/80 backdrop-blur-sm'}
+		class="absolute inset-e-1 top-1 z-10 bg-card/80 backdrop-blur-sm"
 	/>
 
 	<div class="shiki-theme-light">
@@ -70,7 +68,7 @@
 	.code-block :global(.shiki) {
 		margin: 0;
 		overflow-x: auto;
-		padding: 1rem;
+		padding: 0.5rem;
 		background-color: var(--card) !important;
 		font-family:
 			ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
@@ -80,7 +78,7 @@
 	}
 
 	.compact :global(.shiki) {
-		padding: 0.625rem 3rem 0.625rem 0.75rem;
+		padding: 0.5rem;
 	}
 
 	.code-block :global(.shiki code) {

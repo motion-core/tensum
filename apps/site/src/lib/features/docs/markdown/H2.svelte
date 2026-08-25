@@ -17,7 +17,7 @@
 		{id}
 		{...restProps}
 		class={cn(
-			'scroll-mt-24 font-heading text-2xl leading-tight font-semibold tracking-tight text-balance text-foreground sm:text-3xl',
+			'scroll-mt-24 font-heading text-2xl leading-tight font-semibold tracking-tight text-balance text-foreground',
 			className
 		)}
 	>

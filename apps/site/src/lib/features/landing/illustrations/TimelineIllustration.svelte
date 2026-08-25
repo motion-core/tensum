@@ -1,5 +1,5 @@
-<div class="relative flex h-56 items-center justify-center overflow-hidden" aria-hidden="true">
-	<div class="w-[78%] max-w-sm overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+<div class="relative flex h-56 items-center justify-center overflow-hidden p-3" aria-hidden="true">
+	<div class="w-full overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 		<div
 			class="flex h-8 items-center justify-between border-b border-border px-2.5 text-[0.625rem]"
 		>

@@ -1,5 +1,5 @@
-<div class="relative flex h-56 items-center justify-center overflow-hidden" aria-hidden="true">
-	<div class="w-[84%] max-w-md">
+<div class="relative flex h-56 items-center justify-center overflow-hidden p-3" aria-hidden="true">
+	<div>
 		<div class="relative mt-3 h-25">
 			<div class="absolute inset-x-0 top-12 h-px bg-border"></div>
 			<div class="absolute inset-x-0 top-12 h-px overflow-hidden">

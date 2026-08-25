@@ -42,7 +42,9 @@
 			<OutputsIllustration />
 			<div class="grid min-h-28 gap-3 border-t border-border p-4 sm:grid-cols-5 sm:items-start">
 				<div class="sm:col-span-2">
-					<p class="font-mono text-xs tracking-wider text-muted-foreground">ONE ANALYTICAL CORE</p>
+					<p class="font-mono text-[10px] tracking-wider text-muted-foreground">
+						ONE ANALYTICAL CORE
+					</p>
 					<h3 class="mt-1.5 text-base font-medium">The same spring at every output.</h3>
 				</div>
 				<p class="max-w-xl text-sm leading-relaxed text-pretty text-muted-foreground sm:col-span-3">

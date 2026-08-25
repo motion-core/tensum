@@ -1,4 +1,4 @@
-<div class="relative flex h-64 items-center justify-center overflow-hidden" aria-hidden="true">
+<div class="relative flex h-64 items-center justify-center overflow-hidden p-3" aria-hidden="true">
 	<div class="relative h-48 w-[90%] max-w-xl">
 		<div
 			class="absolute inset-s-1/2 top-0 z-10 flex h-13 w-32 -translate-x-1/2 items-start justify-between rounded-lg border border-border bg-card p-2.5 shadow-sm"
