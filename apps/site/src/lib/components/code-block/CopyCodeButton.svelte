@@ -21,7 +21,7 @@
 		copiedLabel = 'Code copied',
 		successMessage = 'Code copied to clipboard.',
 		failureMessage = 'Could not copy the code.',
-		size = 'icon-md',
+		size = 'icon-sm',
 		class: className
 	}: Props = $props();
 

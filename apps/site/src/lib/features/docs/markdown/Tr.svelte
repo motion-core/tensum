@@ -9,7 +9,7 @@
 <tr
 	{...restProps}
 	class={cn(
-		'border-b border-border/64 transition-colors hover:bg-muted/50 dark:border-card/80',
+		'border-b border-border/64 dark:border-card/80',
 		className
 	)}
 >

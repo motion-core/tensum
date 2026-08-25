@@ -6,6 +6,6 @@
 	let { children, class: className, ...restProps }: Props = $props();
 </script>
 
-<thead {...restProps} class={cn('bg-muted dark:bg-card/48', className)}>
+<thead {...restProps} class={cn('', className)}>
 	{@render children?.()}
 </thead>
