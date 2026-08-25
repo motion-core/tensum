@@ -295,4 +295,39 @@ describe('SpringValue', () => {
       value.setTarget(100, { blendDuration: Number.NaN }),
     ).toThrow(RangeError);
   });
+
+  it('rejects explicit null retarget options instead of using pending defaults', () => {
+    const driver = new ManualFrameDriver();
+    const value = createSpringValue(0, parameters, driver);
+
+    expect(() => value.setTarget(1, { parameters: null as never })).toThrow(
+      TypeError,
+    );
+    expect(() => value.setTarget(1, { blendDuration: null as never })).toThrow(
+      RangeError,
+    );
+  });
+
+  it('cannot be reactivated by a change listener during destruction', () => {
+    const driver = new ManualFrameDriver();
+    const value = createSpringValue(0, parameters, driver);
+
+    value.setTarget(100);
+    driver.step(0);
+    driver.step(0.1);
+    value.on('change', () => value.setTarget(200));
+
+    value.destroy();
+
+    expect(value.getSnapshot().animating).toBe(false);
+    expect(driver.pendingFrames).toBe(0);
+  });
+
+  it('rejects an invalid timing object at construction', () => {
+    expect(() =>
+      createSpringValue(0, parameters, new ManualFrameDriver(), {
+        timing: null as never,
+      }),
+    ).toThrow(TypeError);
+  });
 });

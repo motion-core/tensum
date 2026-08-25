@@ -1,6 +1,6 @@
 import { springParameters } from '../parameters.js';
 import { resolveSettlingOptions } from '../settling.js';
-import { createSpring } from '../spring.js';
+import { createSpring, resolveSpringTimingInput } from '../spring.js';
 import type {
   SpringParameters,
   SpringSettleInput,
@@ -96,10 +96,7 @@ export function createSpringValue(
     maxDuration: settling.maxDuration,
     refinementIterations: settling.refinementIterations,
   };
-  const timingInput =
-    options.timing?.perceptualDuration === undefined
-      ? undefined
-      : Object.freeze({ perceptualDuration: options.timing.perceptualDuration });
+  const timingInput = resolveSpringTimingInput(options.timing);
   const listeners: Record<SpringValueEvent, Set<SpringValueListener>> = {
     change: new Set(),
     logicalComplete: new Set(),
@@ -132,6 +129,8 @@ export function createSpringValue(
   };
 
   const write = (nextValue: number, nextVelocity: number): void => {
+    assertFinite('value', nextValue);
+    assertFinite('velocity', nextVelocity);
     const changed = !Object.is(value, nextValue) || !Object.is(velocity, nextVelocity);
     value = nextValue;
     velocity = nextVelocity;
@@ -307,11 +306,14 @@ export function createSpringValue(
   ): void => {
     if (destroyed) return;
     assertFinite('target', nextTarget);
-    const nextParameters = retargetOptions.parameters
-      ? springParameters.fromPhysics(retargetOptions.parameters)
-      : pending?.parameters ?? currentParameters;
+    const nextParameters =
+      retargetOptions.parameters === undefined
+        ? pending?.parameters ?? currentParameters
+        : springParameters.fromPhysics(retargetOptions.parameters);
     const blendDuration =
-      retargetOptions.blendDuration ?? pending?.blendDuration ?? 0;
+      retargetOptions.blendDuration === undefined
+        ? pending?.blendDuration ?? 0
+        : retargetOptions.blendDuration;
     assertFinite('blendDuration', blendDuration);
     if (blendDuration < 0) {
       throw new RangeError('blendDuration must be greater than or equal to 0');
@@ -389,8 +391,8 @@ export function createSpringValue(
     },
     destroy(): void {
       if (destroyed) return;
-      stopAt(driver.now());
       destroyed = true;
+      stopAt(driver.now());
       for (const eventListeners of Object.values(listeners)) eventListeners.clear();
     },
   });
