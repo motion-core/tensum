@@ -1,13 +1,14 @@
 <script lang="ts">
-	import { Menu04Icon } from '@hugeicons/core-free-icons';
+	import { Cancel01Icon, Menu04Icon } from '@hugeicons/core-free-icons';
 	import { HugeiconsIcon } from '@hugeicons/svelte';
 	import { resolve } from '$app/paths';
 	import { onMount, type Snippet } from 'svelte';
 	import DocsNavigation from './DocsNavigation.svelte';
 	import { PageContainer, SiteHeader } from '$lib/components/layout';
-	import { Button } from '$lib/components/ui/button';
+	import { Button, buttonVariants } from '$lib/components/ui/button';
+	import * as Drawer from '$lib/components/ui/drawer';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
-	import * as Sheet from '$lib/components/ui/sheet';
+	import { cn } from '$lib/utils.js';
 	import { docsNavigationItems } from './navigation';
 
 	let { children }: { children: Snippet } = $props();
@@ -60,12 +61,45 @@
 	Skip to documentation
 </Button>
 
-<SiteHeader />
+<Drawer.Root bind:open={mobileOpen} direction="left" shouldScaleBackground={false}>
+	<SiteHeader hideDefaultActionsOnMobile>
+		{#snippet trailingAction()}
+			<Drawer.Trigger
+				class={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), '-me-2 size-10 xl:hidden')}
+				aria-label="Open documentation navigation"
+			>
+				<HugeiconsIcon icon={Menu04Icon} strokeWidth={1.5} />
+			</Drawer.Trigger>
+		{/snippet}
+	</SiteHeader>
+
+	<Drawer.Content class="isolate h-dvh w-72 max-w-[calc(100vw-0.5rem)] sm:max-w-72">
+		<Drawer.Header class="flex-row items-center justify-between border-b border-border px-4 py-3">
+			<div class="min-w-0">
+				<Drawer.Title>Spring documentation</Drawer.Title>
+				<Drawer.Description class="sr-only">
+					Navigate to a documentation section.
+				</Drawer.Description>
+			</div>
+			<Drawer.Close
+				class={buttonVariants({ variant: 'ghost', size: 'icon-lg' })}
+				aria-label="Close documentation navigation"
+			>
+				<HugeiconsIcon icon={Cancel01Icon} strokeWidth={1.5} />
+			</Drawer.Close>
+		</Drawer.Header>
+		<ScrollArea class="min-h-0 flex-1">
+			<div class="px-3 py-4">
+				<DocsNavigation {activeId} onNavigate={() => (mobileOpen = false)} />
+			</div>
+		</ScrollArea>
+	</Drawer.Content>
+</Drawer.Root>
 
 <main
 	class="relative mx-auto max-w-screen-2xl xl:grid xl:grid-cols-[minmax(15.5rem,1fr)_minmax(0,64rem)_minmax(15.5rem,1fr)]"
 >
-	<aside class="relative hidden min-w-0 ps-1 pb-4 xl:block" aria-label="Documentation sections">
+	<aside class="relative hidden min-w-0 ps-4 xl:block" aria-label="Documentation sections">
 		<div
 			class="sticky top-(--docs-sidebar-top) isolate flex h-[calc(100svh-var(--docs-sidebar-top)-var(--docs-sidebar-bottom))] min-h-80 w-62 flex-col [--docs-sidebar-bottom:6rem] [--docs-sidebar-top:calc(3.5rem+3rem+0.1875rem)]"
 		>
@@ -85,32 +119,6 @@
 	</aside>
 
 	<PageContainer class="min-w-0 pt-10 pb-16 sm:pt-14 lg:pt-16 lg:pb-24">
-		<div class="mb-8 flex items-center xl:hidden">
-			<Sheet.Root bind:open={mobileOpen}>
-				<Sheet.Trigger>
-					{#snippet child({ props })}
-						<Button {...props} variant="outline" aria-label="Open documentation navigation">
-							<HugeiconsIcon icon={Menu04Icon} strokeWidth={1.5} data-icon="inline-start" />
-							Documentation
-						</Button>
-					{/snippet}
-				</Sheet.Trigger>
-				<Sheet.Content side="left" class="w-72 max-w-full p-0 sm:max-w-72">
-					<Sheet.Header class="border-b border-border px-5 py-4 text-start">
-						<Sheet.Title>Spring documentation</Sheet.Title>
-						<Sheet.Description class="sr-only">
-							Navigate to a documentation section.
-						</Sheet.Description>
-					</Sheet.Header>
-					<ScrollArea class="min-h-0 flex-1">
-						<div class="px-4 py-5">
-							<DocsNavigation {activeId} onNavigate={() => (mobileOpen = false)} />
-						</div>
-					</ScrollArea>
-				</Sheet.Content>
-			</Sheet.Root>
-		</div>
-
 		<div id="docs-content" tabindex="-1" class="mx-auto max-w-2xl outline-none">
 			{@render children()}
 		</div>
