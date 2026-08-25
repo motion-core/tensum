@@ -16,12 +16,26 @@ export const DEFAULT_SETTLING_OPTIONS: Readonly<SpringSettlingOptions> = {
 export function resolveSettlingOptions(
   input: SpringSettleInput = {},
 ): Readonly<SpringSettlingOptions> {
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+    throw new TypeError('settle must be an object when provided');
+  }
   const options: SpringSettlingOptions = {
-    positionEpsilon: input.position ?? DEFAULT_SETTLING_OPTIONS.positionEpsilon,
-    velocityEpsilon: input.velocity ?? DEFAULT_SETTLING_OPTIONS.velocityEpsilon,
-    maxDuration: input.maxDuration ?? DEFAULT_SETTLING_OPTIONS.maxDuration,
+    positionEpsilon:
+      input.position === undefined
+        ? DEFAULT_SETTLING_OPTIONS.positionEpsilon
+        : input.position,
+    velocityEpsilon:
+      input.velocity === undefined
+        ? DEFAULT_SETTLING_OPTIONS.velocityEpsilon
+        : input.velocity,
+    maxDuration:
+      input.maxDuration === undefined
+        ? DEFAULT_SETTLING_OPTIONS.maxDuration
+        : input.maxDuration,
     refinementIterations:
-      input.refinementIterations ?? DEFAULT_SETTLING_OPTIONS.refinementIterations,
+      input.refinementIterations === undefined
+        ? DEFAULT_SETTLING_OPTIONS.refinementIterations
+        : input.refinementIterations,
   };
   validateSettlingOptions(options);
   return Object.freeze(options);
@@ -87,9 +101,16 @@ export function getSettlingResult(
     return { duration: maxDuration, iterations: 0, settled: false };
   }
 
+  if (solver.tailBoundsMonotonicAfter > maxDuration) {
+    return { duration: maxDuration, iterations: 0, settled: false };
+  }
+
   let iterations = 0;
-  let lower = Math.min(solver.tailBoundsMonotonicAfter, maxDuration);
-  let upper = Math.max(lower, Math.min(maxDuration, Math.max(1 / solver.angularFrequency, 1 / 120)));
+  let lower = solver.tailBoundsMonotonicAfter;
+  let upper = Math.max(
+    lower,
+    Math.min(maxDuration, Math.max(1 / solver.angularFrequency, 1 / 120)),
+  );
 
   if (boundsMeetThresholds(solver, lower, options)) {
     // Critical-damping polynomial envelopes can grow before this point. Using
@@ -109,7 +130,8 @@ export function getSettlingResult(
   }
 
   for (let index = 0; index < refinementIterations; index += 1) {
-    const midpoint = (lower + upper) / 2;
+    const midpoint = lower + (upper - lower) / 2;
+    if (midpoint === lower || midpoint === upper) break;
     if (boundsMeetThresholds(solver, midpoint, options)) upper = midpoint;
     else lower = midpoint;
     iterations += 1;

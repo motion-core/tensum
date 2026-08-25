@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createSpring } from '../src/index.js';
+import { getSettlingResult } from '../src/settling.js';
+import type { AnalyticalSolver } from '../src/solver.js';
 
 const parameters = {
   mass: 1,
@@ -36,9 +38,17 @@ describe('settling duration', () => {
   });
 
   it('reports a non-equilibrium undamped spring as unsettled', () => {
-    const spring = createSpring({ from: 0, to: 100, ...parameters, damping: 0 });
+    const spring = createSpring({
+      from: 0,
+      to: 100,
+      ...parameters,
+      damping: 0,
+    });
 
-    expect(spring.getSettlingResult()).toMatchObject({ settled: false, duration: 60 });
+    expect(spring.getSettlingResult()).toMatchObject({
+      settled: false,
+      duration: 60,
+    });
   });
 
   it('honors a public maximum duration for an unsettled spring', () => {
@@ -144,6 +154,71 @@ describe('settling duration', () => {
   it('settles immediately when already at rest at the target', () => {
     const spring = createSpring({ from: 100, to: 100, ...parameters });
 
-    expect(spring.getSettlingResult()).toEqual({ settled: true, duration: 0, iterations: 0 });
+    expect(spring.getSettlingResult()).toEqual({
+      settled: true,
+      duration: 0,
+      iterations: 0,
+    });
+  });
+
+  it('does not claim settlement before a critical envelope becomes monotonic', () => {
+    const spring = createSpring({
+      from: 0,
+      to: 0,
+      velocity: 1,
+      mass: 1,
+      stiffness: 1,
+      damping: 2,
+      settle: {
+        position: 0.1,
+        velocity: 2,
+        maxDuration: 0.01,
+      },
+    });
+
+    expect(spring.positionAt(1)).toBeGreaterThan(
+      spring.settling.positionEpsilon,
+    );
+    expect(spring.getSettlingResult()).toMatchObject({
+      duration: 0.01,
+      settled: false,
+    });
+  });
+
+  it('refines settling times near the top of the finite numeric range', () => {
+    const threshold = 1.2e308;
+    const solver: AnalyticalSolver = {
+      angularFrequency: 1e-308,
+      dampingRatio: 1,
+      regime: 'critical',
+      tailBoundsMonotonicAfter: 0,
+      stateAt: () => ({ position: 0, velocity: 0 }),
+      tailBoundsAt: (time) => ({
+        position: time >= threshold ? 0 : 1,
+        velocity: 0,
+      }),
+    };
+
+    const result = getSettlingResult(solver, {
+      positionEpsilon: 0.5,
+      velocityEpsilon: 0.5,
+      maxDuration: 1.7e308,
+      refinementIterations: 48,
+    });
+
+    expect(Number.isFinite(result.duration)).toBe(true);
+    expect(result.duration).toBeGreaterThanOrEqual(threshold);
+    expect(result.settled).toBe(true);
+  });
+
+  it('stops refinement once floating-point midpoints can no longer advance', () => {
+    const spring = createSpring({
+      from: 0,
+      to: 100,
+      ...parameters,
+      settle: { refinementIterations: 10_000 },
+    });
+
+    expect(spring.getSettlingResult().iterations).toBeLessThan(1_000);
   });
 });
