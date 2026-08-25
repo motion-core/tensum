@@ -50,6 +50,15 @@ function assertFinite(name: string, value: number): void {
   }
 }
 
+function assertOptionalObject(name: string, value: unknown): void {
+  if (
+    value !== undefined &&
+    (typeof value !== 'object' || value === null || Array.isArray(value))
+  ) {
+    throw new TypeError(`${name} must be an object when provided`);
+  }
+}
+
 export function createSpringKeyframes(
   options: SpringKeyframesOptions,
 ): SpringKeyframeSequence {
@@ -63,22 +72,47 @@ export function createSpringKeyframes(
   let startTime = 0;
   let perceptualDuration = 0;
 
+  if (options.velocity !== undefined) {
+    assertFinite('velocity', options.velocity);
+  }
+  assertOptionalObject('settle', options.settle);
+  assertOptionalObject('timing', options.timing);
+
   for (let index = 0; index < options.keyframes.length; index += 1) {
     const keyframe = options.keyframes[index]!;
     assertFinite(`keyframes[${index}].value`, keyframe.value);
+    assertOptionalObject(`keyframes[${index}].parameters`, keyframe.parameters);
+    assertOptionalObject(`keyframes[${index}].settle`, keyframe.settle);
+    assertOptionalObject(`keyframes[${index}].timing`, keyframe.timing);
     const frameVelocity =
-      keyframe.startVelocity ?? (index === 0 ? options.velocity ?? 0 : 0);
+      keyframe.startVelocity === undefined
+        ? index === 0
+          ? options.velocity === undefined
+            ? 0
+            : options.velocity
+          : 0
+        : keyframe.startVelocity;
     assertFinite(`keyframes[${index}].startVelocity`, frameVelocity);
     const parameters: SpringParameters = {
-      mass: keyframe.parameters?.mass ?? options.parameters.mass,
-      stiffness: keyframe.parameters?.stiffness ?? options.parameters.stiffness,
-      damping: keyframe.parameters?.damping ?? options.parameters.damping,
+      mass:
+        keyframe.parameters?.mass === undefined
+          ? options.parameters.mass
+          : keyframe.parameters.mass,
+      stiffness:
+        keyframe.parameters?.stiffness === undefined
+          ? options.parameters.stiffness
+          : keyframe.parameters.stiffness,
+      damping:
+        keyframe.parameters?.damping === undefined
+          ? options.parameters.damping
+          : keyframe.parameters.damping,
     };
     const settle =
       options.settle || keyframe.settle
         ? { ...options.settle, ...keyframe.settle }
         : undefined;
-    const timing = keyframe.timing ?? options.timing;
+    const timing =
+      keyframe.timing === undefined ? options.timing : keyframe.timing;
     const solution = createSpring({
       from,
       to: keyframe.value,
@@ -94,8 +128,10 @@ export function createSpringKeyframes(
       );
     }
     const endTime = startTime + result.duration;
+    assertFinite('duration', endTime);
     segments.push(Object.freeze({ index, startTime, endTime, solution }));
     perceptualDuration += solution.timing.perceptualDuration;
+    assertFinite('perceptualDuration', perceptualDuration);
     startTime = endTime;
     from = keyframe.value;
   }

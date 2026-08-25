@@ -105,4 +105,62 @@ describe('spring keyframes', () => {
     });
     expect(() => sequence.stateAt(-1)).toThrow(RangeError);
   });
+
+  it('rejects explicit null segment options instead of applying defaults', () => {
+    expect(() =>
+      createSpringKeyframes({
+        from: 0,
+        keyframes: [{ value: 1, startVelocity: null as never }],
+        parameters,
+      }),
+    ).toThrow(RangeError);
+    expect(() =>
+      createSpringKeyframes({
+        from: 0,
+        keyframes: [{ value: 1, parameters: null as never }],
+        parameters,
+      }),
+    ).toThrow(TypeError);
+    expect(() =>
+      createSpringKeyframes({
+        from: 0,
+        keyframes: [{ value: 1, settle: null as never }],
+        parameters,
+      }),
+    ).toThrow(TypeError);
+    expect(() =>
+      createSpringKeyframes({
+        from: 0,
+        keyframes: [{ value: 1, timing: null as never }],
+        parameters,
+      }),
+    ).toThrow(TypeError);
+  });
+
+  it('rejects a combined perceptual duration that is not representable', () => {
+    expect(() =>
+      createSpringKeyframes({
+        from: 0,
+        keyframes: [{ value: 100 }, { value: 200 }],
+        parameters,
+        timing: { perceptualDuration: Number.MAX_VALUE },
+      }),
+    ).toThrow(/perceptualDuration must be a finite number/);
+  });
+
+  it('rejects a combined physical duration that is not representable', () => {
+    expect(() =>
+      createSpringKeyframes({
+        from: 0,
+        keyframes: [{ value: 1 }, { value: 2 }],
+        parameters: { mass: 1e308, stiffness: 1e-308, damping: 2 },
+        settle: {
+          position: 0.9,
+          velocity: 0.9,
+          maxDuration: 1.7e308,
+        },
+        timing: { perceptualDuration: 0.1 },
+      }),
+    ).toThrow(/duration must be a finite number/);
+  });
 });
