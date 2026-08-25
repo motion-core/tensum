@@ -394,11 +394,11 @@
 </script>
 
 <section
-	class="grid overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:grid-cols-[11rem_minmax(0,1fr)_13rem]"
+	class="grid overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:grid-cols-12"
 	aria-label="Spring playground"
 >
 	<section
-		class="order-2 flex min-w-0 flex-col border-t border-border lg:order-1 lg:border-t-0"
+		class="order-2 flex min-w-0 flex-col border-t border-border lg:order-1 lg:col-span-2 lg:border-t-0"
 		aria-labelledby="playground-scenes-heading"
 	>
 		<header class="flex h-10 items-center justify-between gap-2 border-b border-border px-3">
@@ -480,7 +480,7 @@
 	</section>
 
 	<section
-		class="order-1 flex min-w-0 flex-col lg:order-2 lg:border-l lg:border-border"
+		class="order-1 flex min-w-0 flex-col lg:order-2 lg:col-span-7 lg:border-l lg:border-border"
 		aria-labelledby="playground-stage-heading"
 	>
 		<header class="flex h-10 items-center justify-between gap-2 border-b border-border px-3">
@@ -488,10 +488,7 @@
 			<span class="font-mono text-xs text-muted-foreground tabular-nums">{stageStatus}</span>
 		</header>
 		<div class="flex min-h-48 flex-1 flex-col p-2 lg:min-h-96">
-			<div
-				class="relative min-h-32 flex-1 overflow-hidden rounded-lg bg-muted ring-1 ring-border lg:min-h-40"
-				{@attach captureTrack}
-			>
+			<div class="relative min-h-32 flex-1 overflow-hidden lg:min-h-40" {@attach captureTrack}>
 				{#if scenario === 'rotation'}
 					<div
 						class="absolute top-1/2 left-1/2 size-40 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-border"
@@ -547,32 +544,11 @@
 					{/if}
 				</div>
 			</div>
-
-			<footer class="flex min-h-10 flex-wrap items-center justify-between gap-2 pt-2">
-				{#if scenario === 'distance'}
-					<span class="font-mono text-xs text-muted-foreground">
-						target {distanceTargets[distanceTargetIndex]?.label.toLowerCase()}
-					</span>
-					<span class="text-xs text-muted-foreground">Choose a new target mid-flight.</span>
-				{:else if scenario === 'rotation'}
-					<span class="font-mono text-xs text-muted-foreground">
-						target {rotationTarget > 0 ? '+' : ''}{rotationTarget}°
-					</span>
-					<span class="text-xs text-muted-foreground">One solver, another property.</span>
-				{:else}
-					<span class="font-mono text-xs text-muted-foreground"
-						>handoff @ {TIMELINE_HANDOFF_TIME}s</span
-					>
-					<span class="text-xs text-muted-foreground"
-						>Object and playhead share the same clock.</span
-					>
-				{/if}
-			</footer>
 		</div>
 	</section>
 
 	<section
-		class="order-3 flex min-w-0 flex-col border-t border-border lg:border-t-0 lg:border-l"
+		class="order-3 flex min-w-0 flex-col border-t border-border lg:col-span-3 lg:border-t-0 lg:border-l"
 		aria-labelledby="playground-inspector-heading"
 	>
 		<header class="flex h-10 items-center justify-between gap-2 border-b border-border px-3">

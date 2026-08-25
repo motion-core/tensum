@@ -2,7 +2,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
-	import SpringPlayground from '$lib/playground/SpringPlayground.svelte';
+	import { SpringPlayground } from '$lib/features/playground';
 </script>
 
 <svelte:head>
