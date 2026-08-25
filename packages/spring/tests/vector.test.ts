@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createSpring, createVectorSpring } from '../src/index.js';
+import type { SpringParameters } from '../src/index.js';
 
 const parameters = { mass: 1, stiffness: 180, damping: 24 } as const;
 
@@ -79,13 +80,16 @@ describe('vector spring composition', () => {
       settle: { maxDuration: 2 },
     });
 
-    expect(vector.getSettlingResult()).toMatchObject({ settled: false, duration: 2 });
+    expect(vector.getSettlingResult()).toMatchObject({
+      settled: false,
+      duration: 2,
+    });
   });
 
   it('rejects empty or mismatched vectors and undersized output buffers', () => {
-    expect(() =>
-      createVectorSpring({ from: [], to: [], parameters }),
-    ).toThrow(RangeError);
+    expect(() => createVectorSpring({ from: [], to: [], parameters })).toThrow(
+      RangeError,
+    );
     expect(() =>
       createVectorSpring({ from: [0, 0], to: [1], parameters }),
     ).toThrow(RangeError);
@@ -94,5 +98,41 @@ describe('vector spring composition', () => {
     expect(() =>
       vector.stateAtInto(0, { position: [0], velocity: [0] }),
     ).toThrow(RangeError);
+  });
+
+  it('rejects an explicit null velocity instead of treating it as omitted', () => {
+    expect(() =>
+      createVectorSpring({
+        from: [0],
+        to: [1],
+        velocity: null as never,
+        parameters,
+      }),
+    ).toThrow(TypeError);
+  });
+
+  it('retargets with the parameter and timing snapshot captured at construction', () => {
+    const mutableParameters: SpringParameters = { ...parameters };
+    const mutableTiming = { perceptualDuration: 0.4 };
+    const from = [0, 20];
+    const to = [100, 200];
+    const velocity = [10, -20];
+    const vector = createVectorSpring({
+      from,
+      to,
+      velocity,
+      parameters: mutableParameters,
+      timing: mutableTiming,
+    });
+
+    from[0] = 5_000;
+    to[0] = -5_000;
+    velocity[0] = 9_000;
+    mutableParameters.stiffness = 1;
+    mutableTiming.perceptualDuration = 9;
+
+    const retargeted = vector.retarget([300, 400], 0.2);
+    expect(retargeted.springs[0]!.parameters).toEqual(parameters);
+    expect(retargeted.timing.perceptualDuration).toBe(0.4);
   });
 });

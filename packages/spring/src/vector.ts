@@ -84,7 +84,9 @@ export function createVectorSpring(
   }
   assertDimension('from', options.from, dimension);
   assertDimension('to', options.to, dimension);
-  if (options.velocity) assertDimension('velocity', options.velocity, dimension);
+  if (options.velocity !== undefined) {
+    assertDimension('velocity', options.velocity, dimension);
+  }
   if (Array.isArray(options.settle) && options.settle.length !== dimension) {
     throw new RangeError(`settle must contain exactly ${dimension} component options`);
   }
@@ -95,7 +97,8 @@ export function createVectorSpring(
       return createSpring({
         from: options.from[index]!,
         to: options.to[index]!,
-        velocity: options.velocity?.[index] ?? 0,
+        velocity:
+          options.velocity === undefined ? 0 : options.velocity[index]!,
         ...options.parameters,
         ...(settle === undefined ? {} : { settle }),
         ...(options.timing === undefined ? {} : { timing: options.timing }),
@@ -105,6 +108,10 @@ export function createVectorSpring(
   const settlingResults = Object.freeze(
     springs.map((spring) => Object.freeze(spring.getSettlingResult())),
   );
+  const parameterSnapshot = springs[0]!.parameters;
+  const timingSnapshot: Readonly<SpringTimingInput> = Object.freeze({
+    perceptualDuration: springs[0]!.timing.perceptualDuration,
+  });
   const duration = Math.max(...settlingResults.map((result) => result.duration));
   const settled = settlingResults.every((result) => result.settled);
   const timing: Readonly<SpringTiming> = Object.freeze({
@@ -175,9 +182,9 @@ export function createVectorSpring(
         from: current.position,
         to: target,
         velocity: current.velocity,
-        parameters: options.parameters,
+        parameters: parameterSnapshot,
         settle: springs.map(resolvedSettleFor),
-        ...(options.timing === undefined ? {} : { timing: options.timing }),
+        timing: timingSnapshot,
       });
     },
   });
