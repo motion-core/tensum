@@ -539,6 +539,25 @@ describe('springTo', () => {
     expect(onUpdate).toHaveBeenCalledOnce();
   });
 
+  it('keeps a representable GSAP driver duration for very large finite caps', () => {
+    const controller = springTo(
+      { x: 0 },
+      {
+        x: 1,
+        spring: {
+          mass: 1,
+          stiffness: 1,
+          damping: 0,
+          settle: { maxDuration: Number.MAX_VALUE },
+        },
+      },
+    );
+
+    expect(controller.duration).toBe(Number.MAX_VALUE);
+    expect(mocks.calls[0]!.vars.duration).toBe(Number.MAX_VALUE);
+    controller.kill();
+  });
+
   it.each(['stop', 'snap'] as const)(
     'clamps logical completion to the finite boundary in %s mode',
     (unsettled) => {

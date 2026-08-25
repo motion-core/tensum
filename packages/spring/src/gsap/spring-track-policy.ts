@@ -49,7 +49,12 @@ export function gsapSafeDuration(duration: number): number {
       'GSAP duration must be a finite number greater than or equal to 0',
     );
   }
-  return Math.ceil(duration * GSAP_TIME_PRECISION) / GSAP_TIME_PRECISION;
+  const wholeSeconds = Math.floor(duration);
+  const fractionalSeconds = duration - wholeSeconds;
+  const rounded =
+    wholeSeconds +
+    Math.ceil(fractionalSeconds * GSAP_TIME_PRECISION) / GSAP_TIME_PRECISION;
+  return Number.isFinite(rounded) ? rounded : duration;
 }
 
 export function gsapDriverTime(
