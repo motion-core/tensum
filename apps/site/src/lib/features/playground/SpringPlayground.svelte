@@ -16,6 +16,7 @@
 	import { Slider } from '$lib/components/ui/slider';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import ParameterField from './ParameterField.svelte';
+	import SlidingSelectionGroup from './SlidingSelectionGroup.svelte';
 	import TrajectoryCharts from './TrajectoryCharts.svelte';
 	import { createTimelineMotion, createTrajectory, TIMELINE_HANDOFF_TIME } from './trajectory.js';
 	import type { PlaygroundScenario } from './trajectory.js';
@@ -95,6 +96,16 @@
 	let stageStatus = $derived(scenario === 'timeline' ? timelineOwner : runtimeStatus);
 	let stageUnit = $derived(scenario === 'rotation' ? '°' : 'px');
 	let velocityUnit = $derived(scenario === 'rotation' ? '°/s' : 'px/s');
+	let scenarioIndex = $derived(scenarios.findIndex((item) => item.id === scenario));
+	let rotationTargetIndex = $derived(
+		rotationTargets.findIndex((target) => target === rotationTarget)
+	);
+	let feelPresetIndex = $derived(
+		inputMode === 'perceptual'
+			? feelPresets.findIndex((preset) => preset.duration === duration && preset.bounce === bounce)
+			: -1
+	);
+	let inputModeIndex = $derived(inputMode === 'perceptual' ? 0 : 1);
 
 	const captureTrack: Attachment<HTMLDivElement> = (node) => {
 		track = node;
@@ -394,22 +405,29 @@
 </script>
 
 <section
-	class="grid overflow-hidden rounded-xl bg-card shadow-sm lg:grid-cols-12"
+	class="grid overflow-hidden rounded-xl bg-card shadow-lg lg:grid-cols-12 dark:bg-card/44 dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]"
 	aria-label="Spring playground"
 >
 	<section
-		class="order-2 flex min-w-0 flex-col border-t border-border lg:order-1 lg:col-span-2 lg:border-t-0"
+		class="order-2 flex min-w-0 flex-col border-t border-border/64 lg:order-1 lg:col-span-2 lg:border-t-0 dark:border-card/80"
 		aria-labelledby="playground-scenes-heading"
 	>
-		<header class="flex h-10 items-center justify-between gap-2 border-b border-border px-3">
+		<header
+			class="flex h-12 items-center justify-between gap-2 border-b border-border/64 px-4 dark:border-card/80"
+		>
 			<h2 class="font-heading text-sm font-medium" id="playground-scenes-heading">Scenes</h2>
 		</header>
-		<div class="p-2">
-			<div class="grid grid-cols-3 gap-1 lg:grid-cols-1" role="group" aria-label="Playground scene">
+		<div class="p-3">
+			<SlidingSelectionGroup
+				selectedIndex={scenarioIndex}
+				count={scenarios.length}
+				role="group"
+				aria-label="Playground scene"
+			>
 				{#each scenarios as item (item.id)}
 					<Button
-						variant={scenario === item.id ? 'secondary' : 'ghost'}
-						class="justify-start"
+						variant="ghost"
+						class="relative z-10 justify-start bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground"
 						onclick={() => setScenario(item.id)}
 						aria-pressed={scenario === item.id}
 						title={item.detail}
@@ -423,56 +441,59 @@
 						{item.label}
 					</Button>
 				{/each}
-			</div>
+			</SlidingSelectionGroup>
 
 			{#if scenario !== 'timeline'}
 				{#if scenario === 'distance'}
 					<p id="distance-target-label" class="mt-3 mb-1 px-2 text-xs text-muted-foreground">
 						Target
 					</p>
-					<div
-						class="grid grid-cols-3 gap-1 lg:grid-cols-1"
+					<SlidingSelectionGroup
+						selectedIndex={distanceTargetIndex}
+						count={distanceTargets.length}
 						role="group"
 						aria-labelledby="distance-target-label"
 					>
 						{#each distanceTargets as target, index (target.label)}
 							<Button
-								variant={distanceTargetIndex === index ? 'secondary' : 'ghost'}
-								class="justify-start"
+								variant="ghost"
+								class="relative z-10 justify-start bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground"
 								onclick={() => setDistanceTarget(index)}
 								aria-pressed={distanceTargetIndex === index}
 							>
 								{target.label}
 							</Button>
 						{/each}
-					</div>
+					</SlidingSelectionGroup>
 				{:else}
 					<p id="rotation-target-label" class="mt-3 mb-1 px-2 text-xs text-muted-foreground">
 						Target
 					</p>
-					<div
-						class="grid grid-cols-3 gap-1 lg:grid-cols-1"
+					<SlidingSelectionGroup
+						selectedIndex={rotationTargetIndex}
+						count={rotationTargets.length}
 						role="group"
 						aria-labelledby="rotation-target-label"
 					>
 						{#each rotationTargets as target (target)}
 							<Button
-								variant={rotationTarget === target ? 'secondary' : 'ghost'}
-								class="justify-start"
+								variant="ghost"
+								class="relative z-10 justify-start bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground"
 								onclick={() => setRotationTarget(target)}
 								aria-pressed={rotationTarget === target}
 							>
 								{target > 0 ? '+' : ''}{target}°
 							</Button>
 						{/each}
-					</div>
+					</SlidingSelectionGroup>
 				{/if}
 
 				<p id="feel-preset-label" class="mt-3 mb-1 px-2 text-xs text-muted-foreground">
 					Feel preset
 				</p>
-				<div
-					class="grid grid-cols-3 gap-1 lg:grid-cols-1"
+				<SlidingSelectionGroup
+					selectedIndex={feelPresetIndex}
+					count={feelPresets.length}
 					role="group"
 					aria-labelledby="feel-preset-label"
 				>
@@ -482,15 +503,15 @@
 							duration === preset.duration &&
 							bounce === preset.bounce}
 						<Button
-							variant={selected ? 'secondary' : 'ghost'}
-							class="justify-start"
+							variant="ghost"
+							class="relative z-10 justify-start bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground"
 							onclick={() => applyPreset(preset)}
 							aria-pressed={selected}
 						>
 							{preset.label}
 						</Button>
 					{/each}
-				</div>
+				</SlidingSelectionGroup>
 			{:else}
 				<p class="mt-4 px-2 text-xs leading-relaxed text-muted-foreground">
 					Two analytical springs share one property without competing writes.
@@ -500,10 +521,12 @@
 	</section>
 
 	<section
-		class="order-1 flex min-w-0 flex-col lg:order-2 lg:col-span-7 lg:border-l lg:border-border"
+		class="order-1 flex min-w-0 flex-col lg:order-2 lg:col-span-7 lg:border-l lg:border-border/64 dark:lg:border-card/80"
 		aria-labelledby="playground-stage-heading"
 	>
-		<header class="flex h-10 items-center justify-between gap-2 border-b border-border px-3">
+		<header
+			class="flex h-12 items-center justify-between gap-2 border-b border-border/64 px-4 dark:border-card/80"
+		>
 			<h2 class="font-heading text-sm font-medium" id="playground-stage-heading">Stage</h2>
 			<span
 				class="font-mono text-xs text-muted-foreground tabular-nums"
@@ -511,48 +534,116 @@
 				aria-atomic="true">{stageStatus}</span
 			>
 		</header>
-		<div class="flex min-h-48 flex-1 flex-col p-2 lg:min-h-96">
-			<div class="relative min-h-32 flex-1 overflow-hidden lg:min-h-40" {@attach captureTrack}>
+		<div class="flex min-h-48 flex-1 flex-col p-3 lg:min-h-96">
+			<div
+				class="spring-stage-canvas relative min-h-32 flex-1 overflow-hidden rounded-lg bg-background shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)] lg:min-h-40 dark:bg-card/64 dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]"
+				{@attach captureTrack}
+			>
 				{#if scenario === 'rotation'}
 					<div
-						class="absolute top-1/2 left-1/2 size-40 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-border"
+						class="spring-stage-rotation-rail absolute top-1/2 left-1/2 size-44 -translate-x-1/2 -translate-y-1/2 rounded-full border-8 border-muted"
 						aria-hidden="true"
-					></div>
-					<div class="absolute inset-x-8 top-1/2 border-t border-border" aria-hidden="true"></div>
-					<div class="absolute inset-y-8 left-1/2 border-l border-border" aria-hidden="true"></div>
+					>
+						<span
+							class="pointer-events-none absolute -inset-1 rounded-full border-4 border-background/65 dark:border-card/50"
+						></span>
+
+						<div class="spring-stage-rotation-stop top-0 left-1/2 -translate-x-1/2">
+							<span
+								class={rotationTarget === -90
+									? 'spring-stage-rotation-node bg-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)]'
+									: 'spring-stage-rotation-node bg-muted-foreground/45'}
+							></span>
+							<span class="spring-stage-rotation-label bottom-4 left-1/2 -translate-x-1/2"
+								>−90°</span
+							>
+						</div>
+
+						<div class="spring-stage-rotation-stop top-1/2 right-0 -translate-y-1/2">
+							<span
+								class={rotationTarget === 0
+									? 'spring-stage-rotation-node bg-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)]'
+									: 'spring-stage-rotation-node bg-muted-foreground/45'}
+							></span>
+							<span class="spring-stage-rotation-label top-1/2 left-4 -translate-y-1/2">0°</span>
+						</div>
+
+						<div class="spring-stage-rotation-stop bottom-0 left-1/2 -translate-x-1/2">
+							<span
+								class={rotationTarget === 90
+									? 'spring-stage-rotation-node bg-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)]'
+									: 'spring-stage-rotation-node bg-muted-foreground/45'}
+							></span>
+							<span class="spring-stage-rotation-label top-4 left-1/2 -translate-x-1/2">+90°</span>
+						</div>
+					</div>
 				{:else}
-					<div class="absolute inset-x-6 top-1/2 border-t border-border" aria-hidden="true"></div>
+					<div
+						class="spring-stage-rail absolute inset-x-6 top-1/2 h-2 -translate-y-1/2 rounded-full bg-muted shadow-inner"
+						aria-hidden="true"
+					>
+						<span class="absolute inset-0.5 rounded-full bg-background/65 dark:bg-card/50"></span>
+					</div>
 					{#if scenario === 'distance'}
-						{#each distanceTargets as target (target.label)}
+						{#each distanceTargets as target, index (target.label)}
 							<div
-								class="absolute bottom-1/2 h-12 border-l border-dashed border-muted-foreground"
+								class="spring-stage-marker absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
 								style:left={markerPosition(target.ratio)}
 								aria-hidden="true"
-							></div>
+							>
+								<span
+									class={distanceTargetIndex === index
+										? 'spring-stage-node border-primary bg-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)]'
+										: 'spring-stage-node border-background bg-muted-foreground/45'}
+								></span>
+								<span class="spring-stage-marker-line"></span>
+								<span
+									class={distanceTargetIndex === index
+										? 'spring-stage-marker-label text-foreground'
+										: 'spring-stage-marker-label text-muted-foreground'}>{target.label}</span
+								>
+							</div>
 						{/each}
 					{:else}
 						<div
-							class="absolute bottom-1/2 h-12 border-l border-dashed border-muted-foreground"
+							class="spring-stage-marker absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
 							style:left={markerPosition(0.22)}
 							aria-hidden="true"
-						></div>
+						>
+							<span class="spring-stage-node border-chart-1 bg-chart-1"></span>
+							<span class="spring-stage-marker-line"></span>
+							<span class="spring-stage-marker-label text-muted-foreground">Spring A</span>
+						</div>
 						<div
-							class="absolute bottom-1/2 h-12 border-l border-dashed border-muted-foreground"
+							class="spring-stage-marker absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
 							style:left={markerPosition(0.82)}
 							aria-hidden="true"
-						></div>
+						>
+							<span class="spring-stage-node border-chart-2 bg-chart-2"></span>
+							<span class="spring-stage-marker-line"></span>
+							<span class="spring-stage-marker-label text-muted-foreground">Spring B</span>
+						</div>
 					{/if}
 				{/if}
 
 				<div
 					class={scenario === 'rotation'
-						? 'absolute top-1/2 left-1/2 -mt-6 -ml-10 flex h-12 w-20 items-center justify-end rounded-md border border-primary bg-primary shadow-sm'
-						: 'absolute bottom-1/2 left-6 mb-2 h-8 w-12 rounded-md border border-primary bg-primary shadow-sm'}
+						? 'spring-stage-object absolute top-1/2 left-1/2 -mt-3.5 -ml-12 flex h-7 w-24 items-center justify-end rounded-full bg-background shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)] dark:bg-card dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]'
+						: 'spring-stage-object spring-stage-object-linear absolute bottom-1/2 left-6 mb-3 flex h-10 w-12 items-center justify-center rounded-lg bg-background shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)] dark:bg-card dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]'}
 					{@attach captureBody}
 					aria-hidden="true"
 				>
 					{#if scenario === 'rotation'}
-						<span class="mr-2 size-2 rounded-full bg-primary-foreground"></span>
+						<span
+							class="absolute left-1/2 size-3 -translate-x-1/2 rounded-full border border-border/64 bg-muted shadow-inner dark:border-card/80"
+						></span>
+						<span
+							class="mr-2 size-2.5 rounded-full bg-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)]"
+						></span>
+					{:else}
+						<span
+							class="size-2.5 rounded-full bg-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)]"
+						></span>
 					{/if}
 				</div>
 
@@ -572,15 +663,17 @@
 	</section>
 
 	<section
-		class="order-3 flex min-w-0 flex-col border-t border-border lg:col-span-3 lg:border-t-0 lg:border-l"
+		class="order-3 flex min-w-0 flex-col border-t border-border/64 lg:col-span-3 lg:border-t-0 lg:border-l dark:border-card/80"
 		aria-labelledby="playground-inspector-heading"
 	>
-		<header class="flex h-10 items-center justify-between gap-2 border-b border-border px-3">
+		<header
+			class="flex h-12 items-center justify-between gap-2 border-b border-border/64 px-4 dark:border-card/80"
+		>
 			<h2 class="font-heading text-sm font-medium" id="playground-inspector-heading">Inspector</h2>
 		</header>
 
 		{#if scenario === 'timeline'}
-			<div class="flex flex-1 flex-col gap-3 p-2.5">
+			<div class="flex flex-1 flex-col gap-4 p-4">
 				<Slider
 					type="single"
 					id="hero-timeline-time"
@@ -620,19 +713,24 @@
 				</div>
 
 				<p
-					class="mt-auto border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground"
+					class="mt-auto border-t border-border/64 pt-3 text-xs leading-relaxed text-muted-foreground dark:border-card/80"
 				>
 					Spring B inherits A's position and velocity at exactly {TIMELINE_HANDOFF_TIME}s.
 				</p>
 			</div>
 		{:else}
-			<div class="flex flex-1 flex-col gap-3 p-2.5">
+			<div class="flex flex-1 flex-col gap-4 p-4">
 				<Tabs.Root
 					class="w-full gap-3"
 					value={inputMode}
 					onValueChange={(value) => setInputMode(value as InputMode)}
 				>
-					<Tabs.List class="w-full" aria-label="Spring input model">
+					<Tabs.List
+						class="w-full"
+						aria-label="Spring input model"
+						indicatorIndex={inputModeIndex}
+						indicatorCount={2}
+					>
 						<Tabs.Trigger class="flex-1" value="perceptual">Feel</Tabs.Trigger>
 						<Tabs.Trigger class="flex-1" value="physics">Physics</Tabs.Trigger>
 					</Tabs.List>
@@ -704,7 +802,9 @@
 					Run spring
 				</Button>
 
-				<dl class="mt-auto grid grid-cols-2 gap-3 border-t border-border pt-3 text-xs">
+				<dl
+					class="mt-auto grid grid-cols-2 gap-3 border-t border-border/64 pt-3 text-xs dark:border-card/80"
+				>
 					<div>
 						<dt class="text-xs text-muted-foreground">Damping ratio</dt>
 						<dd class="font-mono tabular-nums">{characteristics.dampingRatio.toFixed(3)}</dd>
@@ -718,7 +818,7 @@
 		{/if}
 	</section>
 
-	<div class="order-4 col-span-full min-w-0 border-t border-border">
+	<div class="order-4 col-span-full min-w-0 border-t border-border/64 dark:border-card/80">
 		<TrajectoryCharts
 			samples={trajectory.samples}
 			target={trajectory.target}
@@ -727,3 +827,97 @@
 		/>
 	</div>
 </section>
+
+<style>
+	.spring-stage-rail {
+		box-shadow:
+			inset 0 1px 2px rgb(0 0 0 / 0.08),
+			0 1px rgb(255 255 255 / 0.06);
+	}
+
+	.spring-stage-rotation-rail {
+		box-shadow:
+			inset 0 1px 2px rgb(0 0 0 / 0.08),
+			0 1px rgb(255 255 255 / 0.06);
+	}
+
+	.spring-stage-rotation-stop {
+		position: absolute;
+		z-index: 2;
+		width: 0;
+		height: 0;
+	}
+
+	.spring-stage-rotation-node {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 0.625rem;
+		height: 0.625rem;
+		translate: -50% -50%;
+		border: 2px solid var(--background);
+		border-radius: 9999px;
+	}
+
+	.spring-stage-rotation-label {
+		position: absolute;
+		font-family: var(--font-mono);
+		font-size: 0.625rem;
+		line-height: 1rem;
+		color: var(--muted-foreground);
+		white-space: nowrap;
+	}
+
+	.spring-stage-marker {
+		z-index: 1;
+		width: 0;
+		height: 0;
+	}
+
+	.spring-stage-node {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 0.625rem;
+		height: 0.625rem;
+		translate: -50% -50%;
+		border-width: 2px;
+		border-radius: 9999px;
+	}
+
+	.spring-stage-marker-line {
+		position: absolute;
+		top: 0.375rem;
+		left: 50%;
+		width: 1px;
+		height: 0.875rem;
+		translate: -50% 0;
+		background: linear-gradient(to bottom, var(--separator), transparent);
+	}
+
+	.spring-stage-marker-label {
+		position: absolute;
+		top: 1.5rem;
+		left: 50%;
+		translate: -50% 0;
+		font-family: var(--font-mono);
+		font-size: 0.625rem;
+		line-height: 1rem;
+		white-space: nowrap;
+	}
+
+	.spring-stage-object {
+		z-index: 10;
+	}
+
+	.spring-stage-object-linear::after {
+		position: absolute;
+		top: 100%;
+		left: 50%;
+		width: 1px;
+		height: 0.75rem;
+		translate: -50% 0;
+		background: color-mix(in oklab, var(--primary) 60%, transparent);
+		content: '';
+	}
+</style>
