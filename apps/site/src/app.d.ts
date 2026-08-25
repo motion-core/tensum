@@ -10,4 +10,11 @@ declare global {
 	}
 }
 
+declare module '*.svx' {
+	import type { Component } from 'svelte';
+	export const metadata: Record<string, unknown>;
+	const component: Component<Record<string, unknown>>;
+	export default component;
+}
+
 export {};

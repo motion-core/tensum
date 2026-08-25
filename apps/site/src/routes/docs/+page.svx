@@ -1,0 +1,282 @@
+<script lang="ts">
+	import { ApiSignature, Callout, Code } from '$lib/features/docs/markdown';
+</script>
+
+<svelte:head>
+	<title>Documentation — Spring by Motion Core</title>
+	<meta
+		name="description"
+		content="Install and use @motion-core/spring with GSAP timelines, direct controllers, analytical sampling, and CSS linear() export."
+	/>
+</svelte:head>
+
+# Analytical spring motion, wired to the clocks you already use.
+
+`@motion-core/spring` is an analytical spring solver with a GSAP plugin, a direct controller, and deterministic output helpers. The spring state comes from absolute time. Seeking, reversing, or sampling at another frame rate does not change the path.
+
+The GSAP effect is the usual starting point. It calculates the physical settling duration before GSAP places the tween on a timeline, so later children start where the spring actually ends.
+
+## Install
+
+Install Spring beside GSAP. GSAP is a peer dependency, which keeps the application and the plugin on the same timeline instance.
+
+```bash
+pnpm add @motion-core/spring gsap
+```
+
+The package is ESM-only. Node.js 18 or newer is supported at runtime. TypeScript projects should use `node16`, `nodenext`, or `bundler` module resolution.
+
+## Quick start
+
+Register the plugin once, then add a spring through the timeline effect.
+
+```ts
+import { gsap } from 'gsap';
+import { SpringPlugin, springPresets } from '@motion-core/spring';
+
+gsap.registerPlugin(SpringPlugin);
+
+gsap.timeline().motionSpring(card, {
+  x: 320,
+  from: { x: 0 },
+  parameters: springPresets.snappy()
+});
+```
+
+No GSAP `duration` or `ease` is required. The physical parameters and settling tolerances determine the duration and trajectory.
+
+<Callout title="Choose the API by clock ownership">
+Use <Code>timeline.motionSpring()</Code> when GSAP owns composition. Use <Code>springTo()</Code> when you need direct controls such as <Code>pause()</Code>, <Code>seek()</Code>, or <Code>playbackReverse()</Code>. Use <Code>createSpring()</Code> when you only need analytical samples.
+</Callout>
+
+## timeline.motionSpring()
+
+<ApiSignature>timeline.motionSpring(targets, vars, position?): Timeline</ApiSignature>
+
+The registered effect preflights every target before adding its tween. Sequential children, staggered targets, and nested timelines receive the final duration immediately.
+
+```ts
+const timeline = gsap.timeline();
+
+timeline
+  .motionSpring(card, {
+    x: 320,
+    from: { x: 0 },
+    parameters: { mass: 1, stiffness: 180, damping: 24 }
+  })
+  .motionSpring(card, {
+    x: 80,
+    from: { x: 320 },
+    parameters: { mass: 1, stiffness: 240, damping: 26 }
+  });
+```
+
+Ordinary GSAP driver options belong under `tween`. Spring owns `duration`, `ease`, and `motionSpring`.
+
+```ts
+timeline.motionSpring(cards, {
+  y: 0,
+  from: { y: -24 },
+  parameters: springPresets.snappy(),
+  tween: {
+    stagger: 0.06,
+    repeat: 1,
+    yoyo: true
+  }
+});
+```
+
+Use `createMotionSpringTween(targets, vars)` when another piece of code needs the preflighted tween instead of the extended timeline method.
+
+## Starting state
+
+Preflight reads the target when the effect is created. That is correct when the element already has its starting value. If an earlier timeline child will change the target later, pass the future state through `from`.
+
+```ts
+timeline.motionSpring(card, {
+  x: 80,
+  from: { x: 320 },
+  velocity: { x: -240 },
+  parameters: springPresets.snappy()
+});
+```
+
+`velocity` is measured in property units per second. A single number applies to every property; a map can set each property independently.
+
+<Callout title="Why from is explicit" kind="warning">
+An effect created before playback cannot inspect a state that an earlier child has not written yet. <Code>from</Code> makes that future snapshot part of the timeline definition instead of relying on lazy initialization.
+</Callout>
+
+## Legacy plugin
+
+The GSAP special-property form remains available for direct tweens and timeline children with explicit positions.
+
+```ts
+gsap.to(card, {
+  motionSpring: {
+    x: 600,
+    rotation: '30deg',
+    parameters: springPresets.snappy()
+  }
+});
+```
+
+GSAP initializes special properties lazily. A sequential timeline may place its next child before the plugin has replaced the placeholder duration. Use `timeline.motionSpring()` whenever derived duration affects layout.
+
+## springTo()
+
+<ApiSignature>springTo(target, vars): SpringController</ApiSignature>
+
+`springTo()` uses GSAP property access and ticking but returns direct playback controls. Built-in transform properties are `x`, `y`, `scale`, and `rotation`; other numeric properties go in `targets`.
+
+```ts
+import { springTo } from '@motion-core/spring';
+
+const motion = springTo(card, {
+  x: 600,
+  rotation: '30deg',
+  velocity: { x: 1250 },
+  spring: {
+    mass: 1,
+    stiffness: 180,
+    damping: 24,
+    settle: { position: 0.1, velocity: 0.1 }
+  },
+  targets: { opacity: 1 }
+});
+
+motion.pause();
+motion.seek(0.2);
+motion.resume();
+```
+
+The controller also exposes `play()`, `stop()`, `playbackReverse()`, `kill()`, `getSnapshot()`, its GSAP `tween`, and the per-property analytical solutions in `springs`.
+
+Starting a newer Motion Core track on the same target and property performs a velocity-preserving handoff. The newer track becomes the only writer without restarting from rest.
+
+## Parameters
+
+Every physical spring uses three values.
+
+| Parameter | Constraint | Effect |
+| --- | --- | --- |
+| `mass` | greater than `0` | More mass resists acceleration and changes the response time. |
+| `stiffness` | greater than `0` | Higher stiffness pulls toward the target more strongly. |
+| `damping` | `0` or greater | Higher damping removes oscillation and velocity sooner. |
+
+You can provide those values directly or derive them from controls that are easier to tune.
+
+```ts
+import { springParameters, springPresets } from '@motion-core/spring';
+
+const tuned = springParameters.fromPerceptualDuration({
+  duration: 0.5,
+  bounce: 0.15
+});
+
+const smooth = springPresets.smooth();
+const snappy = springPresets.snappy({ duration: 0.42 });
+const bouncy = springPresets.bouncy({ extraBounce: 0.08 });
+```
+
+The converter also accepts response, visual duration, and settling-duration inputs. `springCharacteristics(parameters)` returns the damping ratio, regime, angular frequency, response, bounce, and perceptual duration for an existing physical configuration.
+
+## Settlement
+
+A damped spring approaches equilibrium asymptotically, so the runtime needs a practical completion boundary. A spring is settled when both the remaining distance and velocity stay inside their tolerances for the future tail.
+
+```text
+abs(position - target) <= positionEpsilon
+abs(velocity) <= velocityEpsilon
+```
+
+The public `settle` input uses shorter property names.
+
+| Input | Default role |
+| --- | --- |
+| `position` | Maximum remaining distance from the target. |
+| `velocity` | Maximum remaining speed. |
+| `maxDuration` | Search boundary for a finite settlement. |
+| `refinementIterations` | Precision of the final duration search. |
+
+`onLogicalComplete` and `onSettle` describe different boundaries. Logical completion follows the requested perceptual timing. Settlement means the physical tolerances were met.
+
+## Unsettled springs
+
+An undamped moving spring never reaches physical rest. The `unsettled` option decides what happens at `maxDuration`.
+
+| Policy | Result |
+| --- | --- |
+| `stop` | Freeze at the analytical state at `maxDuration`. This is the default. |
+| `snap` | Write the target value at `maxDuration`. |
+| `continue` | Keep an infinite GSAP driver and continue analytical sampling. |
+| `error` | Reject the animation before playback. |
+
+`onUnsettled` runs when a finite boundary is crossed without settlement. `onSettle` does not run for that track.
+
+<Callout title="Continue owns an infinite driver">
+Covering a <Code>continue</Code> track with a newer property track changes which track writes the property, but it does not end the old driver. Kill the property or tween when the continuing spring is no longer needed.
+</Callout>
+
+## CSS linear()
+
+The CSS subpath exports an adaptive `linear()` approximation of the same analytical trajectory.
+
+```ts
+import { createSpring } from '@motion-core/spring';
+import { springToCSSLinear } from '@motion-core/spring/css';
+
+const spring = createSpring({
+  from: 0,
+  to: 1,
+  velocity: 0,
+  mass: 1,
+  stiffness: 180,
+  damping: 24
+});
+
+const css = springToCSSLinear(spring, { maxError: 0.001 });
+
+element.style.transition = `transform ${css.duration}s ${css.easing}`;
+```
+
+The result contains the easing string, duration, maximum approximation error, and normalized samples. The same spring can drive JavaScript and CSS without maintaining two hand-tuned curves.
+
+## API surface
+
+The package root groups the public API by job.
+
+| Job | Main exports |
+| --- | --- |
+| GSAP composition | `SpringPlugin`, `registerSpringPlugin`, `createMotionSpringTween` |
+| Direct controller | `springTo`, `SUPPORTED_PROPERTIES` |
+| Analytical solver | `createSpring`, `createSpringModel`, `createVectorSpring` |
+| Parameter conversion | `springParameters`, `springPresets`, `springCharacteristics` |
+| Reactive values | `createSpringValue`, `createAdditiveSpringValue` |
+| Sampling | `createSpringKeyframes`, `velocityFromSamples` |
+| Inertia | `createInertia`, `snapToGrid` |
+| CSS | `springToCSSLinear` from `@motion-core/spring/css` |
+| Coupled systems | `createCoupledSpringSystem` from `@motion-core/spring/coupled` |
+
+`createSpring()` returns `positionAt(time)`, `velocityAt(time)`, `stateAt(time)`, settlement information, and `retarget(target, time)`. It does not schedule frames or write to the DOM.
+
+## Lifecycle
+
+GSAP owns timeline playback, seeking, repeats, yoyo cycles, context reverts, and property-level kills. Spring samples the corresponding analytical time and keeps an ownership registry per target and property.
+
+- Killing one property removes only that spring track.
+- Killing the final property lets GSAP remove the plugin PropTween.
+- `invalidate()` rebuilds a legacy special-property tween from current values.
+- A preflighted effect keeps the snapshot captured when it was created.
+- Context revert and interruption release active ownership.
+- A completed track remains available as a terminal handoff baseline until an external write replaces it.
+
+If application code writes a different value after completion, the next implicit handoff detects the change and starts from the value currently on the target. An explicit `from` always wins.
+
+## Runtime support
+
+The package ships ESM, TypeScript declarations, source maps, and declaration maps. CommonJS `require()` is intentionally unsupported; CommonJS code can use dynamic `import()` while migrating.
+
+Built-in DOM properties accept numbers and single-unit numeric strings such as `24px`, `30deg`, and `100%`. A unit mismatch throws before playback. Custom adapters can provide read and write behavior for values that GSAP cannot address directly.
+
+The [interactive playground](/#playground) is useful for tuning parameters. The [landing page](/) shows the same solver across controller, GSAP timeline, and CSS output.
