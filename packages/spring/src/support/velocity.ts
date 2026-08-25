@@ -59,7 +59,10 @@ export function velocityFromSamples(
   if (typeof previous.value === 'number' && typeof current.value === 'number') {
     assertFinite('previous.value', previous.value);
     assertFinite('current.value', current.value);
-    return deltaTime === undefined ? 0 : (current.value - previous.value) / deltaTime;
+    if (deltaTime === undefined) return 0;
+    const velocity = (current.value - previous.value) / deltaTime;
+    assertFinite('velocity', velocity);
+    return velocity;
   }
 
   if (Array.isArray(previous.value) && Array.isArray(current.value)) {
@@ -73,7 +76,10 @@ export function velocityFromSamples(
         const currentValue = currentValues[index]!;
         assertFinite(`previous.value[${index}]`, previousValue);
         assertFinite(`current.value[${index}]`, currentValue);
-        return deltaTime === undefined ? 0 : (currentValue - previousValue) / deltaTime;
+        if (deltaTime === undefined) return 0;
+        const velocity = (currentValue - previousValue) / deltaTime;
+        assertFinite(`velocity[${index}]`, velocity);
+        return velocity;
       }),
     );
   }
@@ -90,10 +96,13 @@ export function normalizedVelocity(
   assertFinite('from', from);
   assertFinite('to', to);
   const distance = to - from;
+  assertFinite('distance', distance);
   if (distance === 0) {
     throw new RangeError('normalized velocity requires a non-zero distance');
   }
-  return velocity / distance;
+  const result = velocity / distance;
+  assertFinite('normalizedVelocity', result);
+  return result;
 }
 
 export function physicalVelocity(

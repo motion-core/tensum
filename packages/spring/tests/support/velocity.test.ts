@@ -64,4 +64,16 @@ describe('gesture velocity helpers', () => {
     expect(physicalVelocity(normalized, 500, 100)).toBe(physical);
     expect(() => normalizedVelocity(physical, 100, 100)).toThrow(RangeError);
   });
+
+  it('rejects derived velocities that exceed the finite numeric range', () => {
+    expect(() =>
+      velocityFromSamples(
+        { value: -Number.MAX_VALUE, time: 0 },
+        { value: Number.MAX_VALUE, time: 1 },
+      ),
+    ).toThrow(RangeError);
+    expect(() =>
+      normalizedVelocity(Number.MAX_VALUE, 0, Number.MIN_VALUE),
+    ).toThrow(RangeError);
+  });
 });
