@@ -1,0 +1,17 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "tensum",
+	"compatibility_date": "2026-08-26",
+	"workers_dev": true,
+	"routes": [
+		{
+			"pattern": "tensum.madebyhex.com",
+			"custom_domain": true
+		}
+	],
+	"assets": {
+		"directory": "./build",
+		"html_handling": "auto-trailing-slash",
+		"not_found_handling": "none"
+	}
+}

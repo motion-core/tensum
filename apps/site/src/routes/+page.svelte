@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { PageContainer, PageSection, SiteHeader } from '$lib/components/layout';
+	import { PageContainer, PageMetadata, PageSection, SiteHeader } from '$lib/components/layout';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
@@ -12,13 +12,11 @@
 	let { data }: PageProps = $props();
 </script>
 
-<svelte:head>
-	<title>Tensum — analytical spring physics for the web</title>
-	<meta
-		name="description"
-		content="Analytical spring physics with continuous retargeting, reactive values, CSS export, and native GSAP timeline composition."
-	/>
-</svelte:head>
+<PageMetadata
+	title="Tensum — analytical spring physics for the web"
+	description="Analytical spring physics with continuous retargeting, reactive values, CSS export, and native GSAP timeline composition."
+	path="/"
+/>
 
 <Button
 	href="#main-content"

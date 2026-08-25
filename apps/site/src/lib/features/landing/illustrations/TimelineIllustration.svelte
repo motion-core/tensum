@@ -3,7 +3,7 @@
 </script>
 
 <div
-	class="timeline-illustration relative flex h-56 items-center justify-center overflow-hidden p-6"
+	class="timeline-illustration relative mx-auto flex h-56 max-w-[80%] items-center justify-center overflow-hidden p-6"
 	data-paused={paused}
 	aria-hidden="true"
 >

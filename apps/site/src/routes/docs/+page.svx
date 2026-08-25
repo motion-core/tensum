@@ -1,14 +1,14 @@
 <script lang="ts">
+	import { PageMetadata } from '$lib/components/layout';
 	import { ApiSignature, Callout, Code } from '$lib/features/docs/markdown';
 </script>
 
-<svelte:head>
-	<title>Documentation — Tensum</title>
-	<meta
-		name="description"
-		content="Install and use tensum with GSAP timelines, direct controllers, analytical sampling, and CSS linear() export."
-	/>
-</svelte:head>
+<PageMetadata
+	title="Documentation — Tensum"
+	description="Install and use Tensum with GSAP timelines, direct controllers, analytical sampling, and CSS linear() export."
+	path="/docs"
+	kind="article"
+/>
 
 # Analytical spring motion, wired to the clocks you already use.
 

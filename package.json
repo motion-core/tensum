@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "pnpm --filter tensum build && pnpm --filter tensum-site dev",
     "build": "pnpm -r --if-present build",
+    "deploy:site": "pnpm --filter tensum build && pnpm --filter tensum-site build && pnpm --filter tensum-site run deploy",
+    "deploy:site:dry-run": "pnpm --filter tensum build && pnpm --filter tensum-site build && pnpm --filter tensum-site run deploy:dry-run",
     "benchmark": "pnpm -r --if-present benchmark",
     "check": "pnpm --filter tensum build && pnpm -r --if-present check",
     "test": "pnpm -r --if-present test",
