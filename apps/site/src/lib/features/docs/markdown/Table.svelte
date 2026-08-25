@@ -11,7 +11,9 @@
 	let { children, class: className, ...restProps }: Props = $props();
 </script>
 
-<div class="my-7 overflow-hidden rounded-lg bg-card shadow-sm">
+<div
+	class="my-8 overflow-hidden rounded-xl bg-card shadow-lg dark:bg-card/44 dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]"
+>
 	<ScrollArea
 		orientation="horizontal"
 		class="w-full min-w-0"

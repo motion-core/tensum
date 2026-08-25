@@ -2,7 +2,9 @@
 	import { onDestroy } from 'svelte';
 	import { ActionTooltip } from '$lib/components/action-tooltip';
 	import { CopyFeedbackIcon } from '$lib/components/copy-feedback';
+	import { buttonVariants } from '$lib/components/ui/button';
 	import { LinkIcon } from '$lib/icons';
+	import { cn } from '$lib/utils';
 
 	let { id }: { id?: string } = $props();
 
@@ -53,7 +55,10 @@
 			<button
 				{...props}
 				type="button"
-				class="ms-1 inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-[opacity,color,background-color] duration-150 outline-none group-hover/heading:opacity-100 hover:bg-card hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/40 motion-reduce:transition-none"
+				class={cn(
+					buttonVariants({ variant: 'ghost', size: 'icon' }),
+					'ms-1 align-middle text-muted-foreground opacity-0 transition-[opacity,color,background-color,box-shadow] duration-150 group-hover/heading:opacity-100 hover:text-foreground focus-visible:opacity-100 motion-reduce:transition-none'
+				)}
 				data-copied={copied}
 				aria-label={tooltipLabel}
 				onclick={copyLink}

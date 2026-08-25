@@ -28,8 +28,8 @@
 
 <div
 	class={cn(
-		'code-block group/code-block relative overflow-hidden bg-card',
-		framed && 'rounded-lg shadow-sm',
+		'code-block group/code-block relative overflow-hidden bg-card dark:bg-card/44',
+		framed && 'rounded-lg shadow-lg dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]',
 		lineNumbers && 'with-line-numbers',
 		compact && 'compact',
 		className
@@ -40,7 +40,7 @@
 	<CopyCodeButton
 		value={code}
 		label={compact ? 'Copy install command to clipboard' : 'Copy code to clipboard'}
-		class="absolute inset-e-1 top-1 z-10"
+		class="absolute inset-e-2 top-2 z-10"
 	/>
 
 	<div class="shiki-theme-light">
@@ -85,17 +85,17 @@
 	.code-block :global(.shiki) {
 		margin: 0;
 		overflow: visible;
-		padding: 0.5rem;
-		background-color: var(--card) !important;
+		padding: 1rem;
+		background-color: transparent !important;
 		font-family:
-			ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
-			monospace;
-		font-size: 0.75rem;
-		line-height: 1.25rem;
+			'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+			'Liberation Mono', 'Courier New', monospace;
+		font-size: 0.8125rem;
+		line-height: 1.5rem;
 	}
 
 	.compact :global(.shiki) {
-		padding: 0.5rem;
+		padding: 0.75rem;
 	}
 
 	.code-block :global(.shiki code) {

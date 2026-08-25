@@ -91,7 +91,9 @@
 		class="isolate h-dvh w-72 max-w-[calc(100vw-0.5rem)] sm:max-w-72"
 		onOpenAutoFocus={focusMobileNavigation}
 	>
-		<Drawer.Header class="flex-row items-center justify-between border-b border-border px-4 py-3">
+		<Drawer.Header
+			class="flex-row items-center justify-between border-b border-border/64 px-4 py-3 dark:border-card/80"
+		>
 			<div class="min-w-0">
 				<Drawer.Title>Spring documentation</Drawer.Title>
 				<Drawer.Description class="sr-only">
@@ -145,7 +147,9 @@
 			{@render children()}
 		</div>
 
-		<footer class="mt-20 border-t border-border pt-6 text-xs text-muted-foreground">
+		<footer
+			class="mt-20 border-t border-border/64 pt-6 text-xs text-muted-foreground dark:border-card/80"
+		>
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<p>Motion Core / Spring · MIT licensed</p>
 				<nav class="flex flex-wrap gap-x-4 gap-y-2" aria-label="Documentation footer">

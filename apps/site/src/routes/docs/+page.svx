@@ -24,7 +24,7 @@ Install Spring beside GSAP. GSAP is a peer dependency, which keeps the applicati
 pnpm add @motion-core/spring gsap
 ```
 
-The package is ESM-only. Node.js 18 or newer is supported at runtime. TypeScript projects should use `node16`, `nodenext`, or `bundler` module resolution.
+The package is ESM-only. Node.js 20.19 or newer is supported at runtime. TypeScript projects should use `node16`, `nodenext`, or `bundler` module resolution.
 
 ## Quick start
 

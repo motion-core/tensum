@@ -5,4 +5,7 @@
 	let { class: className, ...restProps }: Props = $props();
 </script>
 
-<hr {...restProps} class={cn('my-14 border-0 border-t border-border', className)} />
+<hr
+	{...restProps}
+	class={cn('my-14 border-0 border-t border-border/64 dark:border-card/80', className)}
+/>

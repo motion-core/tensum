@@ -13,7 +13,7 @@
 <code
 	{...restProps}
 	class={cn(
-		'wrap-break-words rounded-sm border border-border bg-card px-1.5 py-0.5 font-mono text-sm font-medium text-foreground',
+		'wrap-break-words rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-sm font-medium text-secondary-foreground',
 		className
 	)}
 >

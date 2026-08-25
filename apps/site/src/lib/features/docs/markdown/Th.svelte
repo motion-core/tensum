@@ -13,7 +13,7 @@
 <th
 	{scope}
 	{...restProps}
-	class={cn('p-2 text-start font-mono text-xs font-medium text-muted-foreground ', className)}
+	class={cn('h-12 px-3 text-start text-sm font-medium text-muted-foreground', className)}
 >
 	{@render children?.()}
 </th>
