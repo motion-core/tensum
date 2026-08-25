@@ -940,6 +940,65 @@ describe('MotionCoreSpringPlugin', () => {
     expect(target.score).toBeCloseTo(redirected.positionAt(0.01), 10);
   });
 
+  it.each([
+    ['repeat', false],
+    ['yoyo repeat', true],
+  ] as const)(
+    'preserves cycle-direction velocity after a completed %s',
+    (_label, yoyo) => {
+      const target = { score: 0 };
+      const initialVelocity = 120;
+      const cappedParameters = {
+        ...parameters,
+        damping: 0,
+        settle: { maxDuration: 0.2 },
+      };
+      const firstSpring = createSpring({
+        from: 0,
+        to: 100,
+        velocity: initialVelocity,
+        ...cappedParameters,
+      });
+      const first = gsap.to(target, {
+        paused: true,
+        repeat: 1,
+        yoyo,
+        motionSpring: {
+          values: { score: 100 },
+          parameters: cappedParameters,
+          velocity: initialVelocity,
+        },
+      });
+
+      first.time(0.01, true).totalTime(first.totalDuration(), true);
+      const terminal = yoyo
+        ? {
+            position: firstSpring.positionAt(0),
+            velocity: -firstSpring.velocityAt(0),
+          }
+        : firstSpring.stateAt(0.2);
+      const redirected = createSpring({
+        from: terminal.position,
+        to: 200,
+        velocity: terminal.velocity,
+        ...parameters,
+      });
+      const second = gsap.to(target, {
+        paused: true,
+        motionSpring: {
+          values: { score: 200 },
+          parameters,
+        },
+      });
+
+      second.time(0.01, true);
+
+      expect(target.score).toBeCloseTo(redirected.positionAt(0.01), 10);
+      second.kill();
+      first.kill();
+    },
+  );
+
   it('does not let retired covered history reclaim ownership on a forward tick', () => {
     const target = { score: 0 };
     const first = gsap.to(target, {
@@ -1074,5 +1133,90 @@ describe('MotionCoreSpringPlugin', () => {
     // new revert baseline for the next init generation.
     expect(targets.map((target) => target.score)).toEqual(baseline);
     expect(onInterrupt).toHaveBeenCalledOnce();
+  });
+
+  it('negates inherited velocity when handing off from reversed plugin playback', () => {
+    const target = { score: 0 };
+    const firstSpring = createSpring({ from: 0, to: 100, velocity: 0, ...parameters });
+    const first = gsap.to(target, {
+      paused: true,
+      motionSpring: {
+        values: { score: 100 },
+        parameters,
+      },
+    });
+    first.time(0.2, true).reverse().pause();
+
+    const redirected = springTo(target, {
+      targets: { score: 200 },
+      spring: parameters,
+    });
+    redirected.pause();
+
+    expect(redirected.springs['score']!.stateAt(0)).toEqual({
+      position: firstSpring.positionAt(0.2),
+      velocity: -firstSpring.velocityAt(0.2),
+    });
+
+    redirected.kill();
+    first.kill();
+  });
+
+  it('negates inherited velocity when handing off from a reversed controller', () => {
+    const target = { score: 0 };
+    const first = springTo(target, {
+      targets: { score: 100 },
+      spring: parameters,
+    });
+    first.pause();
+    first.seek(0.2);
+    const forwardState = first.springs['score']!.stateAt(0.2);
+    first.playbackReverse();
+    first.pause();
+    const redirected = createSpring({
+      from: forwardState.position,
+      to: 200,
+      velocity: -forwardState.velocity,
+      ...parameters,
+    });
+    const second = gsap.to(target, {
+      paused: true,
+      motionSpring: {
+        values: { score: 200 },
+        parameters,
+      },
+    });
+
+    second.time(0.05, true);
+
+    expect(target.score).toBeCloseTo(redirected.positionAt(0.05), 9);
+
+    second.kill();
+    first.kill();
+  });
+
+  it('stops later lifecycle callbacks when a logical callback kills the tween', () => {
+    const events: string[] = [];
+    let tween: gsap.core.Tween;
+    tween = gsap.to(
+      { score: 0 },
+      {
+        paused: true,
+        motionSpring: {
+          values: { score: 100 },
+          parameters,
+          onLogicalComplete: () => {
+            events.push('logical');
+            tween.kill();
+          },
+          onSettle: () => events.push('settle'),
+        },
+      },
+    );
+
+    tween.time(0.01, true);
+    tween.time(tween.duration(), false);
+
+    expect(events).toEqual(['logical']);
   });
 });

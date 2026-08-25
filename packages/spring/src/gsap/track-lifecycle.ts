@@ -15,8 +15,14 @@ export function syncActiveTrackRegistration(
   registration: ActiveTrackRegistration,
   time: number,
   lastTime: number,
+  options: { retainAtStart?: boolean } = {},
 ): ActiveTrackTransition {
-  if (time <= 0 && lastTime > 0 && registration.isActive()) {
+  if (
+    !options.retainAtStart &&
+    time <= 0 &&
+    lastTime > 0 &&
+    registration.isActive()
+  ) {
     const restored = registration.release();
     return {
       isOwner: false,

@@ -35,43 +35,57 @@ export interface LocalCycle {
   direction: 1 | 0 | -1;
 }
 
+function cycleAtTotalTime(
+  animation: gsap.core.Tween,
+  totalTime: number,
+): LocalCycle {
+  const duration = animation.duration();
+  const playbackDirection = animation.reversed() ? -1 : 1;
+  if (!(duration > 0)) return { time: 0, direction: playbackDirection };
+
+  const repeat = animation.repeat();
+  if (repeat === 0) {
+    return {
+      time: Math.min(totalTime, duration),
+      direction: playbackDirection,
+    };
+  }
+
+  const cycleDuration = duration + animation.repeatDelay();
+  if (!(cycleDuration > 0)) return { time: 0, direction: playbackDirection };
+
+  const finiteEnd = repeat >= 0 ? animation.totalDuration() : Infinity;
+  const boundedTotalTime = Math.min(totalTime, finiteEnd);
+  if (repeat >= 0 && boundedTotalTime >= finiteEnd) {
+    const yoyoReversed = animation.yoyo() && repeat % 2 === 1;
+    return {
+      time: yoyoReversed ? 0 : duration,
+      direction: (((yoyoReversed ? -1 : 1) * playbackDirection) as 1 | -1),
+    };
+  }
+
+  const cycle = Math.floor(boundedTotalTime / cycleDuration);
+  const yoyoReversed = animation.yoyo() && cycle % 2 === 1;
+  const cycleTime = boundedTotalTime - cycle * cycleDuration;
+  const forwardTime = Math.min(cycleTime, duration);
+  return {
+    time: yoyoReversed ? duration - forwardTime : forwardTime,
+    direction:
+      cycleTime > duration
+        ? 0
+        : (((yoyoReversed ? -1 : 1) * playbackDirection) as 1 | -1),
+  };
+}
+
+export function currentLocalCycle(animation: gsap.core.Tween): LocalCycle {
+  return cycleAtTotalTime(animation, animation.totalTime());
+}
+
 /** Maps a global instant to GSAP's cycle-local time, including repeat/yoyo. */
 export function localCycleAt(
   animation: gsap.core.Tween,
   globalTime: number,
 ): LocalCycle {
-  const duration = animation.duration();
-  if (!(duration > 0)) return { time: 0, direction: 1 };
-
   const totalTime = localTimeAt(animation, globalTime);
-  const repeat = animation.repeat();
-  if (repeat === 0) {
-    return { time: Math.min(totalTime, duration), direction: 1 };
-  }
-
-  const cycleDuration = duration + animation.repeatDelay();
-  if (!(cycleDuration > 0)) return { time: 0, direction: 1 };
-
-  const finiteEnd = repeat >= 0 ? animation.totalDuration() : Infinity;
-  const boundedTotalTime = Math.min(totalTime, finiteEnd);
-  if (repeat >= 0 && boundedTotalTime >= finiteEnd) {
-    const reversed = animation.yoyo() && repeat % 2 === 1;
-    return { time: reversed ? 0 : duration, direction: 0 };
-  }
-
-  const cycle = Math.floor(boundedTotalTime / cycleDuration);
-  const reversed = animation.yoyo() && cycle % 2 === 1;
-  const forwardTime = Math.min(
-    boundedTotalTime - cycle * cycleDuration,
-    duration,
-  );
-  return {
-    time: reversed ? duration - forwardTime : forwardTime,
-    direction:
-      boundedTotalTime - cycle * cycleDuration > duration
-        ? 0
-        : reversed
-          ? -1
-          : 1,
-  };
+  return cycleAtTotalTime(animation, totalTime);
 }

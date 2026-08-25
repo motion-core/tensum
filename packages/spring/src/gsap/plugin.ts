@@ -13,7 +13,12 @@ import {
   registerActiveTrack,
 } from './active-tracks.js';
 import type { ActiveTrackRegistration } from './active-tracks.js';
-import { globalTimeAt, localCycleAt, localTimeAt } from './gsap-time.js';
+import {
+  currentLocalCycle,
+  globalTimeAt,
+  localCycleAt,
+  localTimeAt,
+} from './gsap-time.js';
 import {
   beginPluginTweenInit,
   registerPluginTweenParticipant,
@@ -569,6 +574,11 @@ function snapshotAt(
 function renderAt(scope: MotionSpringPluginScope, time: number): void {
   if (scope.killed) return;
   const owners: PluginTrack[] = [];
+  const retainAtCompletedYoyoStart =
+    scope.tween.repeat() > 0 &&
+    scope.tween.yoyo() &&
+    scope.tween.repeat() % 2 === 1 &&
+    scope.tween.totalTime() >= scope.tween.totalDuration();
   for (const track of scope.tracks) {
     const registration = track.registration;
     if (!registration) continue;
@@ -576,6 +586,7 @@ function renderAt(scope: MotionSpringPluginScope, time: number): void {
       registration,
       time,
       track.lastTime,
+      { retainAtStart: retainAtCompletedYoyoStart },
     );
     track.lastTime = time;
     if (transition.releasedAtStart) {
@@ -603,6 +614,7 @@ function renderAt(scope: MotionSpringPluginScope, time: number): void {
   if (!scope.didLogicalComplete && time >= timing.logicalDuration) {
     scope.didLogicalComplete = true;
     scope.callbacks.onLogicalComplete?.(snapshot);
+    if (scope.killed || !scope.tween.parent) return;
   }
   if (
     !timing.hasUnsettled &&
@@ -611,6 +623,7 @@ function renderAt(scope: MotionSpringPluginScope, time: number): void {
   ) {
     scope.didSettle = true;
     scope.callbacks.onSettle?.(snapshot);
+    if (scope.killed || !scope.tween.parent) return;
   }
   if (
     timing.hasUnsettled &&
@@ -619,6 +632,7 @@ function renderAt(scope: MotionSpringPluginScope, time: number): void {
   ) {
     scope.didNotifyUnsettled = true;
     scope.callbacks.onUnsettled?.(snapshot);
+    if (scope.killed || !scope.tween.parent) return;
   }
 
   if (
@@ -810,14 +824,18 @@ const pluginDefinition = {
         state: (globalTime) => {
           let time = currentTime(this);
           let direction: 1 | 0 | -1 = 1;
-          if (globalTime !== undefined) {
-            if (this.policy === 'continue' && this.hasUnsettled) {
+          if (this.policy === 'continue' && this.hasUnsettled) {
+            direction = this.tween.reversed() ? -1 : 1;
+            if (globalTime !== undefined) {
               time = localTimeAt(this.tween, globalTime);
-            } else {
-              const cycle = localCycleAt(this.tween, globalTime);
-              time = cycle.time;
-              direction = cycle.direction;
             }
+          } else {
+            const cycle =
+              globalTime === undefined
+                ? currentLocalCycle(this.tween)
+                : localCycleAt(this.tween, globalTime);
+            time = cycle.time;
+            direction = cycle.direction;
           }
           const state = springTrackState(track, time, this.policy);
           return {

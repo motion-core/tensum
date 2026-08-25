@@ -712,10 +712,9 @@ export function springTo(
   activate(buildProperties(requestedTargets));
   for (const [property, entry] of Object.entries(active)) {
     entry.registration = registerActiveTrack(springTarget, property, {
-      state: (globalTime) => ({
-        ...stateFor(
-          entry,
-          globalTime === undefined
+      state: (globalTime) => {
+        const elapsed =
+          globalTime === undefined || tween === undefined
             ? clock.elapsed
             : Number.isFinite(duration)
               ? springElapsedTime(
@@ -723,10 +722,14 @@ export function springTo(
                   finiteDuration,
                   driverDuration,
                 )
-              : localTimeAt(tween, globalTime),
-        ),
-        ...(entry.unit === undefined ? {} : { unit: entry.unit }),
-      }),
+              : localTimeAt(tween, globalTime);
+        const state = stateFor(entry, elapsed);
+        return {
+          ...state,
+          velocity: state.velocity * (tween?.reversed() ? -1 : 1),
+          ...(entry.unit === undefined ? {} : { unit: entry.unit }),
+        };
+      },
       restore: () => {
         entry.write(stateFor(entry, clock.elapsed).position);
       },

@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => {
       pause: ReturnType<typeof vi.fn>;
       resume: ReturnType<typeof vi.fn>;
       reverse: ReturnType<typeof vi.fn>;
+      reversed: ReturnType<typeof vi.fn>;
       paused: ReturnType<typeof vi.fn>;
       eventCallback: ReturnType<typeof vi.fn>;
     };
@@ -60,6 +61,7 @@ const mocks = vi.hoisted(() => {
       ),
       to: vi.fn((clock: MockClock, vars: MockTweenVars) => {
         let isPaused = false;
+        let isReversed = false;
         let onInterrupt: (() => void) | undefined;
         const setLocalTime = (value: number): void => {
           if (vars.repeat === -1) {
@@ -101,7 +103,11 @@ const mocks = vi.hoisted(() => {
             isPaused = false;
             return tween;
           }),
-          reverse: vi.fn(() => tween),
+          reverse: vi.fn(() => {
+            isReversed = true;
+            return tween;
+          }),
+          reversed: vi.fn(() => isReversed),
           paused: vi.fn(() => isPaused),
           eventCallback: vi.fn((type: string, callback?: () => void) => {
             if (type !== 'onInterrupt') return undefined;
