@@ -77,7 +77,14 @@ describe('coupled spring systems', () => {
   it('projects hard bounds with configurable restitution', () => {
     const system = createCoupledSpringSystem({
       particles: [
-        { mass: 1, position: 0, velocity: 10, min: -1, max: 1, restitution: 0.5 },
+        {
+          mass: 1,
+          position: 0,
+          velocity: 10,
+          min: -1,
+          max: 1,
+          restitution: 0.5,
+        },
       ],
       connections: [],
     });
@@ -120,5 +127,93 @@ describe('coupled spring systems', () => {
         connections: [],
       }),
     ).toThrow(RangeError);
+  });
+
+  it('rejects explicit null numeric options instead of applying defaults', () => {
+    expect(() =>
+      createCoupledSpringSystem({
+        particles: [{ mass: 1, position: 0 }],
+        connections: [],
+        maxStep: null as never,
+      }),
+    ).toThrow(RangeError);
+    expect(() =>
+      createCoupledSpringSystem({
+        particles: [{ mass: 1, position: 0, velocity: null as never }],
+        connections: [],
+      }),
+    ).toThrow(RangeError);
+    expect(() =>
+      createCoupledSpringSystem({
+        particles: [{ mass: 1, position: 0, restitution: null as never }],
+        connections: [],
+      }),
+    ).toThrow(RangeError);
+    expect(() =>
+      createCoupledSpringSystem({
+        particles: [
+          { mass: 1, position: 0 },
+          { mass: 1, position: 1 },
+        ],
+        connections: [
+          {
+            from: 0,
+            to: 1,
+            stiffness: 1,
+            damping: 0,
+            restOffset: null as never,
+          },
+        ],
+      }),
+    ).toThrow(RangeError);
+  });
+
+  it('treats a zero-time advance as an identity without projecting constraints', () => {
+    const system = createCoupledSpringSystem({
+      particles: [{ mass: 1, position: 0, min: -1, max: 1, restitution: 0.5 }],
+      connections: [],
+    });
+    const state = { position: [2], velocity: [10] };
+
+    expect(system.advance(state, 0)).toEqual(state);
+  });
+
+  it('continues to project constraints for a positive-time advance', () => {
+    const system = createCoupledSpringSystem({
+      particles: [{ mass: 1, position: 0, min: -1, max: 1, restitution: 0.5 }],
+      connections: [],
+    });
+
+    expect(system.advance({ position: [2], velocity: [10] }, 0.001)).toEqual({
+      position: [1],
+      velocity: [-5],
+    });
+  });
+
+  it('rejects impractical integration work and non-finite derived forces', () => {
+    const system = createCoupledSpringSystem({
+      particles: [{ mass: 1, position: 0 }],
+      connections: [],
+      maxStep: Number.MIN_VALUE,
+    });
+    expect(() => system.stateAt(1)).toThrow(/integration steps/);
+
+    const overflowing = createCoupledSpringSystem({
+      particles: [
+        {
+          mass: 1,
+          position: Number.MAX_VALUE,
+          anchor: {
+            target: -Number.MAX_VALUE,
+            stiffness: Number.MAX_VALUE,
+            damping: 0,
+          },
+        },
+      ],
+      connections: [],
+    });
+    expect(() => overflowing.forceAt(overflowing.initialState)).toThrow(
+      /force\[0\] must be a finite number/,
+    );
   });
 });

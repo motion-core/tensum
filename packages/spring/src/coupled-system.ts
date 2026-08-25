@@ -57,6 +57,8 @@ export interface CoupledSpringSystem {
   energyAt(state: CoupledSpringState): number;
 }
 
+const MAX_INTEGRATION_STEPS = 1_000_000;
+
 function assertFinite(name: string, value: number): void {
   if (!Number.isFinite(value)) {
     throw new RangeError(`${name} must be a finite number`);
@@ -79,13 +81,14 @@ export function createCoupledSpringSystem(
   if (options.particles.length === 0) {
     throw new RangeError('a coupled spring system requires at least one particle');
   }
-  const maxStep = options.maxStep ?? 1 / 240;
+  const maxStep = options.maxStep === undefined ? 1 / 240 : options.maxStep;
   assertPositive('maxStep', maxStep);
   const particles = Object.freeze(
     options.particles.map((particle, index) => {
       assertPositive(`particles[${index}].mass`, particle.mass);
       assertFinite(`particles[${index}].position`, particle.position);
-      assertFinite(`particles[${index}].velocity`, particle.velocity ?? 0);
+      const velocity = particle.velocity === undefined ? 0 : particle.velocity;
+      assertFinite(`particles[${index}].velocity`, velocity);
       if (particle.min !== undefined) {
         assertFinite(`particles[${index}].min`, particle.min);
       }
@@ -99,7 +102,8 @@ export function createCoupledSpringSystem(
       ) {
         throw new RangeError(`particles[${index}].min must not exceed max`);
       }
-      const restitution = particle.restitution ?? 0;
+      const restitution =
+        particle.restitution === undefined ? 0 : particle.restitution;
       assertFinite(`particles[${index}].restitution`, restitution);
       if (restitution < 0 || restitution > 1) {
         throw new RangeError(`particles[${index}].restitution must be between 0 and 1`);
@@ -117,7 +121,7 @@ export function createCoupledSpringSystem(
       }
       return Object.freeze({
         ...particle,
-        velocity: particle.fixed ? 0 : particle.velocity ?? 0,
+        velocity: particle.fixed ? 0 : velocity,
         restitution,
         ...(particle.anchor === undefined
           ? {}
@@ -147,8 +151,10 @@ export function createCoupledSpringSystem(
       }
       assertPositive(`connections[${index}].stiffness`, connection.stiffness);
       assertNonNegative(`connections[${index}].damping`, connection.damping);
-      assertFinite(`connections[${index}].restOffset`, connection.restOffset ?? 0);
-      return Object.freeze({ ...connection, restOffset: connection.restOffset ?? 0 });
+      const restOffset =
+        connection.restOffset === undefined ? 0 : connection.restOffset;
+      assertFinite(`connections[${index}].restOffset`, restOffset);
+      return Object.freeze({ ...connection, restOffset });
     }),
   );
   const fixedPositions = particles.map((particle) => particle.position);
@@ -190,6 +196,9 @@ export function createCoupledSpringSystem(
         connection.stiffness * extension + connection.damping * relativeVelocity;
       force[connection.from]! += couplingForce;
       force[connection.to]! -= couplingForce;
+    }
+    for (let index = 0; index < dimension; index += 1) {
+      assertFinite(`force[${index}]`, force[index]!);
     }
     return force;
   };
@@ -247,6 +256,9 @@ export function createCoupledSpringSystem(
           2 * k3.velocity[index]! +
           k4.velocity[index]!);
 
+      assertFinite(`position[${index}]`, position[index]!);
+      assertFinite(`velocity[${index}]`, velocity[index]!);
+
       if (particle.min !== undefined && position[index]! < particle.min) {
         position[index] = particle.min;
         if (velocity[index]! < 0) velocity[index] = -velocity[index]! * particle.restitution;
@@ -271,9 +283,21 @@ export function createCoupledSpringSystem(
     if (output.position.length < dimension || output.velocity.length < dimension) {
       throw new RangeError(`output buffers must contain at least ${dimension} components`);
     }
+    if (deltaTime === 0) {
+      for (let index = 0; index < dimension; index += 1) {
+        output.position[index] = state.position[index]!;
+        output.velocity[index] = state.velocity[index]!;
+      }
+      return output;
+    }
     const position = Array.from(state.position);
     const velocity = Array.from(state.velocity);
     const steps = Math.max(1, Math.ceil(deltaTime / maxStep));
+    if (!Number.isSafeInteger(steps) || steps > MAX_INTEGRATION_STEPS) {
+      throw new RangeError(
+        `advance requires ${steps} integration steps; increase maxStep or split the simulation into smaller calls`,
+      );
+    }
     const step = deltaTime / steps;
     for (let index = 0; index < steps; index += 1) {
       integrateStep(position, velocity, step);
@@ -313,9 +337,13 @@ export function createCoupledSpringSystem(
       validateState(state);
       const force = forceAtMutable(state.position, state.velocity);
       return Object.freeze(
-        force.map((value, index) =>
-          particles[index]!.fixed ? 0 : value / particles[index]!.mass,
-        ),
+        force.map((value, index) => {
+          const acceleration = particles[index]!.fixed
+            ? 0
+            : value / particles[index]!.mass;
+          assertFinite(`acceleration[${index}]`, acceleration);
+          return acceleration;
+        }),
       );
     },
     advance,
@@ -348,6 +376,7 @@ export function createCoupledSpringSystem(
           connection.restOffset;
         energy += (connection.stiffness * extension ** 2) / 2;
       }
+      assertFinite('energy', energy);
       return energy;
     },
   });
