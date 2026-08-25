@@ -40,14 +40,16 @@
 					class="block size-3 rounded-full border-2 border-background bg-foreground shadow-[0_0_0_1px_var(--separator)]"
 				></span>
 				<div
-					class="absolute inset-s-4 top-1/2 flex -translate-y-1/2 items-center whitespace-nowrap"
+					class="velocity-readout absolute inset-s-4 top-1/2 flex -translate-y-1/2 items-center whitespace-nowrap"
 				>
-					<span class="relative h-px w-5 bg-chart-6">
+					<span class="velocity-vector relative h-px w-5 origin-left bg-chart-6">
 						<span
 							class="absolute inset-e-0 top-1/2 size-1.5 -translate-y-1/2 rotate-45 border-e border-t border-chart-6"
 						></span>
 					</span>
-					<span class="ms-2 font-mono text-[0.5rem] text-chart-6">+612 px/s</span>
+					<span
+						class="velocity-value ms-2 min-w-14 font-mono text-[0.5rem] text-chart-6 tabular-nums"
+					></span>
 				</div>
 			</div>
 		</div>
@@ -81,6 +83,12 @@
 </div>
 
 <style>
+	@property --handoff-velocity {
+		syntax: '<integer>';
+		inherits: false;
+		initial-value: 612;
+	}
+
 	.momentum-illustration {
 		--momentum-duration: 4.2s;
 	}
@@ -233,6 +241,63 @@
 		}
 	}
 
+	@keyframes velocity-readout {
+		0%,
+		16% {
+			--handoff-velocity: 612;
+			opacity: 0;
+			transform: translateY(-50%) translateX(-0.25rem);
+		}
+		19.31% {
+			--handoff-velocity: 612;
+			opacity: 1;
+			transform: translateY(-50%) translateX(0);
+		}
+		22.17% {
+			--handoff-velocity: 1030;
+		}
+		25.03% {
+			--handoff-velocity: 1240;
+		}
+		27.9% {
+			--handoff-velocity: 1065;
+		}
+		30.76% {
+			--handoff-velocity: 680;
+			opacity: 1;
+		}
+		33.62% {
+			--handoff-velocity: 260;
+			opacity: 0.72;
+		}
+		36.48%,
+		100% {
+			--handoff-velocity: 0;
+			opacity: 0;
+			transform: translateY(-50%) translateX(0.25rem);
+		}
+	}
+
+	@keyframes velocity-vector {
+		0%,
+		16% {
+			transform: scaleX(0.45);
+		}
+		19.31% {
+			transform: scaleX(0.68);
+		}
+		25.03% {
+			transform: scaleX(1);
+		}
+		30.76% {
+			transform: scaleX(0.72);
+		}
+		36.48%,
+		100% {
+			transform: scaleX(0.35);
+		}
+	}
+
 	@keyframes target-value-old {
 		0%,
 		17% {
@@ -272,6 +337,17 @@
 		opacity: 0;
 	}
 
+	.velocity-readout {
+		--handoff-velocity: 612;
+
+		opacity: 0;
+	}
+
+	.velocity-value::before {
+		content: '+' counter(handoff-velocity) ' px/s';
+		counter-reset: handoff-velocity var(--handoff-velocity);
+	}
+
 	@media (prefers-reduced-motion: no-preference) {
 		.spring-body,
 		.spring-trail {
@@ -290,6 +366,14 @@
 			animation: retarget-event var(--momentum-duration) cubic-bezier(0.16, 1, 0.3, 1) infinite;
 		}
 
+		.velocity-readout {
+			animation: velocity-readout var(--momentum-duration) linear infinite;
+		}
+
+		.velocity-vector {
+			animation: velocity-vector var(--momentum-duration) linear infinite;
+		}
+
 		.target-value-old {
 			animation: target-value-old var(--momentum-duration) cubic-bezier(0.16, 1, 0.3, 1) infinite;
 		}
@@ -306,6 +390,8 @@
 			.old-target,
 			.new-target,
 			.retarget-event,
+			.velocity-readout,
+			.velocity-vector,
 			.target-value-old,
 			.target-value-new
 		) {
