@@ -17,16 +17,35 @@ export interface SpringSolutionOptions {
   timing?: SpringTimingInput;
 }
 
+export function resolveSpringTimingInput(
+  input: SpringTimingInput | undefined,
+): Readonly<SpringTimingInput> | undefined {
+  if (input === undefined) return undefined;
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+    throw new TypeError('timing must be an object when provided');
+  }
+  if (input.perceptualDuration === undefined) return Object.freeze({});
+  assertFinite('perceptualDuration', input.perceptualDuration);
+  if (input.perceptualDuration < 0) {
+    throw new RangeError('perceptualDuration must be greater than or equal to 0');
+  }
+  return Object.freeze({ perceptualDuration: input.perceptualDuration });
+}
+
 export function createSpringSolution(
   parameters: SpringParameters,
   initialState: SpringInitialState,
   options: SpringSolutionOptions = {},
 ): SpringSolution {
+  const resolvedTiming = resolveSpringTimingInput(options.timing);
   const settling = resolveSettlingOptions(options.settle);
   const solver = createAnalyticalSolver(parameters, initialState);
   const settlingResult = getSettlingResult(solver, settling);
+  const requestedPerceptualDuration = resolvedTiming?.perceptualDuration;
   const perceptualDuration =
-    options.timing?.perceptualDuration ?? (2 * Math.PI) / solver.angularFrequency;
+    requestedPerceptualDuration === undefined
+      ? (2 * Math.PI) / solver.angularFrequency
+      : requestedPerceptualDuration;
   assertFinite('perceptualDuration', perceptualDuration);
   if (perceptualDuration < 0) {
     throw new RangeError('perceptualDuration must be greater than or equal to 0');
@@ -89,7 +108,7 @@ export function createSpring(options: SpringOptions): SpringSolution {
     },
     {
       position: options.from,
-      velocity: options.velocity ?? 0,
+      velocity: options.velocity === undefined ? 0 : options.velocity,
       target: options.to,
     },
     {

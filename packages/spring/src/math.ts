@@ -22,6 +22,14 @@ export function classifyDamping(
   ratio: number,
   tolerance: number = CRITICAL_DAMPING_TOLERANCE,
 ): SpringRegime {
+  assertFinite('dampingRatio', ratio);
+  assertFinite('tolerance', tolerance);
+  if (ratio < 0) {
+    throw new RangeError('dampingRatio must be greater than or equal to 0');
+  }
+  if (tolerance < 0) {
+    throw new RangeError('tolerance must be greater than or equal to 0');
+  }
   if (Math.abs(ratio - 1) <= tolerance) return 'critical';
   return ratio < 1 ? 'underdamped' : 'overdamped';
 }

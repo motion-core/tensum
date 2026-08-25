@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createSpring } from '../src/index.js';
+import { classifyDamping, createSpring } from '../src/index.js';
 
 const valid = {
   from: 0,
@@ -23,13 +23,20 @@ describe('validation', () => {
   });
 
   it('rejects invalid settling thresholds', () => {
-    expect(() => createSpring({ ...valid, settle: { position: 0 } })).toThrow(RangeError);
-    expect(() => createSpring({ ...valid, settle: { velocity: Number.NaN } })).toThrow(
+    expect(() => createSpring({ ...valid, settle: { position: 0 } })).toThrow(
       RangeError,
     );
-    expect(() => createSpring({ ...valid, settle: { maxDuration: 0 } })).toThrow(RangeError);
     expect(() =>
-      createSpring({ ...valid, settle: { maxDuration: Number.POSITIVE_INFINITY } }),
+      createSpring({ ...valid, settle: { velocity: Number.NaN } }),
+    ).toThrow(RangeError);
+    expect(() =>
+      createSpring({ ...valid, settle: { maxDuration: 0 } }),
+    ).toThrow(RangeError);
+    expect(() =>
+      createSpring({
+        ...valid,
+        settle: { maxDuration: Number.POSITIVE_INFINITY },
+      }),
     ).toThrow(RangeError);
     expect(() =>
       createSpring({ ...valid, settle: { refinementIterations: 1.5 } }),
@@ -62,5 +69,35 @@ describe('validation', () => {
     expect(() =>
       createSpring({ ...valid, timing: { perceptualDuration: Number.NaN } }),
     ).toThrow(RangeError);
+  });
+
+  it('rejects explicit nulls instead of treating them as omitted options', () => {
+    expect(() => createSpring({ ...valid, velocity: null as never })).toThrow(
+      RangeError,
+    );
+    expect(() =>
+      createSpring({ ...valid, settle: { position: null as never } }),
+    ).toThrow(RangeError);
+    expect(() =>
+      createSpring({
+        ...valid,
+        timing: { perceptualDuration: null as never },
+      }),
+    ).toThrow(RangeError);
+    expect(() => createSpring({ ...valid, timing: null as never })).toThrow(
+      TypeError,
+    );
+    expect(() => createSpring({ ...valid, settle: null as never })).toThrow(
+      TypeError,
+    );
+    expect(() => createSpring({ ...valid, settle: [] as never })).toThrow(
+      TypeError,
+    );
+  });
+
+  it('rejects invalid public damping classification inputs', () => {
+    expect(() => classifyDamping(Number.NaN)).toThrow(RangeError);
+    expect(() => classifyDamping(-0.1)).toThrow(RangeError);
+    expect(() => classifyDamping(1, -1)).toThrow(RangeError);
   });
 });
