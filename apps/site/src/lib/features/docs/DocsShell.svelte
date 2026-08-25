@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { onMount, type Snippet } from 'svelte';
 	import DocsNavigation from './DocsNavigation.svelte';
+	import { ActionTooltip } from '$lib/components/action-tooltip';
 	import { PageContainer, SiteHeader } from '$lib/components/layout';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import * as Drawer from '$lib/components/ui/drawer';
@@ -14,6 +15,12 @@
 
 	let activeId = $state('overview');
 	let mobileOpen = $state(false);
+	let mobileCloseButton: HTMLElement | null = $state(null);
+
+	function focusMobileNavigation(event: Event) {
+		event.preventDefault();
+		window.requestAnimationFrame(() => mobileCloseButton?.focus());
+	}
 
 	onMount(() => {
 		let frame: number | undefined;
@@ -60,19 +67,30 @@
 	Skip to documentation
 </Button>
 
-<Drawer.Root bind:open={mobileOpen} direction="left" shouldScaleBackground={false}>
+<Drawer.Root bind:open={mobileOpen} direction="left" shouldScaleBackground={false} autoFocus>
 	<SiteHeader hideDefaultActionsOnMobile>
 		{#snippet trailingAction()}
-			<Drawer.Trigger
-				class={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), '-me-2 size-10 xl:hidden')}
-				aria-label="Open documentation navigation"
-			>
-				<MenuIcon strokeWidth={1.5} />
-			</Drawer.Trigger>
+			<ActionTooltip content="Open documentation navigation" side="bottom">
+				{#snippet trigger({ props })}
+					<Drawer.Trigger
+						{...props}
+						class={cn(
+							buttonVariants({ variant: 'ghost', size: 'icon' }),
+							'-me-2 size-10 xl:hidden'
+						)}
+						aria-label="Open documentation navigation"
+					>
+						<MenuIcon strokeWidth={1.5} />
+					</Drawer.Trigger>
+				{/snippet}
+			</ActionTooltip>
 		{/snippet}
 	</SiteHeader>
 
-	<Drawer.Content class="isolate h-dvh w-72 max-w-[calc(100vw-0.5rem)] sm:max-w-72">
+	<Drawer.Content
+		class="isolate h-dvh w-72 max-w-[calc(100vw-0.5rem)] sm:max-w-72"
+		onOpenAutoFocus={focusMobileNavigation}
+	>
 		<Drawer.Header class="flex-row items-center justify-between border-b border-border px-4 py-3">
 			<div class="min-w-0">
 				<Drawer.Title>Spring documentation</Drawer.Title>
@@ -80,12 +98,18 @@
 					Navigate to a documentation section.
 				</Drawer.Description>
 			</div>
-			<Drawer.Close
-				class={buttonVariants({ variant: 'ghost', size: 'icon-lg' })}
-				aria-label="Close documentation navigation"
-			>
-				<CloseIcon strokeWidth={1.5} />
-			</Drawer.Close>
+			<ActionTooltip content="Close documentation navigation" side="left">
+				{#snippet trigger({ props })}
+					<Drawer.Close
+						{...props}
+						bind:ref={mobileCloseButton}
+						class={buttonVariants({ variant: 'ghost', size: 'icon-lg' })}
+						aria-label="Close documentation navigation"
+					>
+						<CloseIcon strokeWidth={1.5} />
+					</Drawer.Close>
+				{/snippet}
+			</ActionTooltip>
 		</Drawer.Header>
 		<ScrollArea class="min-h-0 flex-1">
 			<div class="px-3 py-4">
@@ -106,9 +130,12 @@
 					'relative flex max-h-[calc(100dvh-7rem)] w-60 flex-col transition-[translate] duration-350 ease-[cubic-bezier(0.24,0.88,0.28,0.92)] motion-reduce:transition-none'
 				]}
 			>
-				<div class="docs-sidebar-scroll min-h-0 overflow-x-clip overflow-y-auto overscroll-contain">
+				<ScrollArea
+					class="min-h-0 w-full overscroll-contain"
+					viewportClass="max-h-[calc(100dvh-7rem)]"
+				>
 					<DocsNavigation {activeId} />
-				</div>
+				</ScrollArea>
 			</div>
 		</div>
 	</aside>
@@ -132,13 +159,3 @@
 
 	<div class="hidden xl:block" aria-hidden="true"></div>
 </main>
-
-<style>
-	.docs-sidebar-scroll {
-		scrollbar-width: none;
-	}
-
-	.docs-sidebar-scroll::-webkit-scrollbar {
-		display: none;
-	}
-</style>
