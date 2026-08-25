@@ -1,5 +1,6 @@
 import { resolveSettlingOptions } from '../settling.js';
 import { createSpring } from '../spring.js';
+import { validateSpringParameters } from '../solver.js';
 import type {
   SettlingResult,
   SpringParameters,
@@ -59,19 +60,32 @@ function assertPositive(name: string, value: number): void {
   if (value <= 0) throw new RangeError(`${name} must be greater than 0`);
 }
 
+function finiteState(
+  position: number,
+  velocity: number,
+  suffix = '',
+): SpringState {
+  assertFinite(`position${suffix}`, position);
+  assertFinite(`velocity${suffix}`, velocity);
+  return { position, velocity };
+}
+
 export function snapToGrid(size: number, origin = 0): (target: number) => number {
   assertPositive('grid size', size);
   assertFinite('grid origin', origin);
   return (target: number): number => {
     assertFinite('target', target);
-    return origin + Math.round((target - origin) / size) * size;
+    const result = origin + Math.round((target - origin) / size) * size;
+    assertFinite('snapped target', result);
+    return result;
   };
 }
 
 export function createInertia(options: InertiaOptions): InertiaSolution {
   assertFinite('from', options.from);
   assertFinite('velocity', options.velocity);
-  const timeConstant = options.timeConstant ?? 0.7;
+  const timeConstant =
+    options.timeConstant === undefined ? 0.7 : options.timeConstant;
   assertPositive('timeConstant', timeConstant);
   if (options.min !== undefined) assertFinite('min', options.min);
   if (options.max !== undefined) assertFinite('max', options.max);
@@ -84,35 +98,44 @@ export function createInertia(options: InertiaOptions): InertiaSolution {
   }
 
   const settling = resolveSettlingOptions(options.settle);
+  if (options.boundarySpring !== undefined) {
+    validateSpringParameters(options.boundarySpring);
+  }
   const naturalTarget = options.from + options.velocity * timeConstant;
   assertFinite('naturalTarget', naturalTarget);
-  const target = options.modifyTarget?.(naturalTarget) ?? naturalTarget;
+  const target =
+    options.modifyTarget === undefined
+      ? naturalTarget
+      : options.modifyTarget(naturalTarget);
   assertFinite('modified target', target);
   const displacement = options.from - target;
+  assertFinite('displacement', displacement);
   const linearCoefficient = options.velocity + displacement / timeConstant;
+  assertFinite('linear coefficient', linearCoefficient);
 
   const decayStateAt = (time: number): SpringState => {
     if (time === 0) return { position: options.from, velocity: options.velocity };
     const decay = Math.exp(-time / timeConstant);
-    const offset = displacement + linearCoefficient * time;
-    return {
-      position: target + decay * offset,
-      velocity:
-        decay *
-        (linearCoefficient - offset / timeConstant),
-    };
+    if (decay === 0) return { position: target, velocity: 0 };
+    const timeDecay = time * decay;
+    return finiteState(
+      target + decay * displacement + timeDecay * linearCoefficient,
+      decay * options.velocity -
+        (timeDecay / timeConstant) * linearCoefficient,
+    );
   };
 
   const decayBoundsAt = (time: number): SpringState => {
     const decay = Math.exp(-time / timeConstant);
-    return {
-      position:
-        decay * (Math.abs(displacement) + Math.abs(linearCoefficient) * time),
-      velocity:
-        decay *
-        (Math.abs(linearCoefficient - displacement / timeConstant) +
-          (Math.abs(linearCoefficient) * time) / timeConstant),
-    };
+    if (decay === 0) return { position: 0, velocity: 0 };
+    const timeDecay = time * decay;
+    return finiteState(
+      decay * Math.abs(displacement) +
+        timeDecay * Math.abs(linearCoefficient),
+      decay * Math.abs(options.velocity) +
+        (timeDecay / timeConstant) * Math.abs(linearCoefficient),
+      ' bound',
+    );
   };
 
   const boundsMeet = (time: number): boolean => {
@@ -128,38 +151,70 @@ export function createInertia(options: InertiaOptions): InertiaSolution {
   if (displacement === 0 && options.velocity === 0) {
     decayResult = { duration: 0, iterations: 0, settled: true };
   } else {
-    let lower = Math.min(timeConstant, settling.maxDuration);
-    let upper = Math.max(lower, Math.min(settling.maxDuration, 1 / 120));
-    if (boundsMeet(lower)) {
-      decayResult = { duration: lower, iterations: 0, settled: true };
+    const absoluteLinearCoefficient = Math.abs(linearCoefficient);
+    const positionMonotonicAfter =
+      absoluteLinearCoefficient === 0
+        ? 0
+        : Math.max(
+            0,
+            timeConstant - Math.abs(displacement) / absoluteLinearCoefficient,
+          );
+    const velocityMonotonicAfter =
+      absoluteLinearCoefficient === 0
+        ? 0
+        : Math.max(
+            0,
+            timeConstant -
+              (Math.abs(options.velocity) * timeConstant) /
+                absoluteLinearCoefficient,
+          );
+    const boundsMonotonicAfter = Math.max(
+      positionMonotonicAfter,
+      velocityMonotonicAfter,
+    );
+    if (boundsMonotonicAfter > settling.maxDuration) {
+      decayResult = {
+        duration: settling.maxDuration,
+        iterations: 0,
+        settled: false,
+      };
+    } else if (boundsMeet(0) && boundsMonotonicAfter === 0) {
+      decayResult = { duration: 0, iterations: 0, settled: true };
     } else {
-      while (upper < settling.maxDuration && !boundsMeet(upper)) {
-        lower = upper;
-        upper = Math.min(settling.maxDuration, upper * 2);
-        decayIterations += 1;
-      }
-      if (!boundsMeet(upper)) {
-        decayResult = {
-          duration: settling.maxDuration,
-          iterations: decayIterations,
-          settled: false,
-        };
+      let lower = boundsMonotonicAfter;
+      let upper = Math.max(lower, Math.min(settling.maxDuration, 1 / 120));
+      if (boundsMeet(lower)) {
+        decayResult = { duration: lower, iterations: 0, settled: true };
       } else {
-        for (
-          let iteration = 0;
-          iteration < settling.refinementIterations;
-          iteration += 1
-        ) {
-          const midpoint = (lower + upper) / 2;
-          if (boundsMeet(midpoint)) upper = midpoint;
-          else lower = midpoint;
+        while (upper < settling.maxDuration && !boundsMeet(upper)) {
+          lower = upper;
+          upper = Math.min(settling.maxDuration, upper * 2);
           decayIterations += 1;
         }
-        decayResult = {
-          duration: upper,
-          iterations: decayIterations,
-          settled: true,
-        };
+        if (!boundsMeet(upper)) {
+          decayResult = {
+            duration: settling.maxDuration,
+            iterations: decayIterations,
+            settled: false,
+          };
+        } else {
+          for (
+            let iteration = 0;
+            iteration < settling.refinementIterations;
+            iteration += 1
+          ) {
+            const midpoint = lower + (upper - lower) / 2;
+            if (midpoint === lower || midpoint === upper) break;
+            if (boundsMeet(midpoint)) upper = midpoint;
+            else lower = midpoint;
+            decayIterations += 1;
+          }
+          decayResult = {
+            duration: upper,
+            iterations: decayIterations,
+            settled: true,
+          };
+        }
       }
     }
   }
@@ -169,42 +224,62 @@ export function createInertia(options: InertiaOptions): InertiaSolution {
       ? options.min
       : options.max !== undefined && options.from > options.max
         ? options.max
-        : undefined;
+        : options.min !== undefined &&
+            options.from === options.min &&
+            options.velocity < 0
+          ? options.min
+          : options.max !== undefined &&
+              options.from === options.max &&
+              options.velocity > 0
+            ? options.max
+            : undefined;
 
   const findBoundary = (): { time: number; bound: number } | undefined => {
     if (outsideAtStart !== undefined) return { time: 0, bound: outsideAtStart };
     if (options.min === undefined && options.max === undefined) return undefined;
-    const step = Math.min(timeConstant / 16, 1 / 120);
-    let previousTime = 0;
-    for (
-      let time = step;
-      time <= decayResult.duration + step / 2;
-      time += step
-    ) {
-      const sampledTime = Math.min(time, decayResult.duration);
-      const position = decayStateAt(sampledTime).position;
-      const bound =
-        options.min !== undefined && position <= options.min
+    const extremumTime =
+      linearCoefficient === 0
+        ? undefined
+        : (options.velocity * timeConstant) / linearCoefficient;
+    const boundaries = [
+      0,
+      ...(extremumTime !== undefined &&
+      extremumTime > 0 &&
+      extremumTime < decayResult.duration
+        ? [extremumTime]
+        : []),
+      decayResult.duration,
+    ];
+
+    for (let index = 1; index < boundaries.length; index += 1) {
+      const startTime = boundaries[index - 1]!;
+      const endTime = boundaries[index]!;
+      const startPosition = decayStateAt(startTime).position;
+      const endPosition = decayStateAt(endTime).position;
+      const increasing = endPosition >= startPosition;
+      const bound = increasing
+        ? options.max !== undefined &&
+          startPosition <= options.max &&
+          endPosition >= options.max
+          ? options.max
+          : undefined
+        : options.min !== undefined &&
+            startPosition >= options.min &&
+            endPosition <= options.min
           ? options.min
-          : options.max !== undefined && position >= options.max
-            ? options.max
-            : undefined;
-      if (bound !== undefined) {
-        let lower = previousTime;
-        let upper = sampledTime;
-        for (let iteration = 0; iteration < 48; iteration += 1) {
-          const midpoint = (lower + upper) / 2;
-          const midpointPosition = decayStateAt(midpoint).position;
-          const crossed = bound === options.min
-            ? midpointPosition <= bound
-            : midpointPosition >= bound;
-          if (crossed) upper = midpoint;
-          else lower = midpoint;
-        }
-        return { time: upper, bound };
+          : undefined;
+      if (bound === undefined) continue;
+
+      let lower = startTime;
+      let upper = endTime;
+      for (let iteration = 0; iteration < 48; iteration += 1) {
+        const midpoint = lower + (upper - lower) / 2;
+        const position = decayStateAt(midpoint).position;
+        const crossed = increasing ? position >= bound : position <= bound;
+        if (crossed) upper = midpoint;
+        else lower = midpoint;
       }
-      previousTime = sampledTime;
-      if (sampledTime === decayResult.duration) break;
+      return { time: upper, bound };
     }
     return undefined;
   };
@@ -240,6 +315,7 @@ export function createInertia(options: InertiaOptions): InertiaSolution {
       spring,
     });
     duration = hit.time + springResult.duration;
+    assertFinite('duration', duration);
     settled = springResult.settled;
     iterations += springResult.iterations;
   }

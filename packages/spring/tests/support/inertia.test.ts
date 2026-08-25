@@ -71,14 +71,124 @@ describe('inertia and bounds', () => {
   });
 
   it('validates bounds, time constants, grid size, and sample time', () => {
-    expect(() => createInertia({ from: 0, velocity: 1, timeConstant: 0 })).toThrow(
-      RangeError,
-    );
-    expect(() => createInertia({ from: 0, velocity: 1, min: 2, max: 1 })).toThrow(
-      RangeError,
-    );
+    expect(() =>
+      createInertia({ from: 0, velocity: 1, timeConstant: 0 }),
+    ).toThrow(RangeError);
+    expect(() =>
+      createInertia({ from: 0, velocity: 1, min: 2, max: 1 }),
+    ).toThrow(RangeError);
     expect(() => snapToGrid(0)).toThrow(RangeError);
     const inertia = createInertia({ from: 0, velocity: 1 });
     expect(() => inertia.stateAt(-1)).toThrow(RangeError);
+  });
+
+  it('does not claim settlement before the decay envelope becomes monotonic', () => {
+    const inertia = createInertia({
+      from: 0,
+      velocity: 1,
+      timeConstant: 1,
+      modifyTarget: () => 0,
+      settle: {
+        position: 0.1,
+        velocity: 2,
+        maxDuration: 0.01,
+      },
+    });
+
+    expect(inertia.getSettlingResult()).toMatchObject({
+      duration: 0.01,
+      settled: false,
+    });
+  });
+
+  it('detects a narrow boundary crossing between frame-sized samples', () => {
+    const timeConstant = 0.73;
+    const velocity = 10_000;
+    const peak = (velocity * timeConstant) / Math.E;
+    const inertia = createInertia({
+      from: 0,
+      velocity,
+      timeConstant,
+      modifyTarget: () => 0,
+      max: peak - 0.001,
+    });
+
+    expect(inertia.boundary).toBeDefined();
+    expect(inertia.boundary!.time).toBeLessThan(timeConstant);
+    expect(inertia.boundary!.bound).toBe(peak - 0.001);
+  });
+
+  it('rejects an invalid boundary spring even when no boundary is crossed', () => {
+    expect(() =>
+      createInertia({
+        from: 0,
+        velocity: 10,
+        boundarySpring: { mass: 0, stiffness: 100, damping: 10 },
+      }),
+    ).toThrow(RangeError);
+  });
+
+  it('rejects explicit null options and invalid modifier output', () => {
+    expect(() =>
+      createInertia({ from: 0, velocity: 100, timeConstant: null as never }),
+    ).toThrow(RangeError);
+    expect(() =>
+      createInertia({
+        from: 0,
+        velocity: 100,
+        modifyTarget: () => null as never,
+      }),
+    ).toThrow(RangeError);
+  });
+
+  it('stops decay refinement at floating-point precision', () => {
+    const inertia = createInertia({
+      from: 0,
+      velocity: 100,
+      settle: { refinementIterations: 10_000 },
+    });
+
+    expect(inertia.getSettlingResult().iterations).toBeLessThan(1_000);
+  });
+
+  it('keeps representable decay samples finite when polynomial intermediates overflow', () => {
+    const inertia = createInertia({
+      from: 0,
+      velocity: Number.MAX_VALUE,
+      timeConstant: 0.5,
+      modifyTarget: () => 0,
+      settle: { maxDuration: 3 },
+    });
+
+    const state = inertia.stateAt(2);
+    expect(state.position / Number.MAX_VALUE).toBeCloseTo(2 * Math.exp(-4), 12);
+    expect(state.velocity / Number.MAX_VALUE).toBeCloseTo(-3 * Math.exp(-4), 12);
+  });
+
+  it('rejects a grid result that exceeds the finite numeric range', () => {
+    const snap = snapToGrid(Number.MIN_VALUE, -Number.MAX_VALUE);
+
+    expect(() => snap(Number.MAX_VALUE)).toThrow(RangeError);
+  });
+
+  it('rejects decay coefficients and aggregate durations outside the finite range', () => {
+    expect(() =>
+      createInertia({
+        from: Number.MAX_VALUE,
+        velocity: 0,
+        modifyTarget: () => -Number.MAX_VALUE,
+      }),
+    ).toThrow(/displacement must be a finite number/);
+
+    expect(() =>
+      createInertia({
+        from: 0,
+        velocity: 1,
+        timeConstant: 1e308,
+        max: 7e307,
+        boundarySpring: { mass: 1, stiffness: 1, damping: 0 },
+        settle: { maxDuration: 1.7e308 },
+      }),
+    ).toThrow(/duration must be a finite number/);
   });
 });
