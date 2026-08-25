@@ -14,9 +14,11 @@
 	} = $props();
 </script>
 
-<header class="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-lg">
+<header
+	class="sticky top-0 z-40 border-b border-border/64 bg-sidebar/90 backdrop-blur-sm dark:border-card/80"
+>
 	<nav
-		class="mx-auto flex h-14 max-w-4xl items-center justify-between gap-4 px-4"
+		class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 md:px-6 lg:px-8"
 		aria-label="Primary navigation"
 	>
 		<a
@@ -32,7 +34,7 @@
 			<span class="truncate">@motion-core/spring</span><span class="sr-only"> home</span>
 		</a>
 
-		<div class="flex items-center gap-1">
+		<div class="flex items-center gap-2 sm:gap-4">
 			<Badge
 				variant="secondary"
 				class={hideDefaultActionsOnMobile ? 'me-1 hidden sm:inline-flex' : 'me-1'}>v0.1.0</Badge

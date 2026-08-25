@@ -15,7 +15,7 @@
 </script>
 
 <section {id} aria-labelledby={labelledby} class={cn('scroll-mt-16', className)}>
-	<PageContainer class={cn('py-12 sm:py-16', contentClass)}>
+	<PageContainer class={cn('py-16 sm:py-20', contentClass)}>
 		{@render children()}
 	</PageContainer>
 </section>
