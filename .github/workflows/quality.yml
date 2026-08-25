@@ -9,14 +9,8 @@ permissions:
 
 jobs:
   release-check:
-    name: Release check (Node ${{ matrix.node }})
+    name: Release check (Node 22)
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node:
-          - '20.19.0'
-          - '22'
 
     steps:
       - name: Check out the repository
@@ -32,7 +26,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: "22"
           cache: pnpm
 
       - name: Install dependencies
@@ -45,13 +39,11 @@ jobs:
         run: pnpm release:check
 
       - name: Pack the runtime artifact
-        if: matrix.node == '22'
         run: |
           mkdir -p .artifacts
           pnpm --filter tensum pack --pack-destination .artifacts
 
       - name: Upload the runtime artifact
-        if: matrix.node == '22'
         uses: actions/upload-artifact@v4
         with:
           name: tensum-package
@@ -66,10 +58,9 @@ jobs:
       fail-fast: false
       matrix:
         node:
-          - '18'
-          - '20'
-          - '22'
-          - '24'
+          - "20.19.0"
+          - "22"
+          - "24"
 
     steps:
       - name: Install Node.js

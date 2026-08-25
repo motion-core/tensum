@@ -295,9 +295,9 @@ void coupled;
   }
 
   run(
-    "Install the tarball from the local pnpm store",
+    "Install the tarball in a clean consumer",
     pnpm,
-    ["install", "--offline", "--ignore-scripts", "--lockfile=false"],
+    ["install", "--ignore-scripts", "--lockfile=false"],
     consumerDirectory,
   );
 
