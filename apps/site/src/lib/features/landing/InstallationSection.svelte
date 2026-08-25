@@ -23,7 +23,7 @@
 	/>
 
 	<SectionPanel class="grid lg:grid-cols-5">
-		<div class="flex flex-col border-b border-border p-4 lg:col-span-2 lg:border-e lg:border-b-0">
+		<div class="flex flex-col border-b border-border p-3 lg:col-span-2 lg:border-e lg:border-b-0">
 			<div>
 				<p class="text-sm font-medium">1. Install the package</p>
 				<CodeBlock
