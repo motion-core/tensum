@@ -1,6 +1,6 @@
 import { springParameters } from '../parameters.js';
 import { resolveSettlingOptions } from '../settling.js';
-import { createSpring } from '../spring.js';
+import { createSpring, resolveSpringTimingInput } from '../spring.js';
 import type {
   SpringParameters,
   SpringSettleInput,
@@ -73,6 +73,7 @@ export function createAdditiveSpringValue(
   assertFinite('initialValue', initialValue);
   const defaultParameters = springParameters.fromPhysics(parameters);
   const defaultSettling = resolveSettlingOptions(options.settle);
+  const defaultTiming = resolveSpringTimingInput(options.timing);
   const listeners: Record<AdditiveSpringEvent, Set<AdditiveSpringListener>> = {
     change: new Set(),
     settle: new Set(),
@@ -87,18 +88,22 @@ export function createAdditiveSpringValue(
   let cancelFrame: (() => void) | undefined;
   let destroyed = false;
   let lastTime = Number.NEGATIVE_INFINITY;
+  let revision = 0;
+
+  const aggregateTarget = (): number => {
+    let aggregate = base;
+    for (const contribution of contributions.values()) {
+      aggregate += contribution.solution.initialState.target;
+      assertFinite('target', aggregate);
+    }
+    return aggregate;
+  };
 
   const snapshot = (): Readonly<AdditiveSpringSnapshot> =>
     Object.freeze({
       value,
       velocity,
-      target:
-        base +
-        [...contributions.values()].reduce(
-          (sum, contribution) =>
-            sum + contribution.solution.initialState.target,
-          0,
-        ),
+      target: aggregateTarget(),
       animating: contributions.size > 0,
       contributions: contributions.size,
     });
@@ -110,6 +115,8 @@ export function createAdditiveSpringValue(
   };
 
   const write = (nextValue: number, nextVelocity: number): void => {
+    assertFinite('value', nextValue);
+    assertFinite('velocity', nextVelocity);
     const changed =
       !Object.is(value, nextValue) || !Object.is(velocity, nextVelocity);
     value = nextValue;
@@ -126,17 +133,21 @@ export function createAdditiveSpringValue(
   const sample = (time: number): void => {
     validateTime(time);
     if (contributions.size === 0) return;
+    const sampledRevision = revision;
 
     let positionSum = 0;
     let velocitySum = 0;
+    let nextBase = base;
+    const removedIds: number[] = [];
     let removed = false;
     let becameUnsettled = false;
     for (const [id, contribution] of contributions) {
       const elapsed = Math.max(0, time - contribution.startedAt);
       const result = contribution.solution.getSettlingResult();
       if (result.settled && elapsed >= result.duration) {
-        base += contribution.solution.initialState.target;
-        contributions.delete(id);
+        nextBase += contribution.solution.initialState.target;
+        assertFinite('base', nextBase);
+        removedIds.push(id);
         removed = true;
         continue;
       }
@@ -144,6 +155,8 @@ export function createAdditiveSpringValue(
       const state = contribution.solution.stateAt(elapsed);
       positionSum += state.position;
       velocitySum += state.velocity;
+      assertFinite('position sum', positionSum);
+      assertFinite('velocity sum', velocitySum);
       if (
         !result.settled &&
         !contribution.unsettledNotified &&
@@ -154,8 +167,16 @@ export function createAdditiveSpringValue(
       }
     }
 
-    write(base + positionSum, velocitySum);
-    if (becameUnsettled) emit('unsettled');
+    const nextValue = nextBase + positionSum;
+    assertFinite('value', nextValue);
+    base = nextBase;
+    for (const id of removedIds) contributions.delete(id);
+    write(nextValue, velocitySum);
+    if (revision !== sampledRevision) return;
+    if (becameUnsettled) {
+      emit('unsettled');
+      if (revision !== sampledRevision) return;
+    }
     if (removed && contributions.size === 0) emit('settle');
   };
 
@@ -203,12 +224,19 @@ export function createAdditiveSpringValue(
     ): number {
       if (destroyed) throw new Error('additive spring value has been destroyed');
       assertFinite('delta', delta);
-      const initialVelocity = contributionOptions.velocity ?? 0;
+      const initialVelocity =
+        contributionOptions.velocity === undefined
+          ? 0
+          : contributionOptions.velocity;
       assertFinite('velocity', initialVelocity);
-      const time = sampleNow();
       const contributionParameters = springParameters.fromPhysics(
-        contributionOptions.parameters ?? defaultParameters,
+        contributionOptions.parameters === undefined
+          ? defaultParameters
+          : contributionOptions.parameters,
       );
+      if (contributionOptions.settle !== undefined) {
+        resolveSettlingOptions(contributionOptions.settle);
+      }
       const settle = {
         position: defaultSettling.positionEpsilon,
         velocity: defaultSettling.velocityEpsilon,
@@ -216,7 +244,12 @@ export function createAdditiveSpringValue(
         refinementIterations: defaultSettling.refinementIterations,
         ...contributionOptions.settle,
       };
-      const timing = contributionOptions.timing ?? options.timing;
+      const timing =
+        contributionOptions.timing === undefined
+          ? defaultTiming
+          : resolveSpringTimingInput(contributionOptions.timing);
+      const time = sampleNow();
+      assertFinite('target', aggregateTarget() + delta);
       const solution = createSpring({
         from: 0,
         to: delta,
@@ -227,6 +260,7 @@ export function createAdditiveSpringValue(
       });
       const id = nextId;
       nextId += 1;
+      revision += 1;
 
       if (delta === 0 && initialVelocity === 0) {
         if (contributions.size === 0) emit('settle');
@@ -248,12 +282,19 @@ export function createAdditiveSpringValue(
       const time = sampleNow();
       const contribution = contributions.get(contributionId);
       if (!contribution) return;
+      revision += 1;
+      const currentRevision = revision;
       const state: SpringState = contribution.solution.stateAt(
         Math.max(0, time - contribution.startedAt),
       );
-      base += state.position;
+      const nextBase = base + state.position;
+      const nextVelocity = velocity - state.velocity;
+      assertFinite('base', nextBase);
+      assertFinite('velocity', nextVelocity);
+      base = nextBase;
       contributions.delete(contributionId);
-      write(value, velocity - state.velocity);
+      write(value, nextVelocity);
+      if (revision !== currentRevision) return;
       if (contributions.size === 0) {
         cancelFrame?.();
         cancelFrame = undefined;
@@ -264,18 +305,24 @@ export function createAdditiveSpringValue(
       if (destroyed) return;
       assertFinite('value', nextValue);
       const changed = !Object.is(value, nextValue) || velocity !== 0;
+      revision += 1;
+      const currentRevision = revision;
       base = nextValue;
       contributions.clear();
       cancelFrame?.();
       cancelFrame = undefined;
       write(nextValue, 0);
+      if (revision !== currentRevision) return;
       if (changed) emit('settle');
     },
     stop(): void {
       if (destroyed || contributions.size === 0) return;
       sampleNow();
       if (contributions.size === 0) return;
+      revision += 1;
+      const currentRevision = revision;
       clearAtCurrentValue();
+      if (revision !== currentRevision) return;
       emit('settle');
     },
     on(event: AdditiveSpringEvent, listener: AdditiveSpringListener): () => void {
@@ -285,8 +332,9 @@ export function createAdditiveSpringValue(
     },
     destroy(): void {
       if (destroyed) return;
-      clearAtCurrentValue();
+      revision += 1;
       destroyed = true;
+      clearAtCurrentValue();
       for (const eventListeners of Object.values(listeners)) {
         eventListeners.clear();
       }

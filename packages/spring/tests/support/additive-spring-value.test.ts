@@ -109,7 +109,9 @@ describe('additive SpringValue', () => {
       0,
       { mass: 1, stiffness: 100, damping: 0 },
       driver,
-      { settle: { maxDuration: 0.2 } },
+      {
+        settle: { maxDuration: 0.2 },
+      },
     );
     const unsettled = vi.fn();
     value.on('unsettled', unsettled);
@@ -145,5 +147,74 @@ describe('additive SpringValue', () => {
     value.destroy();
     value.destroy();
     expect(() => value.animateBy(1)).toThrow(Error);
+  });
+
+  it('does not emit stale lifecycle events after a change listener mutates it', () => {
+    const driver = new TestDriver();
+    const value = createAdditiveSpringValue(0, parameters, driver);
+    const settled = vi.fn();
+    let redirected = false;
+    value.on('settle', settled);
+    value.on('change', () => {
+      if (redirected) return;
+      redirected = true;
+      value.jump(42);
+    });
+
+    value.animateBy(100);
+    driver.advance(5);
+
+    expect(value.get()).toBe(42);
+    expect(settled).toHaveBeenCalledOnce();
+  });
+
+  it('rejects additive targets outside the finite numeric range', () => {
+    const value = createAdditiveSpringValue(
+      Number.MAX_VALUE,
+      parameters,
+      new TestDriver(),
+    );
+
+    expect(() => value.animateBy(Number.MAX_VALUE)).toThrow(
+      /target must be a finite number/,
+    );
+    expect(value.getSnapshot()).toEqual({
+      value: Number.MAX_VALUE,
+      velocity: 0,
+      target: Number.MAX_VALUE,
+      animating: false,
+      contributions: 0,
+    });
+  });
+
+  it('rejects explicit null contribution options instead of using defaults', () => {
+    const driver = new TestDriver();
+    const value = createAdditiveSpringValue(0, parameters, driver);
+
+    expect(() => value.animateBy(1, { velocity: null as never })).toThrow(
+      RangeError,
+    );
+    expect(() => value.animateBy(1, { parameters: null as never })).toThrow(
+      TypeError,
+    );
+    expect(() => value.animateBy(1, { settle: null as never })).toThrow(
+      TypeError,
+    );
+  });
+
+  it('snapshots and validates its default timing input', () => {
+    expect(() =>
+      createAdditiveSpringValue(0, parameters, new TestDriver(), {
+        timing: null as never,
+      }),
+    ).toThrow(TypeError);
+
+    const timing = { perceptualDuration: 0.2 };
+    const value = createAdditiveSpringValue(0, parameters, new TestDriver(), {
+      timing,
+    });
+    timing.perceptualDuration = -1;
+
+    expect(() => value.animateBy(100)).not.toThrow();
   });
 });
