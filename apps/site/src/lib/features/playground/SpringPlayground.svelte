@@ -405,7 +405,7 @@
 </script>
 
 <section
-	class="grid overflow-hidden rounded-xl bg-card shadow-lg lg:grid-cols-12 dark:bg-card/44 dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]"
+	class="spring-playground grid overflow-hidden rounded-xl bg-card shadow-lg lg:grid-cols-12 dark:bg-card/44 dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]"
 	aria-label="Spring playground"
 >
 	<section
@@ -829,6 +829,12 @@
 </section>
 
 <style>
+	@media (min-width: 64rem) {
+		.spring-playground {
+			grid-template-rows: 29.5rem auto;
+		}
+	}
+
 	.spring-stage-rail {
 		box-shadow:
 			inset 0 1px 2px rgb(0 0 0 / 0.08),
