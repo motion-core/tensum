@@ -1,29 +1,36 @@
 # Changelog
 
-This file records user-visible changes to `tensum`.
+All notable changes to this project will be documented in this file.
 
-## 0.1.0 - Unreleased
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-- Add the `motionSpring` GSAP effect with solver-derived duration and analytical
-  sampling.
-- Add the preflighted `timeline.motionSpring()` effect and
-  `createMotionSpringTween()` helper so derived durations are available before
-  GSAP lays out sequential, staggered, or nested timelines. Add `from` for an
-  explicit construction-time starting snapshot and `tween` for finite stagger,
-  repeat, repeat delay, and yoyo options.
-- Add automatic position and velocity handoff between overlapping timeline and
-  `springTo()` tracks. Normal completion retains a terminal analytical state,
-  discards covered history, and reconciles an external property write before a
-  later implicit handoff.
-- Add controller playback, lifecycle callbacks, custom property adapters, unit
-  handling, property-level kill, invalidate cleanup, and cycle-local
-  repeat/yoyo handoff. Plugin lifecycle callbacks are target-scoped for array
-  tweens.
-- Add explicit unsettled policies: `stop` retains the capped analytical state,
-  `snap` writes the target with zero velocity, `continue` uses an infinite
-  total-time driver, and `error` rejects an unsettled track during initialization.
-- Ship the analytical solver and supporting parameter, velocity, keyframe,
-  inertia, additive, vector, CSS `linear()`, and coupled-system utilities in one
-  package.
-- Add ESM entry points for the root package, `tensum/css`, and
-  `tensum/coupled`, with TypeScript declarations and source maps.
+## [Unreleased]
+
+### Added
+
+- Analytical solutions for underdamped, critically damped, and overdamped
+  springs, with position, velocity, state, and retargeting APIs.
+- Settlement detection with configurable position and velocity tolerances,
+  maximum duration, and refinement precision.
+- Physical and perceptual parameter converters, spring presets, damping
+  classification, and spring characteristic inspection.
+- GSAP timeline composition through `timeline.motionSpring()` and
+  `createMotionSpringTween()`, with solver-derived duration available before
+  timeline layout.
+- Direct animation control through `springTo()`, including pause, resume, seek,
+  reverse playback, snapshots, and property-level cancellation.
+- Position and velocity handoff between overlapping Tensum tracks, including
+  terminal-state retention and external-write detection.
+- Multi-property and multi-target animation with unit validation, custom
+  property adapters, stagger, repeat, repeat delay, and yoyo playback.
+- Lifecycle callbacks for logical completion, physical settlement, and
+  unsettled springs.
+- `stop`, `snap`, `continue`, and `error` policies for springs that do not settle
+  within their configured maximum duration.
+- Vector springs, reactive spring values, additive composition, analytical
+  keyframes, inertia, velocity helpers, and snapping utilities.
+- CSS `linear()` generation through `tensum/css` and coupled spring systems
+  through `tensum/coupled`.
+- ESM package exports with TypeScript declarations, declaration maps, source
+  maps, and included TypeScript sources.

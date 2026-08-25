@@ -3,6 +3,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { ThemeToggle } from '$lib/components/theme-toggle';
+	import { TensumIcon } from '$lib/icons';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -23,12 +24,7 @@
 			href={resolve('/')}
 			class="group inline-flex min-h-8 min-w-0 items-center gap-2 rounded-md px-1.5 font-medium tracking-tight outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
 		>
-			<span class="relative grid size-5 shrink-0 place-items-center" aria-hidden="true">
-				<span class="absolute size-3.5 rounded-full border border-foreground/30"></span>
-				<span
-					class="size-1.5 rounded-full bg-foreground shadow-[0_0_0_3px_color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-transform duration-150 group-hover:scale-75 motion-reduce:transition-none"
-				></span>
-			</span>
+			<TensumIcon size={18} class="shrink-0 text-foreground" />
 			<span class="truncate">tensum</span><span class="sr-only"> home</span>
 		</a>
 
