@@ -10,6 +10,7 @@
 	import { gsap } from 'gsap';
 	import { onDestroy, onMount, tick } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
+	import { ActionTooltip } from '$lib/components/action-tooltip';
 	import { Button } from '$lib/components/ui/button';
 	import { PauseIcon, PlayIcon, ResetIcon } from '$lib/icons';
 	import { Slider } from '$lib/components/ui/slider';
@@ -404,7 +405,7 @@
 			<h2 class="font-heading text-sm font-medium" id="playground-scenes-heading">Scenes</h2>
 		</header>
 		<div class="p-2">
-			<nav class="grid grid-cols-3 gap-1 lg:grid-cols-1" aria-label="Playground scene">
+			<div class="grid grid-cols-3 gap-1 lg:grid-cols-1" role="group" aria-label="Playground scene">
 				{#each scenarios as item (item.id)}
 					<Button
 						variant={scenario === item.id ? 'secondary' : 'ghost'}
@@ -422,12 +423,18 @@
 						{item.label}
 					</Button>
 				{/each}
-			</nav>
+			</div>
 
 			{#if scenario !== 'timeline'}
-				<p class="mt-3 mb-1 px-2 text-xs text-muted-foreground">Target</p>
 				{#if scenario === 'distance'}
-					<div class="grid grid-cols-3 gap-1 lg:grid-cols-1" aria-label="Distance target">
+					<p id="distance-target-label" class="mt-3 mb-1 px-2 text-xs text-muted-foreground">
+						Target
+					</p>
+					<div
+						class="grid grid-cols-3 gap-1 lg:grid-cols-1"
+						role="group"
+						aria-labelledby="distance-target-label"
+					>
 						{#each distanceTargets as target, index (target.label)}
 							<Button
 								variant={distanceTargetIndex === index ? 'secondary' : 'ghost'}
@@ -440,7 +447,14 @@
 						{/each}
 					</div>
 				{:else}
-					<div class="grid grid-cols-3 gap-1 lg:grid-cols-1" aria-label="Rotation target">
+					<p id="rotation-target-label" class="mt-3 mb-1 px-2 text-xs text-muted-foreground">
+						Target
+					</p>
+					<div
+						class="grid grid-cols-3 gap-1 lg:grid-cols-1"
+						role="group"
+						aria-labelledby="rotation-target-label"
+					>
 						{#each rotationTargets as target (target)}
 							<Button
 								variant={rotationTarget === target ? 'secondary' : 'ghost'}
@@ -454,17 +468,24 @@
 					</div>
 				{/if}
 
-				<p class="mt-3 mb-1 px-2 text-xs text-muted-foreground">Feel preset</p>
-				<div class="grid grid-cols-3 gap-1 lg:grid-cols-1">
+				<p id="feel-preset-label" class="mt-3 mb-1 px-2 text-xs text-muted-foreground">
+					Feel preset
+				</p>
+				<div
+					class="grid grid-cols-3 gap-1 lg:grid-cols-1"
+					role="group"
+					aria-labelledby="feel-preset-label"
+				>
 					{#each feelPresets as preset (preset.label)}
-						<Button
-							variant={inputMode === 'perceptual' &&
+						{@const selected =
+							inputMode === 'perceptual' &&
 							duration === preset.duration &&
-							bounce === preset.bounce
-								? 'secondary'
-								: 'ghost'}
+							bounce === preset.bounce}
+						<Button
+							variant={selected ? 'secondary' : 'ghost'}
 							class="justify-start"
 							onclick={() => applyPreset(preset)}
+							aria-pressed={selected}
 						>
 							{preset.label}
 						</Button>
@@ -484,7 +505,11 @@
 	>
 		<header class="flex h-10 items-center justify-between gap-2 border-b border-border px-3">
 			<h2 class="font-heading text-sm font-medium" id="playground-stage-heading">Stage</h2>
-			<span class="font-mono text-xs text-muted-foreground tabular-nums">{stageStatus}</span>
+			<span
+				class="font-mono text-xs text-muted-foreground tabular-nums"
+				role="status"
+				aria-atomic="true">{stageStatus}</span
+			>
 		</header>
 		<div class="flex min-h-48 flex-1 flex-col p-2 lg:min-h-96">
 			<div class="relative min-h-32 flex-1 overflow-hidden lg:min-h-40" {@attach captureTrack}>
@@ -579,9 +604,19 @@
 						{/if}
 					</Button>
 					<Button variant="outline" onclick={reverseTimeline}>Reverse</Button>
-					<Button variant="ghost" size="icon" onclick={resetTimeline} aria-label="Reset timeline">
-						<ResetIcon strokeWidth={2} />
-					</Button>
+					<ActionTooltip content="Reset timeline">
+						{#snippet trigger({ props })}
+							<Button
+								{...props}
+								variant="ghost"
+								size="icon"
+								onclick={resetTimeline}
+								aria-label="Reset timeline"
+							>
+								<ResetIcon strokeWidth={2} />
+							</Button>
+						{/snippet}
+					</ActionTooltip>
 				</div>
 
 				<p
@@ -593,7 +628,7 @@
 		{:else}
 			<div class="flex flex-1 flex-col gap-3 p-2.5">
 				<Tabs.Root
-					class="w-full"
+					class="w-full gap-3"
 					value={inputMode}
 					onValueChange={(value) => setInputMode(value as InputMode)}
 				>
@@ -601,10 +636,8 @@
 						<Tabs.Trigger class="flex-1" value="perceptual">Feel</Tabs.Trigger>
 						<Tabs.Trigger class="flex-1" value="physics">Physics</Tabs.Trigger>
 					</Tabs.List>
-				</Tabs.Root>
 
-				<div class="grid gap-3">
-					{#if inputMode === 'perceptual'}
+					<Tabs.Content class="grid gap-3" value="perceptual">
 						<ParameterField
 							id="hero-duration"
 							label="Duration"
@@ -627,7 +660,9 @@
 							description="Overshoot and damping character"
 							onValue={(value) => (bounce = value)}
 						/>
-					{:else}
+					</Tabs.Content>
+
+					<Tabs.Content class="grid gap-3" value="physics">
 						<ParameterField
 							id="hero-mass"
 							label="Mass"
@@ -661,8 +696,8 @@
 							description="Energy loss"
 							onValue={(value) => (damping = value)}
 						/>
-					{/if}
-				</div>
+					</Tabs.Content>
+				</Tabs.Root>
 
 				<Button class="w-full" onclick={moveToNextTarget}>
 					<PlayIcon strokeWidth={2} data-icon="inline-start" />
