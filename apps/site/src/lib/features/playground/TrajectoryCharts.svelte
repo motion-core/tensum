@@ -75,10 +75,10 @@
 			labelYOffset: 3,
 			props: {
 				line: {
-					stroke: 'var(--muted-foreground)',
+					stroke: 'var(--separator)',
 					strokeWidth: 1,
 					dashArray: '4 4',
-					opacity: 0.7
+					opacity: 1
 				},
 				label: { fill: 'var(--muted-foreground)' }
 			}
@@ -112,12 +112,12 @@
 	}
 </script>
 
-<section class="flex min-h-0 flex-col" aria-labelledby="trajectory-heading">
-	<header class="flex h-10 items-center border-b border-border px-3">
+<section class="trajectory-charts flex min-h-0 flex-col" aria-labelledby="trajectory-heading">
+	<header class="flex h-12 items-center border-b border-border/64 px-4 dark:border-card/80">
 		<h2 class="font-heading text-sm font-medium" id="trajectory-heading">Analytical trajectory</h2>
 	</header>
 	<div class="grid min-h-0 grid-cols-1 sm:min-h-56 sm:grid-cols-2">
-		<figure class="flex min-h-36 flex-col p-3 sm:min-h-0" aria-labelledby="position-chart-title">
+		<figure class="flex min-h-36 flex-col p-4 sm:min-h-0" aria-labelledby="position-chart-title">
 			<figcaption class="flex items-center justify-between gap-2 text-sm" id="position-chart-title">
 				<span class="font-medium">Position</span>
 				<span class="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -142,7 +142,7 @@
 					yNice
 					yPadding={[6, 6]}
 					axis
-					grid={{ y: { stroke: 'var(--border)', opacity: 0.7 } }}
+					grid={{ y: { stroke: 'var(--separator)', opacity: 1 } }}
 					rule={false}
 					series={positionSeries}
 					annotations={positionAnnotations}
@@ -161,7 +161,7 @@
 							tickSpacing: 32
 						},
 						highlight: {
-							lines: { stroke: 'var(--muted-foreground)', strokeWidth: 1 },
+							lines: { stroke: 'var(--separator)', strokeWidth: 1 },
 							points: { r: 3, stroke: 'var(--card)', strokeWidth: 2 }
 						}
 					}}
@@ -174,7 +174,7 @@
 		</figure>
 
 		<figure
-			class="flex min-h-36 flex-col border-t border-border p-3 sm:min-h-0 sm:border-s sm:border-t-0"
+			class="flex min-h-36 flex-col border-t border-border/64 p-4 sm:min-h-0 sm:border-s sm:border-t-0 dark:border-card/80"
 			aria-labelledby="velocity-chart-title"
 		>
 			<figcaption class="flex items-center justify-between gap-2 text-sm" id="velocity-chart-title">
@@ -201,8 +201,8 @@
 					yNice
 					yPadding={[6, 6]}
 					axis
-					grid={{ y: { stroke: 'var(--border)', opacity: 0.7 } }}
-					rule={{ stroke: 'var(--muted-foreground)', dashArray: '4 4', opacity: 0.7 }}
+					grid={{ y: { stroke: 'var(--separator)', opacity: 1 } }}
+					rule={{ stroke: 'var(--separator)', dashArray: '4 4', opacity: 1 }}
 					series={velocitySeries}
 					padding={{ top: 10, right: 12, bottom: 30, left: 52 }}
 					props={{
@@ -219,7 +219,7 @@
 							tickSpacing: 32
 						},
 						highlight: {
-							lines: { stroke: 'var(--muted-foreground)', strokeWidth: 1 },
+							lines: { stroke: 'var(--separator)', strokeWidth: 1 },
 							points: { r: 3, stroke: 'var(--card)', strokeWidth: 2 }
 						}
 					}}
@@ -232,3 +232,15 @@
 		</figure>
 	</div>
 </section>
+
+<style>
+	.trajectory-charts :global(.lc-grid-y-line),
+	.trajectory-charts :global(.lc-axis-tick),
+	.trajectory-charts :global(.lc-axis-rule),
+	.trajectory-charts :global(.lc-rule-y-line),
+	.trajectory-charts :global(.lc-annotation-line),
+	.trajectory-charts :global(.lc-highlight-line) {
+		--stroke-color: var(--separator);
+		stroke: var(--separator);
+	}
+</style>
