@@ -100,18 +100,14 @@
 	class="relative mx-auto max-w-screen-2xl xl:grid xl:grid-cols-[minmax(15.5rem,1fr)_minmax(0,64rem)_minmax(15.5rem,1fr)]"
 >
 	<aside class="relative hidden min-w-0 ps-4 xl:block" aria-label="Documentation sections">
-		<div
-			class="sticky top-(--docs-sidebar-top) isolate flex h-[calc(100svh-var(--docs-sidebar-top)-var(--docs-sidebar-bottom))] min-h-80 w-62 flex-col [--docs-sidebar-bottom:6rem] [--docs-sidebar-top:calc(3.5rem+3rem+0.1875rem)]"
-		>
+		<div class="sticky top-[50dvh] isolate w-62 -translate-y-1/2">
 			<div
 				id="desktop-docs-navigation"
 				class={[
-					'relative flex h-full w-60 flex-col transition-[translate] duration-350 ease-[cubic-bezier(0.24,0.88,0.28,0.92)] motion-reduce:transition-none'
+					'relative flex max-h-[calc(100dvh-7rem)] w-60 flex-col transition-[translate] duration-350 ease-[cubic-bezier(0.24,0.88,0.28,0.92)] motion-reduce:transition-none'
 				]}
 			>
-				<div
-					class="docs-sidebar-scroll min-h-0 grow overflow-x-clip overflow-y-auto overscroll-contain pt-10"
-				>
+				<div class="docs-sidebar-scroll min-h-0 overflow-x-clip overflow-y-auto overscroll-contain">
 					<DocsNavigation {activeId} />
 				</div>
 			</div>
