@@ -12,7 +12,12 @@
 </script>
 
 <div class="my-7 overflow-hidden rounded-lg bg-card shadow-sm">
-	<ScrollArea orientation="horizontal" class="w-full">
+	<ScrollArea
+		orientation="horizontal"
+		class="w-full min-w-0"
+		viewportTabindex={0}
+		viewportAriaLabel="Documentation table scroll area"
+	>
 		<table {...restProps} class={cn('w-full min-w-xl border-collapse text-sm', className)}>
 			{@render children?.()}
 		</table>

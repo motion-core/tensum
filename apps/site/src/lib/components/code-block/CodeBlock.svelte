@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
+	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import CopyCodeButton from './CopyCodeButton.svelte';
 
 	type Props = {
@@ -38,17 +39,33 @@
 >
 	<CopyCodeButton
 		value={code}
-		label={`Copy ${label.toLowerCase()}`}
+		label={compact ? 'Copy install command to clipboard' : 'Copy code to clipboard'}
 		class="absolute inset-e-1 top-1 z-10"
 	/>
 
 	<div class="shiki-theme-light">
-		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-		{@html htmlLight}
+		<ScrollArea
+			orientation="horizontal"
+			class="w-full min-w-0"
+			viewportTabindex={0}
+			viewportAriaLabel={`${label} scroll area`}
+			scrollbarXClasses="z-20"
+		>
+			<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+			{@html htmlLight}
+		</ScrollArea>
 	</div>
 	<div class="shiki-theme-dark">
-		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-		{@html htmlDark ?? htmlLight}
+		<ScrollArea
+			orientation="horizontal"
+			class="w-full min-w-0"
+			viewportTabindex={0}
+			viewportAriaLabel={`${label} scroll area`}
+			scrollbarXClasses="z-20"
+		>
+			<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+			{@html htmlDark ?? htmlLight}
+		</ScrollArea>
 	</div>
 </div>
 
@@ -67,7 +84,7 @@
 
 	.code-block :global(.shiki) {
 		margin: 0;
-		overflow-x: auto;
+		overflow: visible;
 		padding: 0.5rem;
 		background-color: var(--card) !important;
 		font-family:
