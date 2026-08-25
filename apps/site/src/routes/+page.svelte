@@ -33,7 +33,7 @@
 <main id="main-content">
 	<PageSection id="playground">
 		<div class="mx-auto max-w-4xl text-center">
-			<Badge variant="link">Physics-first motion toolkit</Badge>
+			<Badge variant="secondary">Physics-first motion toolkit</Badge>
 			<h1
 				class="mt-5 font-heading text-5xl leading-none font-semibold tracking-tight text-balance sm:text-6xl"
 			>
