@@ -53,7 +53,7 @@ get along, so we shut typescript up by casting `value` to `never`.
 			data-orientation={orientation}
 			class={cn(
 				isMeter
-					? 'relative h-full w-full grow overflow-hidden rounded-[calc(var(--radius)*0.6)]'
+					? 'relative h-full w-full grow overflow-hidden rounded-sm'
 					: 'relative grow overflow-hidden rounded-md bg-muted data-horizontal:h-1 data-horizontal:w-full data-vertical:h-full data-vertical:w-1'
 			)}
 		>
@@ -66,13 +66,13 @@ get along, so we shut typescript up by casting `value` to `never`.
 			/>
 			{#if isMeter}
 				<span
-					class="pointer-events-none absolute inset-y-0 start-0 z-20 flex max-w-[48%] items-center px-2 font-medium"
+					class="pointer-events-none absolute inset-y-0 inset-s-0 z-20 flex max-w-1/2 items-center px-2 font-medium"
 					aria-hidden="true"
 				>
 					<span class="truncate">{label}</span>
 				</span>
 				<span
-					class="pointer-events-none absolute inset-y-0 end-0 z-20 flex items-center px-2 font-mono text-[0.6875rem] font-medium tabular-nums"
+					class="pointer-events-none absolute inset-y-0 inset-e-0 z-20 flex items-center px-2 font-mono text-xs font-medium tabular-nums"
 					aria-hidden="true"
 				>
 					{displayValue}
