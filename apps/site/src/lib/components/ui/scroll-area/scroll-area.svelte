@@ -8,16 +8,54 @@
 		viewportRef = $bindable(null),
 		class: className,
 		orientation = 'vertical',
+		viewportClass,
+		viewportTabindex,
+		viewportAriaLabel,
 		scrollbarXClasses = '',
 		scrollbarYClasses = '',
 		children,
 		...restProps
 	}: WithoutChild<ScrollAreaPrimitive.RootProps> & {
 		orientation?: 'vertical' | 'horizontal' | 'both' | undefined;
+		viewportClass?: string | undefined;
+		viewportTabindex?: 0 | -1 | undefined;
+		viewportAriaLabel?: string | undefined;
 		scrollbarXClasses?: string | undefined;
 		scrollbarYClasses?: string | undefined;
 		viewportRef?: HTMLElement | null;
 	} = $props();
+
+	function handleViewportKeydown(event: KeyboardEvent) {
+		if (event.target !== event.currentTarget) return;
+
+		const viewport = event.currentTarget as HTMLElement;
+		const maxScrollLeft = viewport.scrollWidth - viewport.clientWidth;
+
+		if (maxScrollLeft <= 0) return;
+
+		const scrollStep = Math.max(40, viewport.clientWidth * 0.1);
+		let nextScrollLeft: number | undefined;
+
+		switch (event.key) {
+			case 'ArrowLeft':
+				nextScrollLeft = viewport.scrollLeft - scrollStep;
+				break;
+			case 'ArrowRight':
+				nextScrollLeft = viewport.scrollLeft + scrollStep;
+				break;
+			case 'Home':
+				nextScrollLeft = 0;
+				break;
+			case 'End':
+				nextScrollLeft = maxScrollLeft;
+				break;
+			default:
+				return;
+		}
+
+		event.preventDefault();
+		viewport.scrollTo({ left: nextScrollLeft });
+	}
 </script>
 
 <ScrollAreaPrimitive.Root
@@ -29,7 +67,13 @@
 	<ScrollAreaPrimitive.Viewport
 		bind:ref={viewportRef}
 		data-slot="scroll-area-viewport"
-		class="cn-scroll-area-viewport size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-1"
+		tabindex={viewportTabindex}
+		aria-label={viewportAriaLabel}
+		onkeydown={handleViewportKeydown}
+		class={cn(
+			'cn-scroll-area-viewport size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-1',
+			viewportClass
+		)}
 	>
 		{@render children?.()}
 	</ScrollAreaPrimitive.Viewport>
