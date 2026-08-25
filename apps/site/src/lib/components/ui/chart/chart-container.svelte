@@ -61,13 +61,13 @@
 		// Legend adjustments
 		'[&_.lc-legend-swatch-button]:items-center [&_.lc-legend-swatch-button]:gap-1.5',
 		'[&_.lc-legend-swatch-group]:items-center [&_.lc-legend-swatch-group]:gap-4',
-		'[&_.lc-legend-swatch]:size-2.5 [&_.lc-legend-swatch]:rounded-xs',
+		'[&_.lc-legend-swatch]:size-2.5 [&_.lc-legend-swatch]:rounded-[2px]',
 
 		// Labels
 		'[&_.lc-labels-text:not([fill])]:fill-foreground [&_text]:stroke-transparent',
 
 		// Tick labels on th x/y axes
-		'[&_.lc-axis-tick-label]:fill-muted-foreground [&_.lc-axis-tick-label]:font-normal',
+		'[&_.lc-axis-tick-label]:fill-muted-foreground [&_.lc-axis-tick-label]:font-normal dark:[&_.lc-axis-tick-label]:fill-muted-foreground/50',
 		'[&_.lc-tooltip-rects-g]:fill-transparent',
 		'[&_.lc-layout-svg-g]:fill-transparent',
 		'[&_.lc-root-container]:w-full',
