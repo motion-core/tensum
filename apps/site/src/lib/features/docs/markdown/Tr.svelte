@@ -6,12 +6,6 @@
 	let { children, class: className, ...restProps }: Props = $props();
 </script>
 
-<tr
-	{...restProps}
-	class={cn(
-		'border-b border-border/64 dark:border-card/80',
-		className
-	)}
->
+<tr {...restProps} class={cn('border-b border-border/64 dark:border-card/80', className)}>
 	{@render children?.()}
 </tr>

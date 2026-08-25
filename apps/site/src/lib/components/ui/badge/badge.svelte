@@ -5,9 +5,10 @@
 		base: 'group/badge inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-full border px-1.5 text-xs leading-normal font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:shrink-0',
 		variants: {
 			variant: {
-				default: 'border-transparent bg-primary text-primary-foreground [a]:hover:bg-primary/90 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)]',
+				default:
+					'border-transparent bg-primary text-primary-foreground shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)] [a]:hover:bg-primary/90',
 				secondary:
-					'border-transparent bg-secondary text-secondary-foreground [a]:hover:bg-secondary/90 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)]',
+					'border-transparent bg-secondary text-secondary-foreground shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)] [a]:hover:bg-secondary/90',
 				destructive:
 					'text-destructive-foreground border-transparent bg-destructive focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/90',
 				outline: 'text-foreground [a]:hover:bg-accent [a]:hover:text-accent-foreground',

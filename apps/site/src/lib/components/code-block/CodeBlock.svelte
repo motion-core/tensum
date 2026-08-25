@@ -88,8 +88,8 @@
 		padding: 1rem;
 		background-color: transparent !important;
 		font-family:
-			ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-			'Liberation Mono', 'Courier New', monospace;
+			ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+			monospace;
 		font-size: 0.8125rem;
 		line-height: 1.5rem;
 	}
