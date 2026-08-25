@@ -15,6 +15,7 @@
     "lint": "pnpm -r --if-present lint",
     "format": "pnpm --filter tensum-site format",
     "release:check": "node scripts/release-check.mjs",
+    "release:metadata": "node scripts/release-metadata-check.mjs",
     "release:consumer": "node scripts/package-consumer-smoke.mjs",
     "release:compat": "node scripts/gsap-compatibility-smoke.mjs"
   },

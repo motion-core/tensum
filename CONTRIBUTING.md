@@ -3,7 +3,7 @@
 ## Local setup
 
 The repository requires Node.js 20.19.x, or Node.js 22.12 and newer, with pnpm
-10.33.3. The package runtime has a separate Node.js 18 minimum.
+10.33.3. The published package uses the same Node.js minimum.
 
 ```bash
 pnpm install --frozen-lockfile

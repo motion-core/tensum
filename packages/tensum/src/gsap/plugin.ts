@@ -646,7 +646,7 @@ function registerMotionSpringEffect(instance: typeof gsap): void {
 }
 
 const pluginDefinition = {
-  version: '0.1.0-beta.0',
+  version: '0.1.0',
   name: INTERNAL_DRIVER_PROPERTY,
   headless: true,
   rawVars: 1,

@@ -5,22 +5,15 @@ timeline, scheduling, and context lifecycle. When GSAP renders the plugin,
 Spring samples position and velocity from absolute time and writes the sampled
 property values.
 
-The repository contains one package prepared for public distribution:
+The repository contains one public package:
 
 ```text
 tensum
 ```
 
-Version `0.1.0` is currently unreleased. The package manifest, tarball checks, and
-consumer contract are kept in the repository so a release can be rehearsed
-without publishing anything.
-
 The public spring configuration has no required duration. Duration comes from the physical state and settling tolerances.
 
 ## Install
-
-The registry command below applies after `0.1.0` is published. Until then, use
-the workspace package or a tarball created by the local release check.
 
 ```bash
 pnpm add tensum gsap

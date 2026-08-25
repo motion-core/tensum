@@ -2,13 +2,7 @@
 
 Analytical spring physics for GSAP timelines and direct controllers.
 
-Version `0.1.0` is currently unreleased. See [CHANGELOG.md](CHANGELOG.md) for
-the release contents.
-
 ## Install
-
-The registry command below applies after `0.1.0` is published. Until then, use
-the workspace package or a tarball created by `pnpm release:check`.
 
 ```bash
 pnpm add tensum gsap
