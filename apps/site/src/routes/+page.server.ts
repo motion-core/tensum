@@ -3,16 +3,16 @@ import { getHighlighter } from '$lib/server/highlighter';
 import type { PageServerLoad } from './$types';
 
 const setupCode = `import { gsap } from 'gsap';
-import { SpringPlugin, springPresets } from '@motion-core/spring';
+import { registerSpringPlugin, springPresets } from 'tensum';
 
-gsap.registerPlugin(SpringPlugin);
+registerSpringPlugin(gsap);
 
 gsap.timeline().motionSpring(card, {
   x: 320,
   from: { x: 0 },
   parameters: springPresets.snappy()
 });`;
-const installCommand = 'pnpm add @motion-core/spring gsap';
+const installCommand = 'pnpm add tensum gsap';
 
 export const load: PageServerLoad = () => {
 	const highlighter = getHighlighter();

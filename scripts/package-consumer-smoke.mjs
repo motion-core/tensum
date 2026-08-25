@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdtempSync,
@@ -7,35 +7,35 @@ import {
   readdirSync,
   rmSync,
   writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import assert from 'node:assert/strict';
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import assert from "node:assert/strict";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
-const repositoryRoot = resolve(scriptDirectory, '..');
-const packageRoot = join(repositoryRoot, 'packages', 'spring');
+const repositoryRoot = resolve(scriptDirectory, "..");
+const packageRoot = join(repositoryRoot, "packages", "tensum");
 const repositoryManifest = JSON.parse(
-  readFileSync(join(repositoryRoot, 'package.json'), 'utf8'),
+  readFileSync(join(repositoryRoot, "package.json"), "utf8"),
 );
 const packageManifest = JSON.parse(
-  readFileSync(join(packageRoot, 'package.json'), 'utf8'),
+  readFileSync(join(packageRoot, "package.json"), "utf8"),
 );
-const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 
 function run(label, command, args, cwd) {
   console.log(`\n--> ${label}`);
   const result = spawnSync(command, args, {
     cwd,
-    env: { ...process.env, CI: process.env.CI ?? '1' },
-    stdio: 'inherit',
+    env: { ...process.env, CI: process.env.CI ?? "1" },
+    stdio: "inherit",
   });
 
   if (result.error) throw result.error;
   if (result.status !== 0) {
     throw new Error(
-      `${label} failed with exit code ${result.status ?? 'unknown'}`,
+      `${label} failed with exit code ${result.status ?? "unknown"}`,
     );
   }
 }
@@ -44,41 +44,33 @@ function writeJson(path, value) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-const temporaryRoot = mkdtempSync(
-  join(tmpdir(), 'motion-core-spring-consumer-'),
-);
-const packDirectory = join(temporaryRoot, 'pack');
-const consumerDirectory = join(temporaryRoot, 'consumer');
+const temporaryRoot = mkdtempSync(join(tmpdir(), "tensum-consumer-"));
+const packDirectory = join(temporaryRoot, "pack");
+const consumerDirectory = join(temporaryRoot, "consumer");
 mkdirSync(packDirectory);
 mkdirSync(consumerDirectory);
 
 try {
   run(
-    'Pack @motion-core/spring',
+    "Pack tensum",
     pnpm,
-    [
-      '--filter',
-      '@motion-core/spring',
-      'pack',
-      '--pack-destination',
-      packDirectory,
-    ],
+    ["--filter", "tensum", "pack", "--pack-destination", packDirectory],
     repositoryRoot,
   );
 
   const tarballs = readdirSync(packDirectory).filter((file) =>
-    file.endsWith('.tgz'),
+    file.endsWith(".tgz"),
   );
-  assert.equal(tarballs.length, 1, 'pack must produce exactly one tarball');
+  assert.equal(tarballs.length, 1, "pack must produce exactly one tarball");
   const tarball = join(packDirectory, tarballs[0]);
 
-  writeJson(join(consumerDirectory, 'package.json'), {
-    name: 'motion-core-spring-release-consumer',
+  writeJson(join(consumerDirectory, "package.json"), {
+    name: "tensum-release-consumer",
     private: true,
-    type: 'module',
+    type: "module",
     packageManager: repositoryManifest.packageManager,
     dependencies: {
-      '@motion-core/spring': `file:${tarball}`,
+      tensum: `file:${tarball}`,
       gsap: packageManifest.devDependencies.gsap,
     },
     devDependencies: {
@@ -87,21 +79,19 @@ try {
   });
 
   writeFileSync(
-    join(consumerDirectory, 'runtime.mjs'),
+    join(consumerDirectory, "runtime.mjs"),
     `import assert from 'node:assert/strict';
 import { gsap } from 'gsap';
 import {
   SUPPORTED_PROPERTIES,
-  SpringPlugin,
   createMotionSpringTween,
   createSpring,
   registerSpringPlugin,
   springTo,
-} from '@motion-core/spring';
-import { springToCSSLinear } from '@motion-core/spring/css';
-import { createCoupledSpringSystem } from '@motion-core/spring/coupled';
+} from 'tensum';
+import { springToCSSLinear } from 'tensum/css';
+import { createCoupledSpringSystem } from 'tensum/coupled';
 
-assert.equal(SpringPlugin.name, 'motionSpring');
 assert.deepEqual(SUPPORTED_PROPERTIES, ['x', 'y', 'scale', 'rotation']);
 registerSpringPlugin(gsap);
 assert.equal(typeof gsap.effects.motionSpring, 'function');
@@ -164,13 +154,13 @@ console.log('ESM runtime exports passed.');
   );
 
   writeFileSync(
-    join(consumerDirectory, 'cjs-contract.cjs'),
+    join(consumerDirectory, "cjs-contract.cjs"),
     `const assert = require('node:assert/strict');
 
 for (const packageId of [
-  '@motion-core/spring',
-  '@motion-core/spring/css',
-  '@motion-core/spring/coupled',
+  'tensum',
+  'tensum/css',
+  'tensum/coupled',
 ]) {
   assert.throws(
     () => require(packageId),
@@ -180,8 +170,8 @@ for (const packageId of [
 }
 
 (async () => {
-  const spring = await import('@motion-core/spring');
-  assert.equal(spring.SpringPlugin.name, 'motionSpring');
+  const spring = await import('tensum');
+  assert.equal(typeof spring.registerSpringPlugin, 'function');
   console.log('ESM-only CommonJS contract passed.');
 })().catch((error) => {
   console.error(error);
@@ -191,40 +181,39 @@ for (const packageId of [
   );
 
   writeFileSync(
-    join(consumerDirectory, 'consumer.ts'),
+    join(consumerDirectory, "consumer.ts"),
     `import { gsap } from 'gsap';
 import {
-  SpringPlugin,
   createMotionSpringTween,
   createSpring,
+  registerSpringPlugin,
   springTo,
   type MotionSpringEffectTweenVars,
   type MotionSpringEffectVars,
-  type MotionSpringPluginVars,
+  type MotionSpringVars,
   type SpringParameters,
   type SpringPropertyAdapter,
   type SpringToVars,
   type SpringTweenTarget,
-} from '@motion-core/spring';
+} from 'tensum';
 import {
   springToCSSLinear,
   type CSSLinearSpring,
-} from '@motion-core/spring/css';
+} from 'tensum/css';
 import {
   createCoupledSpringSystem,
   type CoupledSpringSystem,
-} from '@motion-core/spring/coupled';
+} from 'tensum/coupled';
 
 const parameters: SpringParameters = {
   mass: 1,
   stiffness: 180,
   damping: 24,
 };
-const pluginVars: MotionSpringPluginVars = {
+const springVars: MotionSpringVars = {
   x: 100,
   parameters,
 };
-const tweenVars: gsap.TweenVars = { motionSpring: pluginVars };
 const effectTweenVars: MotionSpringEffectTweenVars = {
   paused: true,
   stagger: 0.06,
@@ -237,7 +226,7 @@ const invalidEffectTweenVars: MotionSpringEffectTweenVars = {
   duration: 1,
 };
 const effectVars: MotionSpringEffectVars = {
-  x: 100,
+  ...springVars,
   from: { x: 0 },
   parameters,
   tween: effectTweenVars,
@@ -261,7 +250,7 @@ const controllerVars: SpringToVars = {
 // @ts-expect-error SpringTweenTarget represents an already resolved object.
 const unresolvedTarget: SpringTweenTarget = '.selector';
 
-gsap.registerPlugin(SpringPlugin);
+registerSpringPlugin(gsap);
 const effectTween = createMotionSpringTween({ x: 0 }, effectVars);
 const effectTimeline = gsap.timeline({ paused: true }).motionSpring(
   { x: 0 },
@@ -275,7 +264,6 @@ const coupled: CoupledSpringSystem = createCoupledSpringSystem({
   connections: [],
 });
 
-void tweenVars;
 void invalidEffectTweenVars;
 void effectTween;
 void effectTimeline;
@@ -288,69 +276,64 @@ void coupled;
 
   const sharedCompilerOptions = {
     strict: true,
-    target: 'ES2022',
+    target: "ES2022",
     noEmit: true,
     skipLibCheck: false,
-    lib: ['ES2022', 'DOM', 'DOM.Iterable'],
+    lib: ["ES2022", "DOM", "DOM.Iterable"],
   };
   const typeScriptConfigurations = [
-    ['Node16', { module: 'Node16', moduleResolution: 'Node16' }],
-    ['NodeNext', { module: 'NodeNext', moduleResolution: 'NodeNext' }],
-    ['Bundler', { module: 'ESNext', moduleResolution: 'Bundler' }],
+    ["Node16", { module: "Node16", moduleResolution: "Node16" }],
+    ["NodeNext", { module: "NodeNext", moduleResolution: "NodeNext" }],
+    ["Bundler", { module: "ESNext", moduleResolution: "Bundler" }],
   ];
 
   for (const [name, compilerOptions] of typeScriptConfigurations) {
     writeJson(join(consumerDirectory, `tsconfig.${name.toLowerCase()}.json`), {
       compilerOptions: { ...sharedCompilerOptions, ...compilerOptions },
-      include: ['consumer.ts'],
+      include: ["consumer.ts"],
     });
   }
 
   run(
-    'Install the tarball from the local pnpm store',
+    "Install the tarball from the local pnpm store",
     pnpm,
-    ['install', '--offline', '--ignore-scripts', '--lockfile=false'],
+    ["install", "--offline", "--ignore-scripts", "--lockfile=false"],
     consumerDirectory,
   );
 
-  const installedPackage = join(
-    consumerDirectory,
-    'node_modules',
-    '@motion-core',
-    'spring',
-  );
-  assert.equal(existsSync(join(installedPackage, 'LICENSE')), true);
-  assert.equal(existsSync(join(installedPackage, 'CHANGELOG.md')), true);
-  assert.equal(existsSync(join(installedPackage, 'src', 'index.ts')), true);
-  assert.equal(existsSync(join(installedPackage, 'tests')), false);
-  assert.equal(existsSync(join(installedPackage, 'benchmarks')), false);
+  const installedPackage = join(consumerDirectory, "node_modules", "tensum");
+  assert.equal(existsSync(join(installedPackage, "LICENSE")), true);
+  assert.equal(existsSync(join(installedPackage, "CHANGELOG.md")), true);
+  assert.equal(existsSync(join(installedPackage, "src", "index.ts")), true);
+  assert.equal(existsSync(join(installedPackage, "tests")), false);
+  assert.equal(existsSync(join(installedPackage, "benchmarks")), false);
   const installedManifest = JSON.parse(
-    readFileSync(join(installedPackage, 'package.json'), 'utf8'),
+    readFileSync(join(installedPackage, "package.json"), "utf8"),
   );
-  assert.equal(installedManifest.license, 'MIT');
-  assert.equal(installedManifest.type, 'module');
-  assert.equal(installedManifest.types, './dist/index.d.ts');
-  assert.deepEqual(installedManifest.exports['.'], {
-    types: './dist/index.d.ts',
-    import: './dist/index.js',
+  assert.equal(installedManifest.license, "MIT");
+  assert.equal(installedManifest.type, "module");
+  assert.equal(installedManifest.types, "./dist/index.d.ts");
+  assert.deepEqual(installedManifest.exports["."], {
+    types: "./dist/index.d.ts",
+    import: "./dist/index.js",
   });
 
-  for (const artifact of ['index.js', 'index.d.ts']) {
-    const artifactPath = join(installedPackage, 'dist', artifact);
-    const artifactSource = readFileSync(artifactPath, 'utf8');
+  for (const artifact of ["index.js", "index.d.ts"]) {
+    const artifactPath = join(installedPackage, "dist", artifact);
+    const artifactSource = readFileSync(artifactPath, "utf8");
     const sourceMapReference = artifactSource.match(
       /\/\/# sourceMappingURL=([^\s]+)/,
     )?.[1];
     assert.ok(sourceMapReference, `${artifact} must reference a source map`);
     const sourceMapPath = resolve(dirname(artifactPath), sourceMapReference);
     assert.equal(existsSync(sourceMapPath), true);
-    const sourceMap = JSON.parse(readFileSync(sourceMapPath, 'utf8'));
+    const sourceMap = JSON.parse(readFileSync(sourceMapPath, "utf8"));
     assert.equal(sourceMap.file, artifact);
-    assert.deepEqual(sourceMap.sources, ['../src/index.ts']);
+    assert.deepEqual(sourceMap.sources, ["../src/index.ts"]);
     for (const source of sourceMap.sources) {
       assert.equal(
         existsSync(
-          resolve(dirname(sourceMapPath), sourceMap.sourceRoot ?? '', source),
+          resolve(dirname(sourceMapPath), sourceMap.sourceRoot ?? "", source),
         ),
         true,
         `${artifact} source map must resolve ${source}`,
@@ -358,11 +341,11 @@ void coupled;
     }
   }
 
-  run('Run ESM exports', process.execPath, ['runtime.mjs'], consumerDirectory);
+  run("Run ESM exports", process.execPath, ["runtime.mjs"], consumerDirectory);
   run(
-    'Verify the ESM-only CommonJS contract',
+    "Verify the ESM-only CommonJS contract",
     process.execPath,
-    ['cjs-contract.cjs'],
+    ["cjs-contract.cjs"],
     consumerDirectory,
   );
 
@@ -370,12 +353,12 @@ void coupled;
     run(
       `Resolve declarations with TypeScript ${name}`,
       pnpm,
-      ['exec', 'tsc', '--project', `tsconfig.${name.toLowerCase()}.json`],
+      ["exec", "tsc", "--project", `tsconfig.${name.toLowerCase()}.json`],
       consumerDirectory,
     );
   }
 
-  console.log('\nPacked package consumer checks passed.');
+  console.log("\nPacked package consumer checks passed.");
 } finally {
   rmSync(temporaryRoot, { recursive: true, force: true });
 }

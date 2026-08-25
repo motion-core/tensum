@@ -169,7 +169,7 @@ const preparedMotionSprings = new WeakMap<
   MotionSpringVars,
   PreparedMotionSpring
 >();
-const INTERNAL_DRIVER_PROPERTY = '__springDriver';
+const INTERNAL_DRIVER_PROPERTY = '__tensumSpringDriver';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -646,7 +646,7 @@ function registerMotionSpringEffect(instance: typeof gsap): void {
 }
 
 const pluginDefinition = {
-  version: '0.1.0',
+  version: '0.1.0-beta.0',
   name: INTERNAL_DRIVER_PROPERTY,
   headless: true,
   rawVars: 1,
@@ -665,7 +665,7 @@ const pluginDefinition = {
       : undefined;
     if (!prepared) {
       throw new TypeError(
-        'The GSAP spring driver is internal; use timeline.motionSpring() or createMotionSpringTween()',
+        'The Tensum GSAP driver is internal; use timeline.motionSpring() or createMotionSpringTween()',
       );
     }
     const value = rawValue;

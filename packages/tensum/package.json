@@ -1,6 +1,6 @@
 {
-  "name": "@motion-core/spring",
-  "version": "0.1.0",
+  "name": "tensum",
+  "version": "0.1.0-beta.0",
   "description": "Analytical spring physics as a native GSAP plugin",
   "license": "MIT",
   "author": "Motion Core",
@@ -39,7 +39,9 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "tag": "next"
   },
   "scripts": {
     "clean": "node --eval \"import { rmSync } from 'node:fs'; rmSync('dist', { recursive: true, force: true });\"",

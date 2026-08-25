@@ -13,7 +13,7 @@
 </script>
 
 <svelte:head>
-	<title>Spring by Motion Core — analytical spring physics for the web</title>
+	<title>Tensum — analytical spring physics for the web</title>
 	<meta
 		name="description"
 		content="Analytical spring physics with continuous retargeting, reactive values, CSS export, and native GSAP timeline composition."
@@ -71,7 +71,7 @@
 		<div
 			class="flex flex-col gap-3 py-6 text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
 		>
-			<p>Motion Core / Spring · MIT licensed</p>
+			<p>Tensum · MIT licensed</p>
 			<nav class="flex flex-wrap gap-3" aria-label="Package links">
 				<a class="hover:text-foreground" href="#playground">Playground</a>
 				<a class="hover:text-foreground" href="#capabilities">Capabilities</a>

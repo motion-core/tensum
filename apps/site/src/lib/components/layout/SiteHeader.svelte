@@ -29,13 +29,14 @@
 					class="size-1.5 rounded-full bg-foreground shadow-[0_0_0_3px_color-mix(in_oklab,var(--foreground)_8%,transparent)] transition-transform duration-150 group-hover:scale-75 motion-reduce:transition-none"
 				></span>
 			</span>
-			<span class="truncate">@motion-core/spring</span><span class="sr-only"> home</span>
+			<span class="truncate">tensum</span><span class="sr-only"> home</span>
 		</a>
 
 		<div class="flex items-center gap-1">
 			<Badge
 				variant="secondary"
-				class={hideDefaultActionsOnMobile ? 'me-1 hidden sm:inline-flex' : 'me-1'}>v0.1.0</Badge
+				class={hideDefaultActionsOnMobile ? 'me-1 hidden sm:inline-flex' : 'me-1'}
+				>v0.1.0-beta.0</Badge
 			>
 			<Button
 				href={resolve('/docs')}

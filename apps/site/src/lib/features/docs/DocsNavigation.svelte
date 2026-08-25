@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { createSpring } from '@motion-core/spring';
-	import { springToCSSLinear } from '@motion-core/spring/css';
+	import { createSpring } from 'tensum';
+	import { springToCSSLinear } from 'tensum/css';
 	import { docsNavigationItems } from './navigation';
 
 	type Props = {

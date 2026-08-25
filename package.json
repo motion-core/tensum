@@ -1,19 +1,19 @@
 {
-  "name": "@motion-core/spring-monorepo",
+  "name": "tensum-monorepo",
   "private": true,
   "packageManager": "pnpm@10.33.3",
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
-    "dev": "pnpm --filter @motion-core/spring build && pnpm --filter @motion-core/spring-site dev",
+    "dev": "pnpm --filter tensum build && pnpm --filter tensum-site dev",
     "build": "pnpm -r --if-present build",
     "benchmark": "pnpm -r --if-present benchmark",
-    "check": "pnpm --filter @motion-core/spring build && pnpm -r --if-present check",
+    "check": "pnpm --filter tensum build && pnpm -r --if-present check",
     "test": "pnpm -r --if-present test",
-    "test:browser": "pnpm --filter @motion-core/spring test:browser",
+    "test:browser": "pnpm --filter tensum test:browser",
     "lint": "pnpm -r --if-present lint",
-    "format": "pnpm --filter @motion-core/spring-site format",
+    "format": "pnpm --filter tensum-site format",
     "release:check": "node scripts/release-check.mjs",
     "release:consumer": "node scripts/package-consumer-smoke.mjs",
     "release:compat": "node scripts/gsap-compatibility-smoke.mjs"

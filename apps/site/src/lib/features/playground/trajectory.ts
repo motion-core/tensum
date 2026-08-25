@@ -1,5 +1,5 @@
-import { createSpring, springPresets } from '@motion-core/spring';
-import type { SpringParameters, SpringSolution, SpringState } from '@motion-core/spring';
+import { createSpring, springPresets } from 'tensum';
+import type { SpringParameters, SpringSolution, SpringState } from 'tensum';
 
 export type PlaygroundScenario = 'distance' | 'rotation' | 'timeline';
 
@@ -16,6 +16,8 @@ export interface TimelineMotion {
 	secondParameters: Readonly<SpringParameters>;
 	first: SpringSolution;
 	second: SpringSolution;
+	handoff: SpringState;
+	rotationHandoff: SpringState;
 	firstEnd: number;
 	secondEnd: number;
 	duration: number;
@@ -33,6 +35,9 @@ export function createTimelineMotion(trackWidth: number): TimelineMotion {
 	const secondParameters = springPresets.bouncy();
 	const first = createSpring({ from: 0, to: far, ...firstParameters });
 	const handoff = first.stateAt(TIMELINE_HANDOFF_TIME);
+	const rotationHandoff = createSpring({ from: 0, to: 8, ...firstParameters }).stateAt(
+		TIMELINE_HANDOFF_TIME
+	);
 	const second = createSpring({
 		from: handoff.position,
 		to: near,
@@ -49,6 +54,8 @@ export function createTimelineMotion(trackWidth: number): TimelineMotion {
 		secondParameters,
 		first,
 		second,
+		handoff,
+		rotationHandoff,
 		firstEnd,
 		secondEnd,
 		duration: Math.max(firstEnd, secondEnd)

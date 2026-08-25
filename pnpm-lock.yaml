@@ -16,15 +16,15 @@ importers:
 
   apps/site:
     dependencies:
-      '@motion-core/spring':
-        specifier: workspace:*
-        version: link:../../packages/spring
       d3:
         specifier: ^7.9.0
         version: 7.9.0
       gsap:
         specifier: ^3.15.0
         version: 3.15.0
+      tensum:
+        specifier: workspace:*
+        version: link:../../packages/tensum
     devDependencies:
       '@eslint/js':
         specifier: latest
@@ -123,7 +123,7 @@ importers:
         specifier: ^4.1.8
         version: 4.1.10(@types/node@22.20.1)(@vitest/browser-playwright@4.1.10)(vite@8.2.1(@types/node@22.20.1)(jiti@2.7.0))
 
-  packages/spring:
+  packages/tensum:
     devDependencies:
       '@vitest/browser-playwright':
         specifier: 4.1.10

@@ -1,6 +1,6 @@
-# Motion Core Spring Site
+# Tensum Site
 
-This SvelteKit app is the product site and interactive playground for the `@motion-core/spring` GSAP plugin.
+This SvelteKit app is the product site and interactive playground for the `tensum` GSAP plugin.
 
 Run it from the repository root:
 

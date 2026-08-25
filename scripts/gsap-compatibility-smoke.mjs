@@ -1,5 +1,5 @@
-import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import {
   mkdtempSync,
   mkdirSync,
@@ -7,21 +7,21 @@ import {
   readdirSync,
   rmSync,
   writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
-const repositoryRoot = resolve(scriptDirectory, '..');
-const packageRoot = join(repositoryRoot, 'packages', 'spring');
+const repositoryRoot = resolve(scriptDirectory, "..");
+const packageRoot = join(repositoryRoot, "packages", "tensum");
 const repositoryManifest = JSON.parse(
-  readFileSync(join(repositoryRoot, 'package.json'), 'utf8'),
+  readFileSync(join(repositoryRoot, "package.json"), "utf8"),
 );
 const packageManifest = JSON.parse(
-  readFileSync(join(packageRoot, 'package.json'), 'utf8'),
+  readFileSync(join(packageRoot, "package.json"), "utf8"),
 );
-const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 
 function exactVersion(specifier, dependency) {
   const match = /^(?:\^|~|>=)?\s*(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/.exec(
@@ -39,14 +39,14 @@ function run(label, command, args, cwd) {
   console.log(`\n--> ${label}`);
   const result = spawnSync(command, args, {
     cwd,
-    env: { ...process.env, CI: process.env.CI ?? '1' },
-    stdio: 'inherit',
+    env: { ...process.env, CI: process.env.CI ?? "1" },
+    stdio: "inherit",
   });
 
   if (result.error) throw result.error;
   if (result.status !== 0) {
     throw new Error(
-      `${label} failed with exit code ${result.status ?? 'unknown'}`,
+      `${label} failed with exit code ${result.status ?? "unknown"}`,
     );
   }
 }
@@ -56,46 +56,31 @@ function writeJson(path, value) {
 }
 
 const peerRange = packageManifest.peerDependencies.gsap;
-const minimumGsap = exactVersion(peerRange, 'GSAP peer dependency');
+const minimumGsap = exactVersion(peerRange, "GSAP peer dependency");
 const typescriptVersion = exactVersion(
   packageManifest.devDependencies.typescript,
-  'TypeScript dev dependency',
+  "TypeScript dev dependency",
 );
 const matrix = [
-  { label: 'minimum peer', specifier: minimumGsap },
-  { label: 'npm latest', specifier: 'latest' },
+  { label: "minimum peer", specifier: minimumGsap },
+  { label: "npm latest", specifier: "latest" },
 ];
-const temporaryRoot = mkdtempSync(
-  join(tmpdir(), 'motion-core-spring-gsap-compat-'),
-);
-const packDirectory = join(temporaryRoot, 'pack');
+const temporaryRoot = mkdtempSync(join(tmpdir(), "tensum-gsap-compat-"));
+const packDirectory = join(temporaryRoot, "pack");
 mkdirSync(packDirectory);
 
 const runtimeSource = `import assert from 'node:assert/strict';
 import { gsap } from 'gsap';
 import {
-  SpringPlugin,
   createMotionSpringTween,
+  registerSpringPlugin,
   springTo,
-} from '@motion-core/spring';
+} from 'tensum';
 
 const parameters = { mass: 1, stiffness: 180, damping: 24 };
 
-assert.equal(SpringPlugin.name, 'motionSpring');
-gsap.registerPlugin(SpringPlugin);
-assert.equal(typeof gsap.plugins.motionSpring, 'function');
+registerSpringPlugin(gsap);
 assert.equal(typeof gsap.effects.motionSpring, 'function');
-
-const pluginTarget = { score: 0 };
-const pluginTween = gsap.to(pluginTarget, {
-  paused: true,
-  motionSpring: { values: { score: 100 }, parameters },
-});
-pluginTween.time(0.01, true);
-assert.equal(pluginTween.duration() > 0.01, true);
-pluginTween.time(pluginTween.duration(), true);
-assert.equal(pluginTarget.score, 100);
-pluginTween.kill();
 
 const controllerTarget = { score: 0 };
 const controller = springTo(controllerTarget, {
@@ -134,30 +119,29 @@ console.log('GSAP runtime compatibility passed.');
 
 const typeSource = `import { gsap } from 'gsap';
 import {
-  SpringPlugin,
   createMotionSpringTween,
+  registerSpringPlugin,
   springTo,
   type MotionSpringEffectVars,
-  type MotionSpringPluginVars,
+  type MotionSpringVars,
   type SpringController,
   type SpringTweenTarget,
-} from '@motion-core/spring';
+} from 'tensum';
 
 const parameters = { mass: 1, stiffness: 180, damping: 24 };
-const pluginVars: MotionSpringPluginVars = {
+const springVars: MotionSpringVars = {
   values: { score: 100 },
   parameters,
 };
-const tweenVars: gsap.TweenVars = { motionSpring: pluginVars };
 const effectVars: MotionSpringEffectVars = {
-  values: { score: 100 },
+  ...springVars,
   from: { score: 0 },
   parameters,
   tween: { paused: true },
 };
 const target: SpringTweenTarget = { score: 0 };
 
-gsap.registerPlugin(SpringPlugin);
+registerSpringPlugin(gsap);
 const controller: SpringController = springTo(target, {
   targets: { score: 100 },
   spring: parameters,
@@ -167,7 +151,6 @@ const timeline: gsap.core.Timeline = gsap
   .timeline({ paused: true })
   .motionSpring(target, effectVars);
 
-void tweenVars;
 void controller;
 void effect;
 void timeline;
@@ -175,87 +158,81 @@ void timeline;
 
 try {
   run(
-    'Pack @motion-core/spring once for the compatibility matrix',
+    "Pack tensum once for the compatibility matrix",
     pnpm,
-    [
-      '--filter',
-      '@motion-core/spring',
-      'pack',
-      '--pack-destination',
-      packDirectory,
-    ],
+    ["--filter", "tensum", "pack", "--pack-destination", packDirectory],
     repositoryRoot,
   );
 
   const tarballs = readdirSync(packDirectory).filter((file) =>
-    file.endsWith('.tgz'),
+    file.endsWith(".tgz"),
   );
-  assert.equal(tarballs.length, 1, 'pack must produce exactly one tarball');
+  assert.equal(tarballs.length, 1, "pack must produce exactly one tarball");
   const tarball = join(packDirectory, tarballs[0]);
   const results = [];
 
   for (const [index, entry] of matrix.entries()) {
     const consumerDirectory = join(temporaryRoot, `consumer-${index + 1}`);
     mkdirSync(consumerDirectory);
-    writeJson(join(consumerDirectory, 'package.json'), {
-      name: `motion-core-spring-gsap-${entry.label.replaceAll(' ', '-')}`,
+    writeJson(join(consumerDirectory, "package.json"), {
+      name: `tensum-gsap-${entry.label.replaceAll(" ", "-")}`,
       private: true,
-      type: 'module',
+      type: "module",
       packageManager: repositoryManifest.packageManager,
       dependencies: {
-        '@motion-core/spring': `file:${tarball}`,
+        tensum: `file:${tarball}`,
         gsap: entry.specifier,
       },
       devDependencies: { typescript: typescriptVersion },
     });
-    writeFileSync(join(consumerDirectory, 'runtime.mjs'), runtimeSource);
-    writeFileSync(join(consumerDirectory, 'consumer.ts'), typeSource);
-    writeJson(join(consumerDirectory, 'tsconfig.json'), {
+    writeFileSync(join(consumerDirectory, "runtime.mjs"), runtimeSource);
+    writeFileSync(join(consumerDirectory, "consumer.ts"), typeSource);
+    writeJson(join(consumerDirectory, "tsconfig.json"), {
       compilerOptions: {
         strict: true,
-        target: 'ES2022',
-        module: 'NodeNext',
-        moduleResolution: 'NodeNext',
+        target: "ES2022",
+        module: "NodeNext",
+        moduleResolution: "NodeNext",
         noEmit: true,
         skipLibCheck: false,
-        lib: ['ES2022', 'DOM', 'DOM.Iterable'],
+        lib: ["ES2022", "DOM", "DOM.Iterable"],
       },
-      include: ['consumer.ts'],
+      include: ["consumer.ts"],
     });
 
     run(
       `Install GSAP ${entry.label} (${entry.specifier})`,
       pnpm,
       [
-        'install',
-        '--prefer-offline',
-        '--ignore-scripts',
-        '--lockfile=false',
-        '--strict-peer-dependencies',
+        "install",
+        "--prefer-offline",
+        "--ignore-scripts",
+        "--lockfile=false",
+        "--strict-peer-dependencies",
       ],
       consumerDirectory,
     );
 
     const installedGsapManifest = JSON.parse(
       readFileSync(
-        join(consumerDirectory, 'node_modules', 'gsap', 'package.json'),
-        'utf8',
+        join(consumerDirectory, "node_modules", "gsap", "package.json"),
+        "utf8",
       ),
     );
-    if (entry.label === 'minimum peer') {
+    if (entry.label === "minimum peer") {
       assert.equal(installedGsapManifest.version, minimumGsap);
     }
 
     run(
       `Run Node ESM smoke with GSAP ${installedGsapManifest.version}`,
       process.execPath,
-      ['runtime.mjs'],
+      ["runtime.mjs"],
       consumerDirectory,
     );
     run(
       `Resolve TypeScript against GSAP ${installedGsapManifest.version}`,
       pnpm,
-      ['exec', 'tsc', '--project', 'tsconfig.json'],
+      ["exec", "tsc", "--project", "tsconfig.json"],
       consumerDirectory,
     );
     results.push({
@@ -264,11 +241,11 @@ try {
     });
   }
 
-  console.log('\nGSAP compatibility matrix passed:');
+  console.log("\nGSAP compatibility matrix passed:");
   for (const result of results) {
     console.log(`- ${result.label}: ${result.version}`);
   }
-  console.log('No package was published.');
+  console.log("No package was published.");
 } finally {
   rmSync(temporaryRoot, { recursive: true, force: true });
 }

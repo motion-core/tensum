@@ -151,7 +151,7 @@
 			class="mt-20 border-t border-border/64 pt-6 text-xs text-muted-foreground dark:border-card/80"
 		>
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<p>Motion Core / Spring · MIT licensed</p>
+				<p>Tensum · MIT licensed</p>
 				<nav class="flex flex-wrap gap-x-4 gap-y-2" aria-label="Documentation footer">
 					<a class="hover:text-foreground" href={resolve('/')}>Home</a>
 					<a class="hover:text-foreground" href={resolve('/#playground')}>Playground</a>

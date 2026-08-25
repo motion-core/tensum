@@ -18,8 +18,8 @@ Use `pnpm dev` to run the product site and playground.
 ## Before submitting a change
 
 Keep changes focused and add tests for public behavior. If a change affects the
-package contract, update `packages/spring/README.md` and
-`packages/spring/CHANGELOG.md` in the same change.
+package contract, update `packages/tensum/README.md` and
+`packages/tensum/CHANGELOG.md` in the same change.
 
 Run the local release rehearsal before a package release:
 

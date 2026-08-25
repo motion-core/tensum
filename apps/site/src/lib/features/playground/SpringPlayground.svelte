@@ -5,8 +5,8 @@
 		springTo,
 		springCharacteristics,
 		springParameters
-	} from '@motion-core/spring';
-	import type { SpringController, SpringState, SpringToSnapshot } from '@motion-core/spring';
+	} from 'tensum';
+	import type { SpringController, SpringState, SpringToSnapshot } from 'tensum';
 	import { gsap } from 'gsap';
 	import { onDestroy, onMount, tick } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
@@ -250,23 +250,28 @@
 					timelineStatus = 'ready';
 				}
 			})
-			.to(body, {
-				motionSpring: {
-					x: motion.far,
-					rotation: 8,
-					parameters: motion.firstParameters
-				}
+			.motionSpring(body, {
+				x: motion.far,
+				rotation: 8,
+				from: { x: 0, rotation: 0 },
+				parameters: motion.firstParameters
 			})
-			.to(
+			.motionSpring(
 				body,
 				{
-					motionSpring: {
-						x: motion.near,
-						rotation: -6,
-						parameters: motion.secondParameters
-					}
+					x: motion.near,
+					rotation: -6,
+					from: {
+						x: motion.handoff.position,
+						rotation: motion.rotationHandoff.position
+					},
+					velocity: {
+						x: motion.handoff.velocity,
+						rotation: motion.rotationHandoff.velocity
+					},
+					parameters: motion.secondParameters
 				},
-				`<${TIMELINE_HANDOFF_TIME}`
+				TIMELINE_HANDOFF_TIME
 			);
 
 		timeline.totalTime(timelineDuration, true);

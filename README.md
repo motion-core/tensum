@@ -1,6 +1,6 @@
-# Spring by Motion Core
+# Tensum
 
-Spring is a GSAP plugin backed by an analytical spring solver. GSAP owns the
+Tensum is a GSAP plugin backed by an analytical spring solver. GSAP owns the
 timeline, scheduling, and context lifecycle. When GSAP renders the plugin,
 Spring samples position and velocity from absolute time and writes the sampled
 property values.
@@ -8,7 +8,7 @@ property values.
 The repository contains one package prepared for public distribution:
 
 ```text
-@motion-core/spring
+tensum
 ```
 
 Version `0.1.0` is currently unreleased. The package manifest, tarball checks, and
@@ -23,7 +23,7 @@ The registry command below applies after `0.1.0` is published. Until then, use
 the workspace package or a tarball created by the local release check.
 
 ```bash
-pnpm add @motion-core/spring gsap
+pnpm add tensum gsap
 ```
 
 Both packages are required. GSAP is a peer dependency so an application and the plugin use the same GSAP instance.
@@ -32,12 +32,10 @@ Both packages are required. GSAP is a peer dependency so an application and the 
 
 ```ts
 import { gsap } from "gsap";
-import { SpringPlugin, springPresets } from "@motion-core/spring";
+import { registerSpringPlugin, springPresets } from "tensum";
 
-gsap.registerPlugin(SpringPlugin);
+registerSpringPlugin(gsap);
 ```
-
-`registerSpringPlugin(gsap)` is available when an application prefers an explicit registration helper. The previous `MotionCoreSpringPlugin` and `registerMotionCoreSpringPlugin` names remain as compatibility aliases.
 
 ## Compose springs in a GSAP timeline
 
@@ -62,14 +60,14 @@ timeline
   });
 ```
 
-`from` snapshots the state from which preflight should calculate. Omit it when
+`from` declares the state from which preflight should calculate. Omit it when
 the target already has the right value while the effect is being created. Set
 it when an earlier timeline child will change that value before this spring
 starts. Use the existing `velocity` option when the future state also has a
 known velocity.
 
-Pass ordinary GSAP options through `tween`. The effect owns `duration`, `ease`,
-and `motionSpring`. Finite springs support options such as `stagger`, `repeat`,
+Pass ordinary GSAP options through `tween`. The effect owns `duration` and
+`ease`. Finite springs support options such as `stagger`, `repeat`,
 and `yoyo`. An unsettled spring using `continue` owns an infinite driver instead;
 it sets `repeat: -1` and samples analytical total time continuously.
 
@@ -87,33 +85,12 @@ masterTimeline.add(entrance, 0.4);
 `createMotionSpringTween(targets, vars)` exposes the same preflight step when
 code needs the tween itself rather than the extended timeline method.
 
-### Legacy special-property syntax
-
-The original special property remains available for direct tweens and timeline
-children whose positions do not depend on its duration:
-
-```ts
-gsap.to(element, {
-  motionSpring: {
-    x: 600,
-    rotation: "30deg",
-    parameters: springPresets.snappy(),
-  },
-});
-```
-
-GSAP initializes special properties lazily. The spring therefore cannot replace
-the placeholder duration before a timeline positions the next sequential child.
-Use `timeline.motionSpring()` when duration affects layout. Existing timelines
-with numeric or otherwise explicit child positions may keep the special-property
-syntax.
-
 ## Use the controller API
 
 `springTo()` is the direct API for cases that need a controller rather than a timeline child.
 
 ```ts
-import { springTo } from "@motion-core/spring";
+import { springTo } from "tensum";
 
 const animation = springTo(element, {
   x: 600,
@@ -137,14 +114,13 @@ animation.resume();
 
 Built-in transform properties are `x`, `y`, `scale`, and `rotation`. Use `targets` for other numeric GSAP properties or `adapters` for custom read/write behavior. Numeric strings may contain one unit, such as `24px` or `30deg`. A unit mismatch throws before animation starts.
 
-Starting another `springTo()` animation, or a lazily initialized `motionSpring`
-special-property tween, on the same target and property performs an automatic
-velocity-preserving handoff. A preflighted effect instead uses its construction
-snapshot; provide `from` and `velocity` for a state that will only exist later in
-the timeline.
+Starting another `springTo()` animation or constructing a `motionSpring` effect
+on the same target and property performs an automatic velocity-preserving
+handoff from the state that exists at construction time. Provide `from` and
+`velocity` for a state that will only exist later in the timeline.
 
 After normal completion, the last analytical state remains available for a
-later Motion Core handoff. This includes the non-zero velocity of an unsettled
+later Tensum handoff. This includes the non-zero velocity of an unsettled
 spring stopped at `maxDuration`. If application code writes a different value
 after completion, the next implicit handoff detects that change, discards the
 terminal history, and starts from the value currently on the target. An explicit
@@ -165,7 +141,7 @@ const parameters = {
 Or derive them from product-facing controls:
 
 ```ts
-import { springParameters, springPresets } from "@motion-core/spring";
+import { springParameters, springPresets } from "tensum";
 
 const tuned = springParameters.fromPerceptualDuration({
   duration: 0.5,
@@ -198,7 +174,7 @@ An undamped moving spring never reaches physical rest. Choose an `unsettled` pol
 For a finite driver, logical completion is clamped to its completion boundary.
 This includes the `maxDuration` boundary for `stop` and `snap`. `continue`
 retains the requested perceptual duration. `onSettle` does not run for a spring
-that failed to settle. Plugin lifecycle callbacks are target-scoped: an array
+that failed to settle. Effect lifecycle callbacks are target-scoped: an array
 tween calls the same callback once per target, and each snapshot contains only
 that target's spring states.
 
@@ -206,32 +182,33 @@ that target's spring states.
 
 Finite repeats and yoyo playback use cycle-local spring time. A yoyo handoff
 reverses the inherited velocity as well as the position path. Killing one
-property removes only that spring track; killing the last track lets GSAP remove
-the plugin PropTween. If the killed track made an unsettled `continue` tween
+property removes only that spring track; killing the last track releases the
+internal driver. If the killed track made an unsettled `continue` tween
 infinite, the remaining duration and original repeat count are restored.
 
-Calling `invalidate()` on the legacy special-property form rebuilds its tracks
-and derived duration from the current target and current vars. A preflighted
-effect keeps the snapshot and duration captured when it was created; construct a
-new effect tween to preflight different inputs. Kill, interrupt, and context
-revert release active ownership. As with native GSAP tweens, invalidating after
-playback establishes the current values as the next context-revert baseline.
+Calling `invalidate()` keeps the snapshot and duration captured when the effect
+was created; construct a new effect tween to preflight different inputs. Kill,
+interrupt, and context revert release active ownership. As with native GSAP
+tweens, context revert restores the baseline captured when the effect was
+constructed.
 
 ## Supporting exports
 
-The previous solver and runtime packages have been folded into `@motion-core/spring`. Existing capabilities remain available from the same package entry point, including `createSpring`, parameter converters, velocity helpers, spring values, keyframes, inertia, and additive composition. They support the plugin and migration of existing code; they are no longer separate products or workspace packages.
+The root entry point also exports `createSpring`, parameter converters, velocity
+helpers, spring values, keyframes, inertia, additive composition, and vector
+springs.
 
 Advanced CSS and coupled-system utilities remain package subpaths:
 
 ```ts
-import { springToCSSLinear } from "@motion-core/spring/css";
-import { createCoupledSpringSystem } from "@motion-core/spring/coupled";
+import { springToCSSLinear } from "tensum/css";
+import { createCoupledSpringSystem } from "tensum/coupled";
 ```
 
 ## Repository structure
 
 ```text
-packages/spring   one public GSAP plugin package
+packages/tensum   one public GSAP plugin package
 apps/site         Svelte product site and interactive playground
 ```
 
@@ -261,8 +238,8 @@ or `bundler` module resolution. CommonJS code can load it with dynamic
 `import()`, but `require()` is intentionally unsupported. Version `0.x` may
 contain breaking API changes.
 
-See the [package README](packages/spring/README.md) for the full public API and
-the [changelog](packages/spring/CHANGELOG.md) for release status.
+See the [package README](packages/tensum/README.md) for the full public API and
+the [changelog](packages/tensum/CHANGELOG.md) for release status.
 
 ## License
 

@@ -27,7 +27,7 @@ const steps = [
   [
     'Validate the package manifest',
     pnpm,
-    ['exec', 'publint', 'packages/spring'],
+    ['exec', 'publint', 'packages/tensum'],
   ],
   ['Test the packed package in a clean consumer', pnpm, ['release:consumer']],
 ];

@@ -6,7 +6,7 @@ Run from the repository root:
 pnpm benchmark
 ```
 
-The command builds `@motion-core/spring`, then measures closed-form sampling,
+The command builds `tensum`, then measures closed-form sampling,
 settling construction, parallel batches, retargeting, and vector buffer reuse.
 It prints machine-readable JSON. Results are a local comparison baseline, not a
 CI pass/fail threshold: CPU power management and concurrent desktop work can

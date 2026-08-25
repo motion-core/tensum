@@ -12,9 +12,9 @@
     "moduleResolution": "Bundler",
     "noEmit": true,
     "paths": {
-      "@motion-core/spring": ["./packages/spring/src/index.ts"],
-      "@motion-core/spring/coupled": ["./packages/spring/src/coupled.ts"],
-      "@motion-core/spring/css": ["./packages/spring/src/css.ts"]
+      "tensum": ["./packages/tensum/src/index.ts"],
+      "tensum/coupled": ["./packages/tensum/src/coupled.ts"],
+      "tensum/css": ["./packages/tensum/src/css.ts"]
     },
     "resolveJsonModule": true,
     "target": "ES2022"

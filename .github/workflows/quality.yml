@@ -39,7 +39,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Chromium
-        run: pnpm --filter @motion-core/spring exec playwright install --with-deps chromium
+        run: pnpm --filter tensum exec playwright install --with-deps chromium
 
       - name: Run the local release gate
         run: pnpm release:check
@@ -48,13 +48,13 @@ jobs:
         if: matrix.node == '22'
         run: |
           mkdir -p .artifacts
-          pnpm --filter @motion-core/spring pack --pack-destination .artifacts
+          pnpm --filter tensum pack --pack-destination .artifacts
 
       - name: Upload the runtime artifact
         if: matrix.node == '22'
         uses: actions/upload-artifact@v4
         with:
-          name: motion-core-spring-package
+          name: tensum-package
           path: .artifacts/*.tgz
           if-no-files-found: error
 
@@ -80,7 +80,7 @@ jobs:
       - name: Download the packed package
         uses: actions/download-artifact@v4
         with:
-          name: motion-core-spring-package
+          name: tensum-package
           path: .artifacts
 
       - name: Install the package as a production dependency
@@ -93,9 +93,9 @@ jobs:
       - name: Import every ESM entry point
         working-directory: .runtime-consumer
         run: |
-          node --input-type=module --eval "const root = await import('@motion-core/spring'); const css = await import('@motion-core/spring/css'); const coupled = await import('@motion-core/spring/coupled'); if (root.SpringPlugin.name !== 'motionSpring' || typeof css.springToCSSLinear !== 'function' || typeof coupled.createCoupledSpringSystem !== 'function') process.exit(1);"
+          node --input-type=module --eval "const root = await import('tensum'); const css = await import('tensum/css'); const coupled = await import('tensum/coupled'); if (typeof root.registerSpringPlugin !== 'function' || typeof css.springToCSSLinear !== 'function' || typeof coupled.createCoupledSpringSystem !== 'function') process.exit(1);"
 
       - name: Verify the CommonJS contract
         working-directory: .runtime-consumer
         run: |
-          node --eval "for (const id of ['@motion-core/spring', '@motion-core/spring/css', '@motion-core/spring/coupled']) { try { require(id); process.exit(1); } catch (error) { if (error.code !== 'ERR_PACKAGE_PATH_NOT_EXPORTED') throw error; } }"
+          node --eval "for (const id of ['tensum', 'tensum/css', 'tensum/coupled']) { try { require(id); process.exit(1); } catch (error) { if (error.code !== 'ERR_PACKAGE_PATH_NOT_EXPORTED') throw error; } }"
