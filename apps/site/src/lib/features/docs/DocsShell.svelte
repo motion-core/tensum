@@ -6,7 +6,7 @@
 	import { PageContainer, SiteHeader } from '$lib/components/layout';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import * as Drawer from '$lib/components/ui/drawer';
-	import { CloseIcon, MenuIcon } from '$lib/icons';
+	import { CloseIcon, MenuIcon, TensumIcon } from '$lib/icons';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import { cn } from '$lib/utils.js';
 	import { docsNavigationItems } from './navigation';
@@ -27,6 +27,8 @@
 
 		const updateActiveSection = () => {
 			frame = undefined;
+			if (mobileOpen) return;
+
 			const activationLine = window.scrollY + 112;
 			let nextId = docsNavigationItems[0]?.id ?? 'overview';
 
@@ -88,14 +90,18 @@
 	</SiteHeader>
 
 	<Drawer.Content
-		class="isolate h-dvh w-72 max-w-[calc(100vw-0.5rem)] sm:max-w-72"
+		class="isolate m-2 h-auto w-72 max-w-[calc(100vw-1rem)] overflow-hidden rounded-xl! shadow-xl dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]"
+		style="--initial-transform: calc(100% + 0.5rem)"
 		onOpenAutoFocus={focusMobileNavigation}
 	>
 		<Drawer.Header
 			class="flex-row items-center justify-between border-b border-border/64 px-4 py-3 dark:border-card/80"
 		>
 			<div class="min-w-0">
-				<Drawer.Title>tensum</Drawer.Title>
+				<Drawer.Title class="flex items-center gap-2">
+					<TensumIcon size={18} class="shrink-0 text-foreground" />
+					tensum
+				</Drawer.Title>
 				<Drawer.Description class="sr-only">
 					Navigate to a documentation section.
 				</Drawer.Description>
