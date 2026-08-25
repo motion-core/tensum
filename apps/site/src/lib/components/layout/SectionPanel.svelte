@@ -10,8 +10,6 @@
 	let { class: className, children }: Props = $props();
 </script>
 
-<div
-	class={cn('mt-10 overflow-hidden rounded-xl border border-border bg-card shadow-sm', className)}
->
+<div class={cn('mt-10 overflow-hidden rounded-xl bg-card shadow-sm', className)}>
 	{@render children()}
 </div>

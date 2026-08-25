@@ -47,9 +47,7 @@
 			</div>
 		</div>
 
-		<div
-			class="grid grid-cols-3 overflow-hidden rounded-lg border border-border bg-muted shadow-sm dark:bg-muted/50"
-		>
+		<div class="grid grid-cols-3 overflow-hidden rounded-lg bg-muted shadow-sm dark:bg-muted/50">
 			<div class="border-e border-border px-2.5 py-2">
 				<p class="font-mono text-[0.5rem] tracking-widest text-muted-foreground uppercase">
 					target

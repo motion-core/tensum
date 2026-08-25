@@ -1,7 +1,7 @@
 <div class="relative flex h-64 items-center justify-center overflow-hidden p-3" aria-hidden="true">
 	<div class="relative h-48 w-[90%] max-w-xl">
 		<div
-			class="absolute inset-s-1/2 top-0 z-10 flex h-13 w-32 -translate-x-1/2 items-start justify-between rounded-lg border border-border bg-muted/50 p-2.5 shadow-sm"
+			class="absolute inset-s-1/2 top-0 z-10 flex h-13 w-32 -translate-x-1/2 items-start justify-between rounded-lg bg-muted p-2.5 shadow-sm dark:bg-muted/50"
 		>
 			<div>
 				<p class="font-mono text-[0.5625rem] text-muted-foreground">analytical core</p>
@@ -113,7 +113,7 @@
 		</svg>
 
 		<div
-			class="absolute inset-s-0 top-26 z-10 h-19 w-[30%] rounded-lg border border-border bg-muted p-2.5 shadow-sm dark:bg-muted/50"
+			class="absolute inset-s-0 top-26 z-10 h-19 w-[30%] rounded-lg bg-muted p-2.5 shadow-sm dark:bg-muted/50"
 		>
 			<div class="flex items-center justify-between">
 				<span class="font-mono text-[0.5625rem] text-muted-foreground">01</span>
@@ -124,7 +124,7 @@
 		</div>
 
 		<div
-			class="absolute inset-s-1/2 top-26 z-10 h-19 w-[30%] -translate-x-1/2 rounded-lg border border-border bg-muted p-2.5 shadow-sm dark:bg-muted/50"
+			class="absolute inset-s-1/2 top-26 z-10 h-19 w-[30%] -translate-x-1/2 rounded-lg bg-muted p-2.5 shadow-sm dark:bg-muted/50"
 		>
 			<div class="flex items-center justify-between">
 				<span class="font-mono text-[0.5625rem] text-muted-foreground">02</span>
@@ -135,7 +135,7 @@
 		</div>
 
 		<div
-			class="absolute inset-e-0 top-26 z-10 h-19 w-[30%] rounded-lg border border-border bg-muted p-2.5 shadow-sm dark:bg-muted/50"
+			class="absolute inset-e-0 top-26 z-10 h-19 w-[30%] rounded-lg bg-muted p-2.5 shadow-sm dark:bg-muted/50"
 		>
 			<div class="flex items-center justify-between">
 				<span class="font-mono text-[0.5625rem] text-muted-foreground">03</span>

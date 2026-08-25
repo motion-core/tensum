@@ -28,7 +28,7 @@
 <div
 	class={cn(
 		'code-block group/code-block relative overflow-hidden bg-card',
-		framed && 'rounded-lg border border-border shadow-sm',
+		framed && 'rounded-lg shadow-sm',
 		lineNumbers && 'with-line-numbers',
 		compact && 'compact',
 		className

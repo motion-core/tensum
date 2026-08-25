@@ -394,7 +394,7 @@
 </script>
 
 <section
-	class="grid overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:grid-cols-12"
+	class="grid overflow-hidden rounded-xl bg-card shadow-sm lg:grid-cols-12"
 	aria-label="Spring playground"
 >
 	<section

@@ -14,10 +14,7 @@
 	} = $props();
 </script>
 
-<aside
-	class="mt-7 flex items-start gap-3 rounded-lg border border-border bg-card p-2 shadow-sm"
-	aria-label={title}
->
+<aside class="mt-7 flex items-start gap-3 rounded-lg bg-card p-2 shadow-sm" aria-label={title}>
 	<span
 		class={kind === 'warning'
 			? 'mt-0.5 text-amber-600 dark:text-amber-400'
