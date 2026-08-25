@@ -41,11 +41,15 @@ export function springToCSSLinear(
   spring: SpringSolution,
   options: CSSLinearSpringOptions = {},
 ): CSSLinearSpring {
-  const duration = options.duration ?? spring.timing.settlingDuration;
-  const maxError = options.maxError ?? 0.001;
-  const maxDepth = options.maxDepth ?? 12;
-  const maxSamples = options.maxSamples ?? 4096;
-  const precision = options.precision ?? 6;
+  if (typeof options !== 'object' || options === null || Array.isArray(options)) {
+    throw new TypeError('CSS linear options must be an object when provided');
+  }
+  const duration =
+    options.duration === undefined ? spring.timing.settlingDuration : options.duration;
+  const maxError = options.maxError === undefined ? 0.001 : options.maxError;
+  const maxDepth = options.maxDepth === undefined ? 12 : options.maxDepth;
+  const maxSamples = options.maxSamples === undefined ? 4096 : options.maxSamples;
+  const precision = options.precision === undefined ? 6 : options.precision;
   assertPositive('duration', duration);
   assertPositive('maxError', maxError);
   assertPositiveInteger('maxDepth', maxDepth);
@@ -55,13 +59,21 @@ export function springToCSSLinear(
   }
 
   const distance = spring.initialState.target - spring.initialState.position;
+  if (!Number.isFinite(distance)) {
+    throw new RangeError('CSS spring animation distance must be a finite number');
+  }
   if (distance === 0) {
     throw new RangeError('CSS spring export requires a non-zero animation distance');
   }
 
   const progressAt = (time: number): number => {
     if (spring.timing.settled && time >= duration) return 1;
-    return (spring.positionAt(time) - spring.initialState.position) / distance;
+    const progress =
+      (spring.positionAt(time) - spring.initialState.position) / distance;
+    if (!Number.isFinite(progress)) {
+      throw new RangeError('normalized progress must be a finite number');
+    }
+    return progress;
   };
   const samples: CSSLinearSample[] = [
     { time: 0, progress: progressAt(0) },
@@ -92,6 +104,10 @@ export function springToCSSLinear(
 
     if (needsRefinement && depth < maxDepth) {
       const midpoint = checkpoints[1]!;
+      if (midpoint.time === start.time || midpoint.time === end.time) {
+        append(end);
+        return;
+      }
       const middle = { time: midpoint.time, progress: midpoint.progress };
       refine(start, middle, depth + 1);
       refine(middle, end, depth + 1);

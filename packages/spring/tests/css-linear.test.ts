@@ -94,8 +94,33 @@ describe('CSS linear spring export', () => {
     });
 
     expect(() => springToCSSLinear(zeroDistance)).toThrow(RangeError);
-    expect(() => springToCSSLinear(spring, { maxError: 0 })).toThrow(RangeError);
-    expect(() => springToCSSLinear(spring, { maxDepth: 1.5 })).toThrow(RangeError);
-    expect(() => springToCSSLinear(spring, { maxSamples: 1 })).toThrow(RangeError);
+    expect(() => springToCSSLinear(spring, { maxError: 0 })).toThrow(
+      RangeError,
+    );
+    expect(() => springToCSSLinear(spring, { maxDepth: 1.5 })).toThrow(
+      RangeError,
+    );
+    expect(() => springToCSSLinear(spring, { maxSamples: 1 })).toThrow(
+      RangeError,
+    );
+    expect(() => springToCSSLinear(spring, { maxDepth: null as never })).toThrow(
+      RangeError,
+    );
+    expect(() => springToCSSLinear(spring, [] as never)).toThrow(TypeError);
+  });
+
+  it('rejects trajectories whose normalized CSS progress is not finite', () => {
+    const spring = createSpring({
+      from: 0,
+      to: Number.MIN_VALUE,
+      velocity: 1,
+      mass: 1,
+      stiffness: 180,
+      damping: 24,
+    });
+
+    expect(() => springToCSSLinear(spring, { duration: 0.1 })).toThrow(
+      /normalized progress must be a finite number/,
+    );
   });
 });
