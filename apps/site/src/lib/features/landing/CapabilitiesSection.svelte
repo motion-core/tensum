@@ -39,7 +39,6 @@
 						type="button"
 						variant="ghost"
 						size="icon-xs"
-						class="bg-card/80 shadow-xs backdrop-blur-sm dark:bg-card/64 dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)] dark:hover:bg-card/80"
 						aria-label={animationAction}
 						onclick={toggleAnimations}
 					>
