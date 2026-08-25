@@ -1,4 +1,12 @@
-<div class="relative flex h-56 items-center justify-center overflow-hidden p-3" aria-hidden="true">
+<script lang="ts">
+	let { paused = false }: { paused?: boolean } = $props();
+</script>
+
+<div
+	class="timeline-illustration relative flex h-56 items-center justify-center overflow-hidden p-3"
+	data-paused={paused}
+	aria-hidden="true"
+>
 	<div class="w-full overflow-hidden rounded-lg bg-muted shadow-sm dark:bg-muted/50">
 		<div
 			class="flex h-8 items-center justify-between border-b border-border px-2.5 text-[0.625rem]"
@@ -75,5 +83,9 @@
 		.timeline-cursor {
 			animation: timeline-cursor 5s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 		}
+	}
+
+	.timeline-illustration[data-paused='true'] .timeline-cursor {
+		animation-play-state: paused;
 	}
 </style>

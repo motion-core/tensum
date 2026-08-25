@@ -1,5 +1,10 @@
+<script lang="ts">
+	let { paused = false }: { paused?: boolean } = $props();
+</script>
+
 <div
 	class="momentum-illustration relative flex h-56 items-center justify-center overflow-hidden p-3"
+	data-paused={paused}
 	aria-hidden="true"
 >
 	<div>
@@ -290,5 +295,18 @@
 		.target-value-new {
 			animation: target-value-new var(--momentum-duration) cubic-bezier(0.16, 1, 0.3, 1) infinite;
 		}
+	}
+
+	.momentum-illustration[data-paused='true']
+		:is(
+			.spring-body,
+			.spring-trail,
+			.old-target,
+			.new-target,
+			.retarget-event,
+			.target-value-old,
+			.target-value-new
+		) {
+		animation-play-state: paused;
 	}
 </style>
