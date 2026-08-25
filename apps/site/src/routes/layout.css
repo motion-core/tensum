@@ -204,6 +204,59 @@
 	.selection-indicator[data-has-selection='false']::before {
 		opacity: 0;
 	}
+
+	.playground-dot-pulse {
+		--playground-dot-color: var(--primary);
+
+		animation: playground-dot-pulse var(--playground-dot-pulse-duration, 520ms) ease-out both;
+	}
+
+	.playground-dot-pulse::after {
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		content: '';
+		pointer-events: none;
+		animation: playground-dot-halo var(--playground-dot-pulse-duration, 520ms) ease-out both;
+	}
+
+	.playground-dot-chart-1 {
+		--playground-dot-color: var(--chart-1);
+	}
+
+	.playground-dot-chart-2 {
+		--playground-dot-color: var(--chart-2);
+	}
+}
+
+@keyframes playground-dot-pulse {
+	0%,
+	100% {
+		transform: scale(1);
+	}
+
+	12% {
+		transform: scale(1.15);
+	}
+}
+
+@keyframes playground-dot-halo {
+	0% {
+		opacity: 0;
+		box-shadow: 0 0 0 0 transparent;
+	}
+
+	12% {
+		opacity: 1;
+		box-shadow:
+			0 0 0 3px oklch(from var(--playground-dot-color) l c h / 0.18),
+			0 0 18px oklch(from var(--playground-dot-color) l c h / 0.52);
+	}
+
+	100% {
+		opacity: 0;
+		box-shadow: 0 0 0 0 transparent;
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {

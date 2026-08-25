@@ -427,14 +427,14 @@
 				{#each scenarios as item (item.id)}
 					<Button
 						variant="ghost"
-						class="relative z-10 sm:justify-start bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground"
+						class="relative z-10 bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground sm:justify-start"
 						onclick={() => setScenario(item.id)}
 						aria-pressed={scenario === item.id}
 						title={item.detail}
 					>
 						<span
 							class={scenario === item.id
-								? 'size-1.5 rounded-full bg-primary'
+								? 'playground-dot-pulse relative size-1.5 rounded-full bg-primary'
 								: 'size-1.5 rounded-full bg-muted-foreground/40'}
 							aria-hidden="true"
 						></span>
@@ -457,7 +457,7 @@
 						{#each distanceTargets as target, index (target.label)}
 							<Button
 								variant="ghost"
-								class="relative z-10 sm:justify-start bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground"
+								class="relative z-10 bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground sm:justify-start"
 								onclick={() => setDistanceTarget(index)}
 								aria-pressed={distanceTargetIndex === index}
 							>
@@ -478,7 +478,7 @@
 						{#each rotationTargets as target (target)}
 							<Button
 								variant="ghost"
-								class="relative z-10 sm:justify-start bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground"
+								class="relative z-10 bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground sm:justify-start"
 								onclick={() => setRotationTarget(target)}
 								aria-pressed={rotationTarget === target}
 							>
@@ -504,7 +504,7 @@
 							bounce === preset.bounce}
 						<Button
 							variant="ghost"
-							class="relative z-10 sm:justify-start bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground"
+							class="relative z-10 bg-transparent text-muted-foreground/70 hover:bg-transparent hover:text-foreground aria-pressed:text-foreground sm:justify-start"
 							onclick={() => applyPreset(preset)}
 							aria-pressed={selected}
 						>
@@ -541,38 +541,34 @@
 			>
 				{#if scenario === 'rotation'}
 					<div
-						class="spring-stage-rotation-rail absolute top-1/2 left-1/2 size-44 -translate-x-1/2 -translate-y-1/2 rounded-full border-8 border-muted"
+						class="spring-stage-rotation-rail absolute top-1/2 left-1/2 size-44 -translate-x-1/2 -translate-y-1/2 rounded-full"
 						aria-hidden="true"
 					>
-						<span
-							class="pointer-events-none absolute -inset-1 rounded-full border-4 border-background/65 dark:border-card/50"
-						></span>
-
-						<div class="spring-stage-rotation-stop top-0 left-1/2 -translate-x-1/2">
+						<div class="spring-stage-rotation-stop top-1 left-1/2 -translate-x-1/2">
 							<span
 								class={rotationTarget === -90
-									? 'spring-stage-rotation-node bg-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)]'
-									: 'spring-stage-rotation-node bg-muted-foreground/45'}
+									? 'playground-dot-pulse spring-stage-rotation-node border-primary bg-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)]'
+									: 'spring-stage-rotation-node border-background bg-muted-foreground/45'}
 							></span>
 							<span class="spring-stage-rotation-label bottom-4 left-1/2 -translate-x-1/2"
 								>−90°</span
 							>
 						</div>
 
-						<div class="spring-stage-rotation-stop top-1/2 right-0 -translate-y-1/2">
+						<div class="spring-stage-rotation-stop top-1/2 right-1 -translate-y-1/2">
 							<span
 								class={rotationTarget === 0
-									? 'spring-stage-rotation-node bg-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)]'
-									: 'spring-stage-rotation-node bg-muted-foreground/45'}
+									? 'playground-dot-pulse spring-stage-rotation-node border-primary bg-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)]'
+									: 'spring-stage-rotation-node border-background bg-muted-foreground/45'}
 							></span>
 							<span class="spring-stage-rotation-label top-1/2 left-4 -translate-y-1/2">0°</span>
 						</div>
 
-						<div class="spring-stage-rotation-stop bottom-0 left-1/2 -translate-x-1/2">
+						<div class="spring-stage-rotation-stop bottom-1 left-1/2 -translate-x-1/2">
 							<span
 								class={rotationTarget === 90
-									? 'spring-stage-rotation-node bg-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)]'
-									: 'spring-stage-rotation-node bg-muted-foreground/45'}
+									? 'playground-dot-pulse spring-stage-rotation-node border-primary bg-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)]'
+									: 'spring-stage-rotation-node border-background bg-muted-foreground/45'}
 							></span>
 							<span class="spring-stage-rotation-label top-4 left-1/2 -translate-x-1/2">+90°</span>
 						</div>
@@ -593,7 +589,7 @@
 							>
 								<span
 									class={distanceTargetIndex === index
-										? 'spring-stage-node border-primary bg-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)]'
+										? 'playground-dot-pulse spring-stage-node border-primary bg-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)]'
 										: 'spring-stage-node border-background bg-muted-foreground/45'}
 								></span>
 								<span class="spring-stage-marker-line"></span>
@@ -610,7 +606,11 @@
 							style:left={markerPosition(0.22)}
 							aria-hidden="true"
 						>
-							<span class="spring-stage-node border-chart-1 bg-chart-1"></span>
+							<span
+								class={timelineOwner === 'Spring A'
+									? 'playground-dot-pulse playground-dot-chart-1 spring-stage-node border-chart-1 bg-chart-1'
+									: 'spring-stage-node border-chart-1 bg-chart-1'}
+							></span>
 							<span class="spring-stage-marker-line"></span>
 							<span class="spring-stage-marker-label text-muted-foreground">Spring A</span>
 						</div>
@@ -619,7 +619,11 @@
 							style:left={markerPosition(0.82)}
 							aria-hidden="true"
 						>
-							<span class="spring-stage-node border-chart-2 bg-chart-2"></span>
+							<span
+								class={timelineOwner === 'Spring B'
+									? 'playground-dot-pulse playground-dot-chart-2 spring-stage-node border-chart-2 bg-chart-2'
+									: 'spring-stage-node border-chart-2 bg-chart-2'}
+							></span>
 							<span class="spring-stage-marker-line"></span>
 							<span class="spring-stage-marker-label text-muted-foreground">Spring B</span>
 						</div>
@@ -842,9 +846,27 @@
 	}
 
 	.spring-stage-rotation-rail {
-		box-shadow:
-			inset 0 1px 2px rgb(0 0 0 / 0.08),
-			0 1px rgb(255 255 255 / 0.06);
+		--rotation-rail-surface: color-mix(in srgb, var(--background) 65%, var(--muted));
+	}
+
+	.spring-stage-rotation-rail::before {
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+
+		background: radial-gradient(
+			circle closest-side at center,
+			transparent 0 calc(100% - 0.5rem),
+			var(--muted) calc(100% - 0.5rem) calc(100% - 0.375rem),
+			var(--rotation-rail-surface) calc(100% - 0.375rem) calc(100% - 0.125rem),
+			var(--muted) calc(100% - 0.125rem) 100%
+		);
+		filter: drop-shadow(0 1px 0 rgb(255 255 255 / 0.06));
+		content: '';
+	}
+
+	:global(.dark) .spring-stage-rotation-rail {
+		--rotation-rail-surface: color-mix(in srgb, var(--card) 50%, var(--muted));
 	}
 
 	.spring-stage-rotation-stop {
@@ -861,7 +883,7 @@
 		width: 0.625rem;
 		height: 0.625rem;
 		translate: -50% -50%;
-		border: 2px solid var(--background);
+		border-width: 2px;
 		border-radius: 9999px;
 	}
 

@@ -121,7 +121,10 @@
 			<figcaption class="flex items-center justify-between gap-2 text-sm" id="position-chart-title">
 				<span class="font-medium">Position</span>
 				<span class="flex items-center gap-1.5 text-xs text-muted-foreground">
-					<span class="size-2 rounded-full bg-chart-1" aria-hidden="true"></span>
+					<span
+						class="playground-dot-pulse playground-dot-chart-1 relative size-2 rounded-full bg-chart-1"
+						aria-hidden="true"
+					></span>
 					{positionUnit}
 				</span>
 			</figcaption>
@@ -180,7 +183,10 @@
 			<figcaption class="flex items-center justify-between gap-2 text-sm" id="velocity-chart-title">
 				<span class="font-medium">Velocity</span>
 				<span class="flex items-center gap-1.5 text-xs text-muted-foreground">
-					<span class="size-2 rounded-full bg-chart-2" aria-hidden="true"></span>
+					<span
+						class="playground-dot-pulse playground-dot-chart-2 relative size-2 rounded-full bg-chart-2"
+						aria-hidden="true"
+					></span>
 					{velocityUnit}
 				</span>
 			</figcaption>
