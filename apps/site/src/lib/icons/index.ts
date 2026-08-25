@@ -1,6 +1,8 @@
+export { default as BookIcon } from './BookIcon.svelte';
 export { default as CheckIcon } from './CheckIcon.svelte';
 export { default as CloseIcon } from './CloseIcon.svelte';
 export { default as CopyIcon } from './CopyIcon.svelte';
+export { default as GitHubIcon } from './GitHubIcon.svelte';
 export { default as InfoIcon } from './InfoIcon.svelte';
 export { default as LinkIcon } from './LinkIcon.svelte';
 export { default as MenuIcon } from './MenuIcon.svelte';

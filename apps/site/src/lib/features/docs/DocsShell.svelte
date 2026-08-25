@@ -95,7 +95,7 @@
 			class="flex-row items-center justify-between border-b border-border/64 px-4 py-3 dark:border-card/80"
 		>
 			<div class="min-w-0">
-				<Drawer.Title>Spring documentation</Drawer.Title>
+				<Drawer.Title>tensum</Drawer.Title>
 				<Drawer.Description class="sr-only">
 					Navigate to a documentation section.
 				</Drawer.Description>

@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { Badge } from '$lib/components/ui/badge';
-	import { Button } from '$lib/components/ui/button';
 	import { ThemeToggle } from '$lib/components/theme-toggle';
 	import { TensumIcon } from '$lib/icons';
 	import type { Snippet } from 'svelte';
@@ -32,12 +31,6 @@
 			<Badge
 				variant="secondary"
 				class={hideDefaultActionsOnMobile ? 'me-1 hidden sm:inline-flex' : 'me-1'}>v0.1.0</Badge
-			>
-			<Button
-				href={resolve('/docs')}
-				variant="ghost"
-				size="sm"
-				class={hideDefaultActionsOnMobile ? 'hidden sm:inline-flex' : undefined}>Docs</Button
 			>
 			<ThemeToggle />
 			{@render trailingAction?.()}

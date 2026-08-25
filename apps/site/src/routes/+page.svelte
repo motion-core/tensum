@@ -6,6 +6,8 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import { CapabilitiesSection, InstallationSection } from '$lib/features/landing';
 	import { SpringPlayground } from '$lib/features/playground';
+	import { BookIcon, GitHubIcon } from '$lib/icons';
+	import { site } from '$lib/site';
 
 	import type { PageProps } from './$types';
 
@@ -42,8 +44,14 @@
 				GSAP timelines. Interrupt motion without inventing the next velocity.
 			</p>
 			<div class="mt-8 flex flex-wrap items-center justify-center gap-3">
-				<Button href="#capabilities">Explore capabilities</Button>
-				<Button href="#get-started" variant="ghost">Install the package</Button>
+				<Button href={resolve('/docs')}>
+					<BookIcon />
+					Documentation
+				</Button>
+				<Button href={site.repository} target="_blank" rel="noreferrer" variant="secondary">
+					<GitHubIcon />
+					GitHub
+				</Button>
 			</div>
 		</div>
 
@@ -69,7 +77,7 @@
 		<div
 			class="flex flex-col gap-3 py-6 text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
 		>
-			<p>Tensum · MIT licensed</p>
+			<p>tensum · MIT licensed</p>
 			<nav class="flex flex-wrap gap-3" aria-label="Package links">
 				<a class="hover:text-foreground" href="#playground">Playground</a>
 				<a class="hover:text-foreground" href="#capabilities">Capabilities</a>
