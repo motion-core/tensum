@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Link06Icon } from '@hugeicons/core-free-icons';
 	import { onDestroy } from 'svelte';
 	import { CopyFeedbackIcon } from '$lib/components/copy-feedback';
+	import { LinkIcon } from '$lib/icons';
 
 	let { id }: { id?: string } = $props();
 
@@ -38,7 +38,7 @@
 		aria-label={copied ? 'Section link copied' : 'Copy link to this section'}
 		onclick={copyLink}
 	>
-		<CopyFeedbackIcon {copied} idleIcon={Link06Icon} />
+		<CopyFeedbackIcon {copied} idleIcon={LinkIcon} />
 	</a>
 	<span class="sr-only" role="status" aria-live="polite">{announcement}</span>
 {/if}

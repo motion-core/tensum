@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { Copy01Icon } from '@hugeicons/core-free-icons';
 	import { onDestroy } from 'svelte';
 	import { CopyFeedbackIcon } from '$lib/components/copy-feedback';
 	import { Button, type ButtonSize } from '$lib/components/ui/button';
+	import { CopyIcon } from '$lib/icons';
 
 	type Props = {
 		value: string;
@@ -55,6 +55,6 @@
 	aria-label={copied ? copiedLabel : label}
 	onclick={copy}
 >
-	<CopyFeedbackIcon {copied} idleIcon={Copy01Icon} />
+	<CopyFeedbackIcon {copied} idleIcon={CopyIcon} />
 </Button>
 <span class="sr-only" role="status" aria-live="polite">{announcement}</span>

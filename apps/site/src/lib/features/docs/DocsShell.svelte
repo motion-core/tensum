@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { Cancel01Icon, Menu04Icon } from '@hugeicons/core-free-icons';
-	import { HugeiconsIcon } from '@hugeicons/svelte';
 	import { resolve } from '$app/paths';
 	import { onMount, type Snippet } from 'svelte';
 	import DocsNavigation from './DocsNavigation.svelte';
 	import { PageContainer, SiteHeader } from '$lib/components/layout';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import * as Drawer from '$lib/components/ui/drawer';
+	import { CloseIcon, MenuIcon } from '$lib/icons';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import { cn } from '$lib/utils.js';
 	import { docsNavigationItems } from './navigation';
@@ -68,7 +67,7 @@
 				class={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), '-me-2 size-10 xl:hidden')}
 				aria-label="Open documentation navigation"
 			>
-				<HugeiconsIcon icon={Menu04Icon} strokeWidth={1.5} />
+				<MenuIcon strokeWidth={1.5} />
 			</Drawer.Trigger>
 		{/snippet}
 	</SiteHeader>
@@ -85,7 +84,7 @@
 				class={buttonVariants({ variant: 'ghost', size: 'icon-lg' })}
 				aria-label="Close documentation navigation"
 			>
-				<HugeiconsIcon icon={Cancel01Icon} strokeWidth={1.5} />
+				<CloseIcon strokeWidth={1.5} />
 			</Drawer.Close>
 		</Drawer.Header>
 		<ScrollArea class="min-h-0 flex-1">

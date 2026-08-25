@@ -1,13 +1,12 @@
 <script lang="ts">
-	import { CheckIcon } from '@hugeicons/core-free-icons';
-	import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/svelte';
+	import { CheckIcon, type IconComponent } from '$lib/icons';
 
 	type Props = {
 		copied: boolean;
-		idleIcon: IconSvgElement;
+		idleIcon: IconComponent;
 	};
 
-	let { copied, idleIcon }: Props = $props();
+	let { copied, idleIcon: IdleIcon }: Props = $props();
 </script>
 
 <span
@@ -15,10 +14,10 @@
 	aria-hidden="true"
 >
 	<span class="icon-state" data-visible={!copied}>
-		<HugeiconsIcon icon={idleIcon} size={16} strokeWidth={1.5} />
+		<IdleIcon size={16} strokeWidth={1.5} />
 	</span>
 	<span class="icon-state text-emerald-500" data-visible={copied}>
-		<HugeiconsIcon icon={CheckIcon} size={16} strokeWidth={1.5} />
+		<CheckIcon size={16} strokeWidth={1.5} />
 	</span>
 </span>
 

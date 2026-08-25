@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { Alert02Icon, InformationCircleIcon } from '@hugeicons/core-free-icons';
-	import { HugeiconsIcon } from '@hugeicons/svelte';
 	import type { Snippet } from 'svelte';
+	import { InfoIcon, WarningIcon } from '$lib/icons';
 
 	let {
 		title,
@@ -21,11 +20,11 @@
 			: 'mt-0.5 text-muted-foreground'}
 		aria-hidden="true"
 	>
-		<HugeiconsIcon
-			class="size-4"
-			icon={kind === 'warning' ? Alert02Icon : InformationCircleIcon}
-			strokeWidth={1.5}
-		/>
+		{#if kind === 'warning'}
+			<WarningIcon class="size-4" strokeWidth={1.5} />
+		{:else}
+			<InfoIcon class="size-4" strokeWidth={1.5} />
+		{/if}
 	</span>
 	<div class="min-w-0">
 		<p class="text-sm font-semibold text-foreground">{title}</p>

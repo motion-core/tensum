@@ -7,12 +7,11 @@
 		springParameters
 	} from '@motion-core/spring';
 	import type { SpringController, SpringState, SpringToSnapshot } from '@motion-core/spring';
-	import { PauseIcon, PlayIcon, Refresh01Icon } from '@hugeicons/core-free-icons';
-	import { HugeiconsIcon } from '@hugeicons/svelte';
 	import { gsap } from 'gsap';
 	import { onDestroy, onMount, tick } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { Button } from '$lib/components/ui/button';
+	import { PauseIcon, PlayIcon, ResetIcon } from '$lib/icons';
 	import { Slider } from '$lib/components/ui/slider';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import ParameterField from './ParameterField.svelte';
@@ -572,16 +571,16 @@
 				<div class="flex flex-wrap gap-1">
 					<Button onclick={toggleTimelinePlayback}>
 						{#if timelineIsRunning}
-							<HugeiconsIcon icon={PauseIcon} strokeWidth={2} data-icon="inline-start" />
+							<PauseIcon strokeWidth={2} data-icon="inline-start" />
 							Pause
 						{:else}
-							<HugeiconsIcon icon={PlayIcon} strokeWidth={2} data-icon="inline-start" />
+							<PlayIcon strokeWidth={2} data-icon="inline-start" />
 							Play
 						{/if}
 					</Button>
 					<Button variant="outline" onclick={reverseTimeline}>Reverse</Button>
 					<Button variant="ghost" size="icon" onclick={resetTimeline} aria-label="Reset timeline">
-						<HugeiconsIcon icon={Refresh01Icon} strokeWidth={2} />
+						<ResetIcon strokeWidth={2} />
 					</Button>
 				</div>
 
@@ -666,7 +665,7 @@
 				</div>
 
 				<Button class="w-full" onclick={moveToNextTarget}>
-					<HugeiconsIcon icon={PlayIcon} strokeWidth={2} data-icon="inline-start" />
+					<PlayIcon strokeWidth={2} data-icon="inline-start" />
 					Run spring
 				</Button>
 

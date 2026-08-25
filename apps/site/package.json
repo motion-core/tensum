@@ -22,8 +22,6 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "latest",
-		"@hugeicons/core-free-icons": "^4.2.3",
-		"@hugeicons/svelte": "^1.1.4",
 		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "latest",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
