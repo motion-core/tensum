@@ -5,13 +5,23 @@
 	let {
 		ref = $bindable(null),
 		class: className,
+		children,
 		...restProps
 	}: TabsPrimitive.ContentProps = $props();
 </script>
 
 <TabsPrimitive.Content
 	bind:ref
-	data-slot="tabs-content"
-	class={cn('flex-1 text-sm outline-none', className)}
 	{...restProps}
-/>
+>
+	{#snippet child({ props })}
+		<div
+			{...props}
+			data-slot="tabs-content"
+			tabindex="-1"
+			class={cn('flex-1 text-sm outline-none', className)}
+		>
+			{@render children?.()}
+		</div>
+	{/snippet}
+</TabsPrimitive.Content>

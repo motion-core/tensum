@@ -47,7 +47,7 @@
 		<ScrollArea
 			orientation="horizontal"
 			class="w-full min-w-0"
-			viewportTabindex={0}
+			viewportTabindex={compact ? -1 : 0}
 			viewportAriaLabel={`${label} scroll area`}
 			scrollbarXClasses="z-20"
 		>
@@ -59,7 +59,7 @@
 		<ScrollArea
 			orientation="horizontal"
 			class="w-full min-w-0"
-			viewportTabindex={0}
+			viewportTabindex={compact ? -1 : 0}
 			viewportAriaLabel={`${label} scroll area`}
 			scrollbarXClasses="z-20"
 		>
