@@ -115,6 +115,31 @@ describe('SpringValue', () => {
     expect(events).toEqual(['logical', 'settle']);
   });
 
+  it('clamps logical completion to an earlier physical settlement', () => {
+    const driver = new ManualFrameDriver();
+    const perceptualDuration = 10;
+    const value = createSpringValue(0, parameters, driver, {
+      timing: { perceptualDuration },
+    });
+    const events: string[] = [];
+    value.on('logicalComplete', () => events.push('logical'));
+    value.on('settle', () => events.push('settle'));
+
+    value.setTarget(100);
+    driver.step(0);
+    const settlingDuration = createSpring({
+      from: 0,
+      to: 100,
+      ...parameters,
+    }).getSettlingDuration();
+    expect(settlingDuration).toBeLessThan(perceptualDuration);
+    driver.step(settlingDuration);
+
+    expect(events).toEqual(['logical', 'settle']);
+    expect(value.getSnapshot().animating).toBe(false);
+    expect(driver.pendingFrames).toBe(0);
+  });
+
   it('continues an undamped spring and reports the configured unsettled boundary once', () => {
     const driver = new ManualFrameDriver();
     const value = createSpringValue(0, { ...parameters, damping: 0 }, driver, {

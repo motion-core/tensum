@@ -166,10 +166,7 @@ export function createSpringValue(
       active = undefined;
       write(solution.initialState.target, 0);
       if (revision !== sampledRevision) return;
-      if (
-        !sampled.logicalComplete &&
-        elapsed >= sampled.logicalDuration
-      ) {
+      if (!sampled.logicalComplete) {
         sampled.logicalComplete = true;
         emit('logicalComplete');
         if (revision !== sampledRevision) return;
