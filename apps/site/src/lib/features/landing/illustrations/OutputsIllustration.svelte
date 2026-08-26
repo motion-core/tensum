@@ -7,7 +7,7 @@
 	data-paused={paused}
 	aria-hidden="true"
 >
-	<div class="relative h-48 w-[90%] max-w-xl">
+	<div class="relative h-48 w-full sm:w-[90%] max-w-xl">
 		<div
 			class="absolute inset-s-1/2 top-0 z-10 flex h-13 w-32 -translate-x-1/2 items-start justify-between rounded-lg bg-background p-2.5 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.04),0_1px_1px_rgba(0,0,0,0.05),0_2px_2px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.05)] dark:bg-card/64 dark:inset-shadow-[0_1px_rgb(255_255_255/0.15)]"
 		>

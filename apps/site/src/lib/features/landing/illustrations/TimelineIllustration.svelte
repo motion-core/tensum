@@ -3,7 +3,7 @@
 </script>
 
 <div
-	class="timeline-illustration relative mx-auto flex h-56 max-w-[90%] items-center justify-center overflow-hidden p-6"
+	class="timeline-illustration relative mx-auto flex h-56 sm:max-w-[85%] items-center justify-center overflow-hidden p-6"
 	data-paused={paused}
 	aria-hidden="true"
 >
@@ -61,7 +61,7 @@
 				>
 				<div class="relative h-10">
 					<div
-						class="absolute inset-y-2 inset-s-[63%] flex w-[30%] items-center rounded-md border border-chart-4/40 bg-chart-4/10 px-2 font-mono text-[0.5625rem] text-chart-4"
+						class="absolute inset-y-2 inset-s-[60%] flex w-[35%] items-center rounded-md border border-chart-4/40 bg-chart-4/10 px-2 font-mono text-[0.5625rem] text-chart-4"
 					>
 						stagger × 6
 					</div>

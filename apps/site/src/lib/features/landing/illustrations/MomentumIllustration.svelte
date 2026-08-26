@@ -3,7 +3,7 @@
 </script>
 
 <div
-	class="momentum-illustration relative mx-auto flex h-56 max-w-[90%] items-center justify-center overflow-hidden p-6"
+	class="momentum-illustration relative mx-auto flex h-56 items-center justify-center overflow-hidden p-6"
 	data-paused={paused}
 	aria-hidden="true"
 >
