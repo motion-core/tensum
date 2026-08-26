@@ -25,9 +25,14 @@ const steps = [
     ["scripts/release-metadata-check.mjs"],
   ],
   ["Build all workspaces", pnpm, ["build"]],
+  [
+    "Validate public value and type exports",
+    process.execPath,
+    ["scripts/public-api-check.mjs"],
+  ],
   ["Type-check all workspaces", pnpm, ["check"]],
   ["Run all tests", pnpm, ["test"]],
-  ["Run Chromium integration tests", pnpm, ["test:browser"]],
+  ["Run browser integration tests", pnpm, ["test:browser"]],
   ["Lint all workspaces", pnpm, ["lint"]],
   [
     "Validate the package manifest",
