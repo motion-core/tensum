@@ -72,15 +72,15 @@ mkdirSync(packDirectory);
 const runtimeSource = `import assert from 'node:assert/strict';
 import { gsap } from 'gsap';
 import {
+  TensumPlugin,
   createMotionSpringTween,
-  registerSpringPlugin,
   springTo,
 } from 'tensum';
 
 const parameters = { mass: 1, stiffness: 180, damping: 24 };
 
-registerSpringPlugin(gsap);
-assert.equal(typeof gsap.effects.motionSpring, 'function');
+gsap.registerPlugin(TensumPlugin);
+assert.equal(typeof gsap.effects.spring, 'function');
 
 const controllerTarget = { score: 0 };
 const controller = springTo(controllerTarget, {
@@ -100,7 +100,7 @@ const effectTween = createMotionSpringTween(effectTarget, {
   tween: { paused: true },
 });
 const timelineTarget = { score: 0 };
-const timeline = gsap.timeline({ paused: true }).motionSpring(
+const timeline = gsap.timeline({ paused: true }).spring(
   timelineTarget,
   {
     values: { score: 60 },
@@ -119,8 +119,8 @@ console.log('GSAP runtime compatibility passed.');
 
 const typeSource = `import { gsap } from 'gsap';
 import {
+  TensumPlugin,
   createMotionSpringTween,
-  registerSpringPlugin,
   springTo,
   type MotionSpringEffectVars,
   type MotionSpringVars,
@@ -141,7 +141,7 @@ const effectVars: MotionSpringEffectVars = {
 };
 const target: SpringTweenTarget = { score: 0 };
 
-registerSpringPlugin(gsap);
+gsap.registerPlugin(TensumPlugin);
 const controller: SpringController = springTo(target, {
   targets: { score: 100 },
   spring: parameters,
@@ -149,7 +149,7 @@ const controller: SpringController = springTo(target, {
 const effect = createMotionSpringTween(target, effectVars);
 const timeline: gsap.core.Timeline = gsap
   .timeline({ paused: true })
-  .motionSpring(target, effectVars);
+  .spring(target, effectVars);
 
 void controller;
 void effect;

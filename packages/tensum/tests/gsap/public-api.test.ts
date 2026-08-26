@@ -14,17 +14,16 @@ describe('GSAP public API', () => {
       'scale',
       'rotation',
     ]);
-    expect(spring.registerSpringPlugin).toBeTypeOf('function');
+    expect(spring.TensumPlugin).toBeTypeOf('object');
     expect(spring.createMotionSpringTween).toBeTypeOf('function');
     expect(spring.springTo).toBeTypeOf('function');
   });
 
   it('exposes the preflighted effect and helper through the root entry point', () => {
-    spring.registerSpringPlugin(gsap);
-    expect(gsap.effects['motionSpring']).toBeTypeOf('function');
-    expect(
-      (gsap.plugins as Record<string, unknown>)['motionSpring'],
-    ).toBeUndefined();
+    gsap.registerPlugin(spring.TensumPlugin);
+    expect(gsap.effects['spring']).toBeTypeOf('function');
+    expect(gsap.effects['motionSpring']).toBeUndefined();
+    expect((gsap.plugins as Record<string, unknown>)['spring']).toBeUndefined();
 
     const tweenOptions: MotionSpringEffectTweenVars = { paused: true };
     const vars: MotionSpringEffectVars = {
@@ -35,7 +34,7 @@ describe('GSAP public API', () => {
     };
     const target = { x: 0 };
     const tween = spring.createMotionSpringTween(target, vars);
-    const timeline = gsap.timeline({ paused: true }).motionSpring(
+    const timeline = gsap.timeline({ paused: true }).spring(
       { x: 0 },
       {
         x: 100,

@@ -203,7 +203,7 @@ function normalizeTargets(
 }
 
 function normalizeProperties(value: unknown): MotionSpringVars['properties'] {
-  const record = normalizeOptionalRecord(value, 'motionSpring properties');
+  const record = normalizeOptionalRecord(value, 'spring properties');
   if (!record) return undefined;
   const properties = Object.create(null) as Record<
     string,
@@ -243,7 +243,7 @@ function normalizeProperties(value: unknown): MotionSpringVars['properties'] {
 }
 
 function normalizeAdapters(value: unknown): MotionSpringVars['adapters'] {
-  const record = normalizeOptionalRecord(value, 'motionSpring adapters');
+  const record = normalizeOptionalRecord(value, 'spring adapters');
   if (!record) return undefined;
   const adapters = Object.create(null) as Record<string, SpringPropertyAdapter>;
   for (const [property, adapter] of Object.entries(record)) {
@@ -268,7 +268,7 @@ function normalizeAdapters(value: unknown): MotionSpringVars['adapters'] {
 }
 
 function normalizeUnits(value: unknown): MotionSpringVars['units'] {
-  const record = normalizeOptionalRecord(value, 'motionSpring units');
+  const record = normalizeOptionalRecord(value, 'spring units');
   if (!record) return undefined;
   const units = Object.create(null) as Record<string, string>;
   for (const [property, unit] of Object.entries(record)) {
@@ -285,11 +285,11 @@ function normalizeVelocity(value: unknown): MotionSpringVars['velocity'] {
   if (value === undefined) return undefined;
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) {
-      throw new TypeError('motionSpring velocity must be a finite number');
+      throw new TypeError('spring velocity must be a finite number');
     }
     return value;
   }
-  const record = normalizeOptionalRecord(value, 'motionSpring velocity')!;
+  const record = normalizeOptionalRecord(value, 'spring velocity')!;
   const velocities = Object.create(null) as Record<string, number>;
   for (const [property, velocity] of Object.entries(record)) {
     validateMapProperty(property);
@@ -303,7 +303,7 @@ function normalizeVelocity(value: unknown): MotionSpringVars['velocity'] {
 
 function normalizeMotionSpringVars(
   value: unknown,
-  context = 'motionSpring',
+  context = 'spring',
 ): MotionSpringVars {
   if (!isRecord(value)) {
     throw new TypeError(`${context} requires a configuration object`);
@@ -387,9 +387,7 @@ function preflightTarget(
 ): PreparedTarget {
   const requested = pluginTargetsFrom(vars);
   if (Object.keys(requested).length === 0) {
-    throw new TypeError(
-      'motionSpring requires at least one numeric target property',
-    );
+    throw new TypeError('spring requires at least one numeric target property');
   }
 
   const config = trackConfigFrom(vars);
@@ -448,7 +446,7 @@ function preflightTarget(
 
 /**
  * Creates a preflighted GSAP tween whose duration is final before it is added
- * to a timeline. Prefer the registered `timeline.motionSpring()` effect for
+ * to a timeline. Prefer the registered `timeline.spring()` effect for
  * sequential, staggered, or nested composition. Calling `invalidate()` reuses
  * the prepared snapshot; create a new effect tween to preflight changed
  * starting values, destinations, or parameters.
@@ -459,22 +457,22 @@ export function createMotionSpringTween(
   instance: typeof gsap = gsap,
 ): gsap.core.Tween {
   if (!isRecord(rawVars)) {
-    throw new TypeError('motionSpring effect requires a configuration object');
+    throw new TypeError('spring effect requires a configuration object');
   }
   const resolvedTargets = instance.utils.toArray<object>(targets);
   if (resolvedTargets.length === 0) {
-    throw new TypeError('motionSpring effect requires at least one target');
+    throw new TypeError('spring effect requires at least one target');
   }
 
   const ownVars = { ...rawVars } as Record<string, unknown>;
-  const from = normalizeTargets(ownVars['from'], 'motionSpring effect from');
+  const from = normalizeTargets(ownVars['from'], 'spring effect from');
   const tweenOptions = normalizeOptionalRecord(
     ownVars['tween'],
-    'motionSpring effect tween',
+    'spring effect tween',
   ) as MotionSpringEffectTweenVars | undefined;
   delete ownVars['from'];
   delete ownVars['tween'];
-  const pluginVars = normalizeMotionSpringVars(ownVars, 'motionSpring effect');
+  const pluginVars = normalizeMotionSpringVars(ownVars, 'spring effect');
   const preparedTargets = new WeakMap<object, PreparedTarget>();
   let finiteDuration = 0;
   let hasUnsettled = false;
@@ -489,11 +487,11 @@ export function createMotionSpringTween(
 
   const policy = validateUnsettledPolicy(
     pluginVars.unsettled ?? 'stop',
-    'motionSpring unsettled',
+    'spring unsettled',
   );
   if (policy === 'error' && hasUnsettled) {
     throw new RangeError(
-      'motionSpring cannot start an unsettled spring in error mode',
+      'spring cannot start an unsettled spring in error mode',
     );
   }
   const infinite = policy === 'continue' && hasUnsettled;
@@ -635,9 +633,9 @@ function renderAt(scope: MotionSpringDriverScope, time: number): void {
   }
 }
 
-function registerMotionSpringEffect(instance: typeof gsap): void {
+function registerSpringEffect(instance: typeof gsap): void {
   instance.registerEffect({
-    name: 'motionSpring',
+    name: 'spring',
     extendTimeline: true,
     effect(targets: object[], vars: MotionSpringEffectVars): gsap.core.Tween {
       return createMotionSpringTween(targets, vars, instance);
@@ -651,7 +649,7 @@ const pluginDefinition = {
   headless: true,
   rawVars: 1,
   register(instance: typeof gsap): void {
-    registerMotionSpringEffect(instance);
+    registerSpringEffect(instance);
   },
   init(
     this: MotionSpringDriverScope,
@@ -665,14 +663,14 @@ const pluginDefinition = {
       : undefined;
     if (!prepared) {
       throw new TypeError(
-        'The Tensum GSAP driver is internal; use timeline.motionSpring() or createMotionSpringTween()',
+        'The Tensum GSAP driver is internal; use timeline.spring() or createMotionSpringTween()',
       );
     }
     const value = rawValue;
     const requested = pluginTargetsFrom(value);
     if (Object.keys(requested).length === 0) {
       throw new TypeError(
-        'motionSpring requires at least one numeric target property',
+        'spring requires at least one numeric target property',
       );
     }
     const coordinator = beginPluginTweenInit(tween, target, {
@@ -682,7 +680,7 @@ const pluginDefinition = {
     const preparedTarget = prepared.targets.get(target);
     if (!preparedTarget) {
       throw new TypeError(
-        'The preflighted motionSpring target is unavailable; create a new effect tween',
+        'The preflighted spring target is unavailable; create a new effect tween',
       );
     }
     if (
@@ -693,7 +691,7 @@ const pluginDefinition = {
       )
     ) {
       throw new TypeError(
-        'A preflighted motionSpring configuration cannot change before init; create a new effect tween instead',
+        'A preflighted spring configuration cannot change before init; create a new effect tween instead',
       );
     }
     const tracks: PluginTrack[] = [];
@@ -705,7 +703,7 @@ const pluginDefinition = {
           destination.unit !== preparedTrack.unit)
       ) {
         throw new TypeError(
-          'A preflighted motionSpring configuration cannot change before init; create a new effect tween instead',
+          'A preflighted spring configuration cannot change before init; create a new effect tween instead',
         );
       }
       tracks.push({
@@ -725,12 +723,12 @@ const pluginDefinition = {
 
     const policy = validateUnsettledPolicy(
       value.unsettled ?? 'stop',
-      'motionSpring unsettled',
+      'spring unsettled',
     );
     const timing = timingFor(tracks, policy);
     if (policy === 'error' && timing.hasUnsettled) {
       throw new RangeError(
-        'motionSpring cannot start an unsettled spring in error mode',
+        'spring cannot start an unsettled spring in error mode',
       );
     }
     const infinite = policy === 'continue' && timing.hasUnsettled;
@@ -832,25 +830,21 @@ const pluginDefinition = {
   },
 };
 
-const motionSpringDriverPlugin = pluginDefinition as unknown as gsap.Plugin;
-
-/** Registers the preflighted `motionSpring` effect and timeline extension. */
-export function registerSpringPlugin(instance: typeof gsap = gsap): void {
-  instance.registerPlugin(motionSpringDriverPlugin);
-}
+/**
+ * Tensum's GSAP plugin. Register it with `gsap.registerPlugin(TensumPlugin)`
+ * before using the preflighted `timeline.spring()` effect.
+ */
+export const TensumPlugin = pluginDefinition as unknown as gsap.Plugin;
 
 declare global {
   namespace gsap {
     interface EffectsMap {
-      motionSpring(
-        targets: TweenTarget,
-        vars: MotionSpringEffectVars,
-      ): core.Tween;
+      spring(targets: TweenTarget, vars: MotionSpringEffectVars): core.Tween;
     }
 
     namespace core {
       interface Timeline {
-        motionSpring(
+        spring(
           targets: TweenTarget,
           vars: MotionSpringEffectVars,
           position?: Position,

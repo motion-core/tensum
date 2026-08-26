@@ -60,10 +60,7 @@ export type {
   VectorSpringSolution,
   VectorSpringState,
 } from './vector.js';
-export {
-  createMotionSpringTween,
-  registerSpringPlugin,
-} from './gsap/plugin.js';
+export { TensumPlugin, createMotionSpringTween } from './gsap/plugin.js';
 export type {
   MotionSpringEffectTweenVars,
   MotionSpringEffectVars,

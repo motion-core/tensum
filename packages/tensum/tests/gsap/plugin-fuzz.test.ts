@@ -3,7 +3,7 @@ import { gsap } from 'gsap';
 import {
   createMotionSpringTween,
   createSpring,
-  registerSpringPlugin,
+  TensumPlugin,
 } from '../../src/index.js';
 import type { MotionSpringEffectVars } from '../../src/index.js';
 
@@ -50,7 +50,7 @@ function expectFiniteTargets(
 }
 
 beforeAll(() => {
-  registerSpringPlugin(gsap);
+  gsap.registerPlugin(TensumPlugin);
   gsap.ticker.sleep();
 });
 
@@ -59,7 +59,7 @@ afterEach(() => {
   gsap.ticker.sleep();
 });
 
-describe('motionSpring effect deterministic fuzz', () => {
+describe('spring effect deterministic fuzz', () => {
   it('stays finite through adversarial multi-target seek, reverse, yoyo, and invalidate', () => {
     const random = randomSequence(0xa11ce);
     const targets = Array.from({ length: 6 }, (_, index) => ({

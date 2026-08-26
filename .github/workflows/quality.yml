@@ -85,7 +85,7 @@ jobs:
       - name: Import every ESM entry point
         working-directory: runtime-consumer
         run: |
-          node --input-type=module --eval "const root = await import('tensum'); const css = await import('tensum/css'); const coupled = await import('tensum/coupled'); if (typeof root.registerSpringPlugin !== 'function' || typeof css.springToCSSLinear !== 'function' || typeof coupled.createCoupledSpringSystem !== 'function') process.exit(1);"
+          node --input-type=module --eval "const root = await import('tensum'); const css = await import('tensum/css'); const coupled = await import('tensum/coupled'); if (typeof root.TensumPlugin !== 'object' || typeof css.springToCSSLinear !== 'function' || typeof coupled.createCoupledSpringSystem !== 'function') process.exit(1);"
 
       - name: Verify the CommonJS contract
         working-directory: runtime-consumer

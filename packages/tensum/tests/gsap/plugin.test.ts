@@ -3,8 +3,8 @@ import { gsap } from 'gsap';
 import {
   createMotionSpringTween,
   createSpring,
-  registerSpringPlugin,
   springTo,
+  TensumPlugin,
 } from '../../src/index.js';
 
 const parameters = {
@@ -15,14 +15,14 @@ const parameters = {
 };
 
 beforeAll(() => {
-  registerSpringPlugin(gsap);
+  gsap.registerPlugin(TensumPlugin);
 });
 
 afterEach(() => {
   gsap.globalTimeline.clear();
 });
 
-describe('motionSpring effect', () => {
+describe('spring effect', () => {
   it('preflights derived durations before laying out sequential timeline effects', () => {
     const target = { x: 0 };
     const first = createSpring({
@@ -40,12 +40,12 @@ describe('motionSpring effect', () => {
     const timeline = gsap.timeline({ paused: true });
 
     timeline
-      .motionSpring(target, {
+      .spring(target, {
         x: 100,
         from: { x: 0 },
         parameters,
       })
-      .motionSpring(target, {
+      .spring(target, {
         x: 240,
         from: { x: 100 },
         parameters,
@@ -85,7 +85,7 @@ describe('motionSpring effect', () => {
     );
     const timeline = gsap.timeline({ paused: true });
 
-    timeline.motionSpring(targets, {
+    timeline.spring(targets, {
       x: 100,
       parameters,
       tween: { stagger: 0.2 },
@@ -108,7 +108,7 @@ describe('motionSpring effect', () => {
     });
     const child = gsap.timeline();
 
-    child.motionSpring(target, {
+    child.spring(target, {
       rotation: 90,
       from: { rotation: 0 },
       parameters,
@@ -131,7 +131,7 @@ describe('motionSpring effect', () => {
     });
     const timeline = gsap.timeline({ paused: true });
 
-    timeline.motionSpring(target, {
+    timeline.spring(target, {
       x: 100,
       from: { x: 0 },
       parameters,
@@ -219,12 +219,12 @@ describe('motionSpring effect', () => {
     });
     const timeline = gsap.timeline({ paused: true });
 
-    timeline.motionSpring(
+    timeline.spring(
       target,
       { values: { score: 100 }, velocity: { score: 300 }, parameters },
       0,
     );
-    timeline.motionSpring(
+    timeline.spring(
       target,
       {
         values: { score: 240 },
@@ -250,12 +250,12 @@ describe('motionSpring effect', () => {
     const handoff = first.stateAt(0.2);
     const createTimeline = (target: { score: number }): gsap.core.Timeline => {
       const timeline = gsap.timeline({ paused: true });
-      timeline.motionSpring(
+      timeline.spring(
         target,
         { values: { score: 100 }, velocity: { score: 250 }, parameters },
         0,
       );
-      timeline.motionSpring(
+      timeline.spring(
         target,
         {
           values: { score: -80 },
@@ -296,8 +296,8 @@ describe('motionSpring effect', () => {
     });
     const timeline = gsap
       .timeline({ paused: true })
-      .motionSpring(target, { values: { score: 100 }, parameters }, 0)
-      .motionSpring(
+      .spring(target, { values: { score: 100 }, parameters }, 0)
+      .spring(
         target,
         {
           values: { score: 240 },
@@ -339,8 +339,8 @@ describe('motionSpring effect', () => {
     });
     const timeline = gsap
       .timeline({ paused: true })
-      .motionSpring(target, { values: { x: 100, y: 200 }, parameters }, 0)
-      .motionSpring(
+      .spring(target, { values: { x: 100, y: 200 }, parameters }, 0)
+      .spring(
         target,
         {
           values: { x: -50 },
@@ -399,12 +399,12 @@ describe('motionSpring effect', () => {
     const secondSettle = vi.fn();
     const timeline = gsap
       .timeline({ paused: true })
-      .motionSpring(
+      .spring(
         target,
         { values: { score: 100 }, parameters, onSettle: firstSettle },
         0,
       )
-      .motionSpring(
+      .spring(
         target,
         { values: { score: 200 }, parameters, onSettle: secondSettle },
         0.1,
@@ -549,7 +549,7 @@ describe('motionSpring effect', () => {
     first.time(first.duration(), true);
 
     target.score = -250;
-    const timeline = gsap.timeline({ paused: true }).motionSpring(target, {
+    const timeline = gsap.timeline({ paused: true }).spring(target, {
       values: { score: 50 },
       parameters,
     });
@@ -752,7 +752,7 @@ describe('motionSpring effect', () => {
       ...parameters,
     });
     const timeline = gsap.timeline({ paused: true });
-    timeline.motionSpring(target, {
+    timeline.spring(target, {
       values: { score: 100 },
       from: { score: 0 },
       parameters,
@@ -773,7 +773,7 @@ describe('motionSpring effect', () => {
       velocity: -firstState.velocity,
       ...parameters,
     });
-    timeline.motionSpring(
+    timeline.spring(
       target,
       {
         values: { score: 200 },
@@ -812,7 +812,7 @@ describe('motionSpring effect', () => {
     const target = { score: 0 };
     const timeline = gsap
       .timeline({ paused: true })
-      .motionSpring(
+      .spring(
         target,
         {
           values: { score: 100 },
@@ -821,7 +821,7 @@ describe('motionSpring effect', () => {
         },
         0,
       )
-      .motionSpring(
+      .spring(
         target,
         {
           values: { score: 200 },

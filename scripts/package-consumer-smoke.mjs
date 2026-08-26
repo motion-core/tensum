@@ -84,17 +84,17 @@ try {
 import { gsap } from 'gsap';
 import {
   SUPPORTED_PROPERTIES,
+  TensumPlugin,
   createMotionSpringTween,
   createSpring,
-  registerSpringPlugin,
   springTo,
 } from 'tensum';
 import { springToCSSLinear } from 'tensum/css';
 import { createCoupledSpringSystem } from 'tensum/coupled';
 
 assert.deepEqual(SUPPORTED_PROPERTIES, ['x', 'y', 'scale', 'rotation']);
-registerSpringPlugin(gsap);
-assert.equal(typeof gsap.effects.motionSpring, 'function');
+gsap.registerPlugin(TensumPlugin);
+assert.equal(typeof gsap.effects.spring, 'function');
 
 const effectTarget = { x: 0 };
 const effectTween = createMotionSpringTween(effectTarget, {
@@ -105,7 +105,7 @@ const effectTween = createMotionSpringTween(effectTarget, {
 });
 assert.equal(effectTween.duration() > 0, true);
 
-const effectTimeline = gsap.timeline({ paused: true }).motionSpring(
+const effectTimeline = gsap.timeline({ paused: true }).spring(
   { x: 0 },
   {
     x: 100,
@@ -171,7 +171,7 @@ for (const packageId of [
 
 (async () => {
   const spring = await import('tensum');
-  assert.equal(typeof spring.registerSpringPlugin, 'function');
+  assert.equal(typeof spring.TensumPlugin, 'object');
   console.log('ESM-only CommonJS contract passed.');
 })().catch((error) => {
   console.error(error);
@@ -184,9 +184,9 @@ for (const packageId of [
     join(consumerDirectory, "consumer.ts"),
     `import { gsap } from 'gsap';
 import {
+  TensumPlugin,
   createMotionSpringTween,
   createSpring,
-  registerSpringPlugin,
   springTo,
   type MotionSpringEffectTweenVars,
   type MotionSpringEffectVars,
@@ -250,9 +250,9 @@ const controllerVars: SpringToVars = {
 // @ts-expect-error SpringTweenTarget represents an already resolved object.
 const unresolvedTarget: SpringTweenTarget = '.selector';
 
-registerSpringPlugin(gsap);
+gsap.registerPlugin(TensumPlugin);
 const effectTween = createMotionSpringTween({ x: 0 }, effectVars);
-const effectTimeline = gsap.timeline({ paused: true }).motionSpring(
+const effectTimeline = gsap.timeline({ paused: true }).spring(
   { x: 0 },
   effectVars,
 );

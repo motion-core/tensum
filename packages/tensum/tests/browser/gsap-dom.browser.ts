@@ -3,7 +3,7 @@ import { gsap } from 'gsap';
 import {
   createMotionSpringTween,
   createSpring,
-  registerSpringPlugin,
+  TensumPlugin,
   springTo,
 } from '../../src/index.js';
 
@@ -31,7 +31,7 @@ function numericProperty(
 }
 
 beforeAll(() => {
-  registerSpringPlugin(gsap);
+  gsap.registerPlugin(TensumPlugin);
   gsap.ticker.sleep();
 });
 
@@ -138,7 +138,7 @@ describe('GSAP browser integration', () => {
     expect(numericProperty(target, 'x')).toBeCloseTo(atKill, 8);
   });
 
-  it('preserves analytical velocity from motionSpring to springTo', () => {
+  it('preserves analytical velocity from timeline spring to springTo', () => {
     const target = createTarget();
     const handoffTime = 0.2;
     const sampleTime = 0.08;
@@ -189,7 +189,7 @@ describe('GSAP browser integration', () => {
     first.kill();
   });
 
-  it('preserves analytical velocity from springTo to motionSpring', () => {
+  it('preserves analytical velocity from springTo to timeline spring', () => {
     const target = createTarget();
     const handoffTime = 0.2;
     const sampleTime = 0.08;

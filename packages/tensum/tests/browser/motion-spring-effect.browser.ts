@@ -3,7 +3,7 @@ import { gsap } from 'gsap';
 import {
   createMotionSpringTween,
   createSpring,
-  registerSpringPlugin,
+  TensumPlugin,
 } from '../../src/index.js';
 
 const parameters = {
@@ -30,7 +30,7 @@ function numericProperty(
 }
 
 beforeAll(() => {
-  registerSpringPlugin(gsap);
+  gsap.registerPlugin(TensumPlugin);
   gsap.ticker.sleep();
 });
 
@@ -40,7 +40,7 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-describe('motionSpring effect in a real browser', () => {
+describe('spring effect in a real browser', () => {
   it('sequences preflighted DOM effects from an explicit future state', () => {
     const target = createElement();
     const firstSpring = createSpring({
@@ -58,12 +58,12 @@ describe('motionSpring effect in a real browser', () => {
     const timeline = gsap.timeline({ paused: true });
 
     timeline
-      .motionSpring(target, {
+      .spring(target, {
         x: '100px',
         from: { x: '0px' },
         parameters,
       })
-      .motionSpring(target, {
+      .spring(target, {
         x: '240px',
         from: { x: '100px' },
         parameters,
@@ -104,7 +104,7 @@ describe('motionSpring effect in a real browser', () => {
     );
     const timeline = gsap.timeline({ paused: true });
 
-    timeline.motionSpring(targets, {
+    timeline.spring(targets, {
       x: '100px',
       parameters,
       tween: { stagger: 0.15 },
@@ -131,7 +131,7 @@ describe('motionSpring effect in a real browser', () => {
     });
     const child = gsap.timeline();
 
-    child.motionSpring(target, {
+    child.spring(target, {
       rotation: '90deg',
       from: { rotation: '0deg' },
       parameters,
@@ -222,7 +222,7 @@ describe('motionSpring effect in a real browser', () => {
   it('reconciles a same-number external unit change during effect preflight', () => {
     const target = createElement();
     target.style.setProperty('--distance', '0px');
-    const first = gsap.timeline({ paused: true }).motionSpring(target, {
+    const first = gsap.timeline({ paused: true }).spring(target, {
       values: { '--distance': '100px' },
       from: { '--distance': '0px' },
       parameters,
@@ -231,7 +231,7 @@ describe('motionSpring effect in a real browser', () => {
     expect(target.style.getPropertyValue('--distance')).toContain('px');
 
     target.style.setProperty('--distance', '100deg');
-    const second = gsap.timeline({ paused: true }).motionSpring(target, {
+    const second = gsap.timeline({ paused: true }).spring(target, {
       values: { '--distance': '200deg' },
       parameters,
     });

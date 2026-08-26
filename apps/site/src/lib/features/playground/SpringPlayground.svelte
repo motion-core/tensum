@@ -1,7 +1,7 @@
 <script lang="ts">
 	import {
+		TensumPlugin,
 		createSpring,
-		registerSpringPlugin,
 		springTo,
 		springCharacteristics,
 		springParameters
@@ -250,13 +250,13 @@
 					timelineStatus = 'ready';
 				}
 			})
-			.motionSpring(body, {
+			.spring(body, {
 				x: motion.far,
 				rotation: 8,
 				from: { x: 0, rotation: 0 },
 				parameters: motion.firstParameters
 			})
-			.motionSpring(
+			.spring(
 				body,
 				{
 					x: motion.near,
@@ -369,7 +369,7 @@
 	}
 
 	onMount(() => {
-		registerSpringPlugin(gsap);
+		gsap.registerPlugin(TensumPlugin);
 		const media = window.matchMedia('(prefers-reduced-motion: reduce)');
 		const syncMotionPreference = (): void => {
 			prefersReducedMotion = media.matches;
