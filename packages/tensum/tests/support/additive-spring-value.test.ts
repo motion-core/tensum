@@ -202,19 +202,32 @@ describe('additive SpringValue', () => {
     );
   });
 
-  it('snapshots and validates its default timing input', () => {
+  it('does not expose perceptual timing without a logical lifecycle phase', () => {
+    const assertRemovedTimingFields = (): void => {
+      createAdditiveSpringValue(0, parameters, new TestDriver(), {
+        // @ts-expect-error Additive values expose settlement, not logical timing.
+        timing: { perceptualDuration: 0.2 },
+      });
+
+      const value = createAdditiveSpringValue(0, parameters, new TestDriver());
+      value.animateBy(100, {
+        // @ts-expect-error Contributions cannot configure an unobservable timing.
+        timing: { perceptualDuration: 0.2 },
+      });
+    };
+    void assertRemovedTimingFields;
+
     expect(() =>
       createAdditiveSpringValue(0, parameters, new TestDriver(), {
-        timing: null as never,
-      }),
-    ).toThrow(TypeError);
+        timing: { perceptualDuration: 0.2 },
+      } as never),
+    ).toThrow(/does not support timing/);
 
-    const timing = { perceptualDuration: 0.2 };
-    const value = createAdditiveSpringValue(0, parameters, new TestDriver(), {
-      timing,
-    });
-    timing.perceptualDuration = -1;
-
-    expect(() => value.animateBy(100)).not.toThrow();
+    const value = createAdditiveSpringValue(0, parameters, new TestDriver());
+    expect(() =>
+      value.animateBy(100, {
+        timing: { perceptualDuration: 0.2 },
+      } as never),
+    ).toThrow(/does not support timing/);
   });
 });

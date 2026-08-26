@@ -1,24 +1,22 @@
 import { springParameters } from '../parameters.js';
 import { resolveSettlingOptions } from '../settling.js';
-import { createSpring, resolveSpringTimingInput } from '../spring.js';
+import { createSpring } from '../spring.js';
 import type {
   SpringParameters,
   SpringSettleInput,
   SpringSolution,
   SpringState,
-  SpringTimingInput,
 } from '../types.js';
 import type { FrameDriver } from './spring-value.js';
 
 export interface AdditiveSpringOptions {
+  /** Shared physical settlement configuration for new contributions. */
   settle?: SpringSettleInput;
-  timing?: SpringTimingInput;
 }
 
 export interface AdditiveSpringContributionOptions {
   parameters?: SpringParameters;
   settle?: SpringSettleInput;
-  timing?: SpringTimingInput;
   velocity?: number;
 }
 
@@ -60,6 +58,20 @@ function assertFinite(name: string, value: number): void {
   }
 }
 
+function validateOptions(
+  value: unknown,
+  context: 'additive spring options' | 'additive contribution options',
+): void {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new TypeError(`${context} must be an object when provided`);
+  }
+  if (Object.hasOwn(value, 'timing')) {
+    throw new TypeError(
+      `${context} does not support timing because additive values have no logical-completion phase`,
+    );
+  }
+}
+
 /**
  * Composes overlapping spring effects as independent additive contributions.
  * Use createSpringValue when each new target should replace the previous one.
@@ -71,9 +83,9 @@ export function createAdditiveSpringValue(
   options: AdditiveSpringOptions = {},
 ): AdditiveSpringValue {
   assertFinite('initialValue', initialValue);
+  validateOptions(options, 'additive spring options');
   const defaultParameters = springParameters.fromPhysics(parameters);
   const defaultSettling = resolveSettlingOptions(options.settle);
-  const defaultTiming = resolveSpringTimingInput(options.timing);
   const listeners: Record<AdditiveSpringEvent, Set<AdditiveSpringListener>> = {
     change: new Set(),
     settle: new Set(),
@@ -223,6 +235,7 @@ export function createAdditiveSpringValue(
       contributionOptions: AdditiveSpringContributionOptions = {},
     ): number {
       if (destroyed) throw new Error('additive spring value has been destroyed');
+      validateOptions(contributionOptions, 'additive contribution options');
       assertFinite('delta', delta);
       const initialVelocity =
         contributionOptions.velocity === undefined
@@ -244,10 +257,6 @@ export function createAdditiveSpringValue(
         refinementIterations: defaultSettling.refinementIterations,
         ...contributionOptions.settle,
       };
-      const timing =
-        contributionOptions.timing === undefined
-          ? defaultTiming
-          : resolveSpringTimingInput(contributionOptions.timing);
       const time = sampleNow();
       assertFinite('target', aggregateTarget() + delta);
       const solution = createSpring({
@@ -256,7 +265,6 @@ export function createAdditiveSpringValue(
         velocity: initialVelocity,
         ...contributionParameters,
         settle,
-        ...(timing === undefined ? {} : { timing }),
       });
       const id = nextId;
       nextId += 1;
