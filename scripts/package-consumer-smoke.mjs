@@ -105,8 +105,9 @@ const effectTween = createMotionSpringTween(effectTarget, {
 });
 assert.equal(effectTween.duration() > 0, true);
 
+const effectTimelineTarget = { x: 0 };
 const effectTimeline = gsap.timeline({ paused: true }).spring(
-  { x: 0 },
+  effectTimelineTarget,
   {
     x: 100,
     from: { x: 0 },
@@ -114,8 +115,26 @@ const effectTimeline = gsap.timeline({ paused: true }).spring(
   },
 );
 assert.equal(effectTimeline.duration(), effectTween.duration());
+effectTimeline.time(effectTimeline.duration(), true);
+assert.equal(effectTimeline.getChildren(false, true, false).length, 1);
+assert.equal(effectTimelineTarget.x, 100);
+assert.equal(typeof effectTimelineTarget.x, 'number');
 effectTween.kill();
 effectTimeline.kill();
+
+const objectTransformTarget = { x: 0, rotation: 0 };
+const objectTransform = springTo(objectTransformTarget, {
+  x: 100,
+  rotation: 45,
+  spring: { mass: 1, stiffness: 180, damping: 24 },
+});
+objectTransform.pause();
+objectTransform.seek(objectTransform.duration);
+assert.equal(objectTransformTarget.x, 100);
+assert.equal(objectTransformTarget.rotation, 45);
+assert.equal(typeof objectTransformTarget.x, 'number');
+assert.equal(typeof objectTransformTarget.rotation, 'number');
+objectTransform.kill();
 
 const controllerTarget = { score: 0 };
 const controller = springTo(controllerTarget, {
@@ -191,6 +210,8 @@ import {
   type MotionSpringEffectTweenVars,
   type MotionSpringEffectVars,
   type MotionSpringVars,
+  type AdditiveSpringContributionOptions,
+  type AdditiveSpringOptions,
   type SpringParameters,
   type SpringPropertyAdapter,
   type SpringToVars,
@@ -247,6 +268,16 @@ const controllerVars: SpringToVars = {
   spring: parameters,
   adapters: { progress: adapter },
 };
+const additiveOptions: AdditiveSpringOptions = {
+  settle: { position: 0.01 },
+};
+const additiveContributionOptions: AdditiveSpringContributionOptions = {
+  velocity: 10,
+};
+const invalidAdditiveOptions: AdditiveSpringOptions = {
+  // @ts-expect-error Additive values have no logical timing phase.
+  timing: { perceptualDuration: 0.2 },
+};
 // @ts-expect-error SpringTweenTarget represents an already resolved object.
 const unresolvedTarget: SpringTweenTarget = '.selector';
 
@@ -265,6 +296,9 @@ const coupled: CoupledSpringSystem = createCoupledSpringSystem({
 });
 
 void invalidEffectTweenVars;
+void additiveOptions;
+void additiveContributionOptions;
+void invalidAdditiveOptions;
 void effectTween;
 void effectTimeline;
 void controller;
@@ -313,6 +347,10 @@ void coupled;
   assert.equal(installedManifest.license, "MIT");
   assert.equal(installedManifest.type, "module");
   assert.equal(installedManifest.types, "./dist/index.d.ts");
+  assert.equal(
+    installedManifest.engines.node,
+    "^20.19.0 || ^22.12.0 || ^24.0.0",
+  );
   assert.deepEqual(installedManifest.exports["."], {
     types: "./dist/index.d.ts",
     import: "./dist/index.js",
