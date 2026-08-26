@@ -2,8 +2,9 @@
 
 ## Local setup
 
-The repository requires Node.js 20.19.x, or Node.js 22.12 and newer, with pnpm
-10.33.3. The published package uses the same Node.js minimum.
+The repository requires Node.js 22.12 or newer with pnpm 10.33.3. The published
+package has a separate, tested compatibility matrix that includes Node.js
+20.19.x; see [the platform support baseline](PLATFORM_SUPPORT.md).
 
 ```bash
 pnpm install --frozen-lockfile

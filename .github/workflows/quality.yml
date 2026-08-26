@@ -32,8 +32,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Chromium
-        run: pnpm --filter tensum exec playwright install --with-deps chromium
+      - name: Install browser engines
+        run: pnpm --filter tensum exec playwright install --with-deps chromium firefox webkit
 
       - name: Run the local release gate
         run: pnpm release:check
