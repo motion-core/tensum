@@ -213,8 +213,12 @@ const opacitySpring = springTo(element, {
 ```
 
 Numeric strings may contain one unit, such as `24px`, `30deg`, or `100%`. A unit
-mismatch throws before the animation starts. Use `adapters` when a property
-needs custom read and write behavior.
+mismatch throws before the animation starts. DOM `x` and `y` default to `px`,
+and DOM `rotation` defaults to `deg`. Tensum does not inject those DOM defaults
+into ordinary objects or custom adapters: a numeric object property stays a
+number unless its current value, destination, adapter, or `units` entry supplies
+a unit. An empty `units` entry explicitly keeps a property unitless. Use
+`adapters` when a property needs custom read and write behavior.
 
 Starting another `springTo()` animation or constructing a timeline spring
 on the same target and property performs an automatic velocity-preserving
@@ -262,6 +266,11 @@ The callbacks describe separate boundaries:
 - `onUnsettled` fires when `maxDuration` is reached without settlement;
 - `springTo()` also accepts `onUpdate` and `onComplete`.
 
+`createSpringValue()` follows the same finite-boundary rule. If physical
+settlement happens before its requested perceptual duration, it emits
+`logicalComplete` immediately before `settle`; the logical event is never left
+pending after the frame driver stops.
+
 The three effect lifecycle callbacks are target-scoped. A tween with an array
 of targets invokes each callback once per target. Its `SpringToSnapshot`
 contains the states for that target but does not include a target or index. Use
@@ -281,11 +290,30 @@ case is possible:
 solver reports an unsettled result. `onUnsettled` runs once per forward crossing
 of `maxDuration`; a finite repeat or yoyo may create another crossing.
 
+## CSS `linear()` error contract
+
+`springToCSSLinear()` from `tensum/css` returns the serialized easing, its
+duration, and the exact rounded samples used to build that easing. `maxError`
+is a hard bound in normalized progress units. The certification includes the
+piecewise-linear interpolation error, rounded progress values, rounded stop
+positions, and the final move to progress `1`.
+
+The default duration is the spring's settling duration. An explicit shorter
+duration is accepted only when its terminal move to `1` can still fit inside
+`maxError`. `maxDepth`, `maxSamples`, and `precision` are resource and
+serialization limits, not permission to exceed the error budget. The exporter
+throws a `RangeError` when any of those limits prevents certification.
+
 ## Other exports
 
 The root entry point also exports the analytical solver, parameter converters,
 velocity helpers, spring values, keyframes, inertia, additive composition, and
 vector springs.
+
+Additive spring values expose physical `settle` and `unsettled` lifecycle
+events. They intentionally have no perceptual `timing` option or
+`logicalComplete` event: independent contributions do not share one meaningful
+logical-completion boundary.
 
 CSS `linear()` generation and coupled systems use explicit subpaths:
 
@@ -296,15 +324,20 @@ import { createCoupledSpringSystem } from "tensum/coupled";
 
 ## Compatibility
 
-- Runtime: Node.js 20.19.x or Node.js 22.12 and newer, plus browser
-  environments supported by the
-  installed GSAP version.
+- Runtime: Node.js 20.19.x, Node.js 22 from 22.12.0, and Node.js 24.x.
+- Browsers: ES2022-capable Chromium, Firefox, and WebKit release lines
+  represented by the pinned Playwright test engines.
 - Peer dependency: GSAP `^3.15.0`.
 - Modules: ESM only; CommonJS `require()` is intentionally absent from the
   export map.
-- TypeScript: use `moduleResolution: "node16"`, `"nodenext"`, or `"bundler"`.
-  Classic `moduleResolution: "node"` cannot resolve the `css` and `coupled`
-  subpaths.
+- TypeScript: TypeScript 6 with `moduleResolution: "node16"`, `"nodenext"`, or
+  `"bundler"`. Classic `moduleResolution: "node"` cannot resolve the `css` and
+  `coupled` subpaths.
+
+The repository's
+[platform support baseline](https://github.com/motion-core/tensum/blob/master/PLATFORM_SUPPORT.md)
+defines the release evidence and separates published-package support from the
+site toolchain.
 
 Compiled JavaScript, declarations, source maps, declaration maps, and the
 corresponding TypeScript source are included in the package.

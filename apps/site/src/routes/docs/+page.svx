@@ -24,7 +24,7 @@ Install Spring beside GSAP. GSAP is a peer dependency, which keeps the applicati
 pnpm add tensum gsap
 ```
 
-The package is ESM-only. Node.js 20.19 or newer is supported at runtime. TypeScript projects should use `node16`, `nodenext`, or `bundler` module resolution.
+The package is ESM-only. The tested Node.js lines are 20.19.x, 22 from 22.12.0, and 24.x. Browser integration runs in Chromium, Firefox, and WebKit. TypeScript 6 projects should use `node16`, `nodenext`, or `bundler` module resolution.
 
 ## Quick start
 
@@ -138,6 +138,8 @@ The controller also exposes `play()`, `stop()`, `playbackReverse()`, `kill()`, `
 
 Starting a newer Tensum track on the same target and property performs a velocity-preserving handoff. The newer track becomes the only writer without restarting from rest.
 
+DOM `x` and `y` values default to pixels, while DOM rotation defaults to degrees. Ordinary object properties stay as unitless numbers unless their current value, destination, adapter, or `units` configuration explicitly supplies a unit.
+
 ## Parameters
 
 Every physical spring uses three values.
@@ -224,7 +226,7 @@ const css = springToCSSLinear(spring, { maxError: 0.001 });
 element.style.transition = `transform ${css.duration}s ${css.easing}`;
 ```
 
-The result contains the easing string, duration, maximum approximation error, and normalized samples. The same spring can drive JavaScript and CSS without maintaining two hand-tuned curves.
+The result contains the easing string, duration, certified maximum approximation error, and the rounded normalized samples used by the string. `maxError` is a hard normalized-progress bound that includes interpolation and serialization rounding. If an explicit duration would require too large a final snap, or `precision`, `maxDepth`, or `maxSamples` cannot satisfy the bound, the function throws a `RangeError` instead of returning a less accurate curve.
 
 ## API surface
 
@@ -243,6 +245,8 @@ The package root groups the public API by job.
 | Coupled systems | `createCoupledSpringSystem` from `tensum/coupled` |
 
 `createSpring()` returns `positionAt(time)`, `velocityAt(time)`, `stateAt(time)`, settlement information, and `retarget(target, time)`. It does not schedule frames or write to the DOM.
+
+`createAdditiveSpringValue()` composes independent physical contributions and exposes `settle` and `unsettled`. It has no perceptual `timing` option or `logicalComplete` event because the contributions do not share one logical boundary.
 
 ## Lifecycle
 

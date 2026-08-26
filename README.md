@@ -105,7 +105,13 @@ animation.seek(0.2);
 animation.resume();
 ```
 
-Built-in transform properties are `x`, `y`, `scale`, and `rotation`. Use `targets` for other numeric GSAP properties or `adapters` for custom read/write behavior. Numeric strings may contain one unit, such as `24px` or `30deg`. A unit mismatch throws before animation starts.
+Built-in transform properties are `x`, `y`, `scale`, and `rotation`. Use
+`targets` for other numeric GSAP properties or `adapters` for custom read/write
+behavior. Numeric strings may contain one unit, such as `24px` or `30deg`. A
+unit mismatch throws before animation starts. DOM `x`/`y` values default to
+pixels and DOM rotation defaults to degrees; ordinary object properties remain
+unitless numbers unless their value or configuration explicitly supplies a
+unit.
 
 Starting another `springTo()` animation or constructing a timeline spring
 on the same target and property performs an automatic velocity-preserving
@@ -198,6 +204,11 @@ import { springToCSSLinear } from "tensum/css";
 import { createCoupledSpringSystem } from "tensum/coupled";
 ```
 
+The CSS exporter treats `maxError` as a hard normalized-progress bound for the
+serialized `linear()` function. If `duration`, `precision`, `maxDepth`, or
+`maxSamples` make that bound impossible, it throws instead of returning an
+under-sampled curve.
+
 ## Repository structure
 
 ```text
@@ -220,11 +231,15 @@ pnpm benchmark
 pnpm release:check
 ```
 
-The package runtime and this repository require Node.js 20.19.x, or Node.js
-22.12 and newer. `pnpm release:check` builds every
-workspace, runs all checks, validates the package manifest, packs a tarball,
-and installs that tarball in a temporary consumer project. It does not publish
-or tag a release.
+The repository toolchain requires Node.js 22.12 or newer. The published package
+is additionally tested on Node.js 20.19.x; its complete runtime, browser,
+TypeScript, and GSAP matrix is defined in
+[the platform support baseline](PLATFORM_SUPPORT.md).
+
+`pnpm release:check` builds every workspace, runs all checks, validates the
+complete named value and type export surface, validates the package manifest,
+packs a tarball, and installs that tarball in a temporary consumer project. It
+does not publish or tag a release.
 
 The package is ESM-only. TypeScript consumers should use `node16`, `nodenext`,
 or `bundler` module resolution. CommonJS code can load it with dynamic
