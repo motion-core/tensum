@@ -30,7 +30,7 @@
 		<div class="flex items-center gap-1">
 			<Badge
 				variant="secondary"
-				class={hideDefaultActionsOnMobile ? 'me-1 hidden sm:inline-flex' : 'me-1'}>v0.1.0</Badge
+				class={hideDefaultActionsOnMobile ? 'me-1 hidden sm:inline-flex' : 'me-1'}>v0.2.0</Badge
 			>
 			<ThemeToggle />
 			{@render trailingAction?.()}

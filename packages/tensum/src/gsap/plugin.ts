@@ -644,7 +644,7 @@ function registerSpringEffect(instance: typeof gsap): void {
 }
 
 const pluginDefinition = {
-  version: '0.1.0',
+  version: '0.2.0',
   name: INTERNAL_DRIVER_PROPERTY,
   headless: true,
   rawVars: 1,

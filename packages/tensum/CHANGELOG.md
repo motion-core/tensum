@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-26
+
 ### Changed
 
 - GSAP registration now follows the native plugin convention with
@@ -14,6 +16,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The preflighted GSAP timeline effect is now `timeline.spring()` instead of
   `timeline.motionSpring()`; derived duration, stagger, nesting, repeat, yoyo,
   lifecycle callbacks, and velocity handoff retain the same behavior.
+- Numeric `x`, `y`, and `rotation` properties on ordinary objects now remain
+  unitless. DOM transforms retain their `px` and `deg` defaults, while explicit
+  value, adapter, and `units` configuration continues to take precedence.
+- The supported platform contract is now the tested Node.js 20.19, 22.12, and
+  24 lines; ES2022 Chromium, Firefox, and WebKit engines; TypeScript 6; ESM;
+  and GSAP `^3.15.0`.
+
+### Removed
+
+- Removed the unobservable `timing` fields from `AdditiveSpringOptions` and
+  `AdditiveSpringContributionOptions`. Runtime calls that still provide those
+  fields now fail with a migration error.
+
+### Fixed
+
+- `createSpringValue()` now emits `logicalComplete` before `settle` when
+  physical settlement ends the driver before the requested perceptual
+  duration, instead of silently losing logical completion.
+- `springToCSSLinear()` now certifies `maxError` for the serialized CSS curve
+  using an analytical acceleration bound, including rounded progress values,
+  rounded stop positions, and the terminal target. It throws when duration or
+  sampling limits make the requested guarantee impossible.
+
+### Added
+
+- Release checks now pin every named public value and type export for all three
+  package entry points and run real-browser integration in Chromium, Firefox,
+  and WebKit.
 
 ## [0.1.0] - 2026-08-26
 

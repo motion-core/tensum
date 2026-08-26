@@ -4,10 +4,14 @@ import { readFileSync } from "node:fs";
 const packagePath = "packages/tensum/package.json";
 const pluginPath = "packages/tensum/src/gsap/plugin.ts";
 const changelogPath = "packages/tensum/CHANGELOG.md";
+const siteHeaderPath = "apps/site/src/lib/components/layout/SiteHeader.svelte";
+const securityPath = "SECURITY.md";
 
 const manifest = JSON.parse(readFileSync(packagePath, "utf8"));
 const pluginSource = readFileSync(pluginPath, "utf8");
 const changelog = readFileSync(changelogPath, "utf8");
+const siteHeader = readFileSync(siteHeaderPath, "utf8");
+const security = readFileSync(securityPath, "utf8");
 
 assert.equal(
   manifest.name,
@@ -46,6 +50,16 @@ assert.match(
   pluginSource,
   new RegExp(`version: '${escapedVersion}'`),
   "the GSAP plugin version must match the package version",
+);
+assert.match(
+  siteHeader,
+  new RegExp(`>v${escapedVersion}<`),
+  "the documentation site badge must match the package version",
+);
+const minorLine = manifest.version.split(".").slice(0, 2).join(".");
+assert.ok(
+  security.includes(`| \`${minorLine}.x\` | Yes`),
+  "the security policy must support the current minor release",
 );
 
 console.log(`Stable release metadata passed for tensum@${manifest.version}.`);
