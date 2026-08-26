@@ -63,6 +63,7 @@ export interface SpringTrackConfig {
   velocity?: number | SpringVelocities;
   properties?: Readonly<Partial<Record<SpringProperty, SpringPropertyOptions>>>;
   adapters?: Readonly<Partial<Record<SpringProperty, SpringPropertyAdapter>>>;
+  /** Explicit units per property. An empty string disables a DOM default. */
   units?: Readonly<Partial<Record<SpringProperty, string>>>;
 }
 
@@ -337,6 +338,7 @@ function resolvedUnit(
   requested: RequestedTarget,
   readUnit: string | undefined,
   vars: SpringTrackConfig,
+  defaultUnit: string | undefined,
 ): string | undefined {
   const adapterUnit = vars.adapters?.[property]?.unit;
   const hasConfiguredUnit = Object.hasOwn(vars.units ?? {}, property);
@@ -347,7 +349,7 @@ function resolvedUnit(
     requested.unit ??
     adapterUnit ??
     configuredUnit ??
-    (hasConfiguredUnit ? undefined : defaultUnitFor(property)) ??
+    (hasConfiguredUnit ? undefined : defaultUnit) ??
     readUnit;
 
   for (const candidate of [
@@ -391,7 +393,7 @@ export function accessFor(
         `Adapter for ${property} returned a non-finite value`,
       );
     }
-    const unit = resolvedUnit(property, requested, undefined, vars);
+    const unit = resolvedUnit(property, requested, undefined, vars, undefined);
     return {
       from,
       ...(unit === undefined ? {} : { unit }),
@@ -405,7 +407,13 @@ export function accessFor(
     gsap.getProperty(target, property, 'native'),
     property,
   );
-  const unit = resolvedUnit(property, requested, raw.unit, vars);
+  const unit = resolvedUnit(
+    property,
+    requested,
+    raw.unit,
+    vars,
+    isElementTarget(target) ? defaultUnitFor(property) : undefined,
+  );
   const setters =
     property === 'scale' && isElementTarget(target)
       ? [

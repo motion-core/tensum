@@ -155,6 +155,23 @@ describe('springTo', () => {
 
     call.vars.onComplete?.();
     expect(target.x).toBe(500);
+    expect(mocks.gsap.quickSetter).toHaveBeenCalledWith(target, 'x', undefined);
+  });
+
+  it('keeps numeric built-in properties unitless on ordinary objects', () => {
+    const target = { x: 0, rotation: 0 };
+    springTo(target, { x: 100, rotation: 45, spring });
+    mocks.calls[0]!.vars.onComplete?.();
+
+    expect(target).toEqual({ x: 100, rotation: 45 });
+    expect(typeof target.x).toBe('number');
+    expect(typeof target.rotation).toBe('number');
+    expect(mocks.gsap.quickSetter).toHaveBeenCalledWith(target, 'x', undefined);
+    expect(mocks.gsap.quickSetter).toHaveBeenCalledWith(
+      target,
+      'rotation',
+      undefined,
+    );
   });
 
   it('supports multiple transform properties with one GSAP clock', () => {

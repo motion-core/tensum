@@ -23,6 +23,25 @@ afterEach(() => {
 });
 
 describe('spring effect', () => {
+  it('keeps numeric built-in properties unitless on ordinary objects', () => {
+    const target = { x: 0, rotation: 0 };
+    const tween = createMotionSpringTween(target, {
+      x: 100,
+      rotation: 45,
+      from: { x: 0, rotation: 0 },
+      parameters,
+      tween: { paused: true },
+    });
+
+    tween.time(tween.duration(), true);
+
+    expect(target.x).toBe(100);
+    expect(target.rotation).toBe(45);
+    expect(typeof target.x).toBe('number');
+    expect(typeof target.rotation).toBe('number');
+    tween.kill();
+  });
+
   it('preflights derived durations before laying out sequential timeline effects', () => {
     const target = { x: 0 };
     const first = createSpring({
