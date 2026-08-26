@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- GSAP registration now follows the native plugin convention with
+  `gsap.registerPlugin(TensumPlugin)` instead of `registerSpringPlugin(gsap)`.
+- The preflighted GSAP timeline effect is now `timeline.spring()` instead of
+  `timeline.motionSpring()`; derived duration, stagger, nesting, repeat, yoyo,
+  lifecycle callbacks, and velocity handoff retain the same behavior.
+
 ## [0.1.0] - 2026-08-26
 
 ### Added
