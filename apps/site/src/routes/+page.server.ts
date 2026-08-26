@@ -3,11 +3,11 @@ import { getHighlighter } from '$lib/server/highlighter';
 import type { PageServerLoad } from './$types';
 
 const setupCode = `import { gsap } from 'gsap';
-import { registerSpringPlugin, springPresets } from 'tensum';
+import { TensumPlugin, springPresets } from 'tensum';
 
-registerSpringPlugin(gsap);
+gsap.registerPlugin(TensumPlugin);
 
-gsap.timeline().motionSpring(card, {
+gsap.timeline().spring(card, {
   x: 320,
   from: { x: 0 },
   parameters: springPresets.snappy()

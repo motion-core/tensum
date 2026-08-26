@@ -3,7 +3,7 @@
 </script>
 
 <div
-	class="timeline-illustration relative mx-auto flex h-56 sm:max-w-[85%] items-center justify-center overflow-hidden p-6"
+	class="timeline-illustration relative mx-auto flex h-56 items-center justify-center overflow-hidden p-6 sm:max-w-[85%]"
 	data-paused={paused}
 	aria-hidden="true"
 >
@@ -13,7 +13,7 @@
 		<div
 			class="flex h-8 items-center justify-between border-b border-border/64 px-2.5 text-[0.625rem] dark:border-card/80"
 		>
-			<span class="font-medium">timeline.motionSpring()</span>
+			<span class="font-medium">timeline.spring()</span>
 			<span class="font-mono text-muted-foreground">2.48 s</span>
 		</div>
 

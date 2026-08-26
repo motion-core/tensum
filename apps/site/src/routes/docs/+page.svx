@@ -32,11 +32,11 @@ Register the plugin once, then add a spring through the timeline effect.
 
 ```ts
 import { gsap } from 'gsap';
-import { registerSpringPlugin, springPresets } from 'tensum';
+import { TensumPlugin, springPresets } from 'tensum';
 
-registerSpringPlugin(gsap);
+gsap.registerPlugin(TensumPlugin);
 
-gsap.timeline().motionSpring(card, {
+gsap.timeline().spring(card, {
   x: 320,
   from: { x: 0 },
   parameters: springPresets.snappy()
@@ -46,12 +46,12 @@ gsap.timeline().motionSpring(card, {
 No GSAP `duration` or `ease` is required. The physical parameters and settling tolerances determine the duration and trajectory.
 
 <Callout title="Choose the API by clock ownership">
-Use <Code>timeline.motionSpring()</Code> when GSAP owns composition. Use <Code>springTo()</Code> when you need direct controls such as <Code>pause()</Code>, <Code>seek()</Code>, or <Code>playbackReverse()</Code>. Use <Code>createSpring()</Code> when you only need analytical samples.
+Use <Code>timeline.spring()</Code> when GSAP owns composition. Use <Code>springTo()</Code> when you need direct controls such as <Code>pause()</Code>, <Code>seek()</Code>, or <Code>playbackReverse()</Code>. Use <Code>createSpring()</Code> when you only need analytical samples.
 </Callout>
 
-## timeline.motionSpring()
+## timeline.spring()
 
-<ApiSignature>timeline.motionSpring(targets, vars, position?): Timeline</ApiSignature>
+<ApiSignature>timeline.spring(targets, vars, position?): Timeline</ApiSignature>
 
 The registered effect preflights every target before adding its tween. Sequential children, staggered targets, and nested timelines receive the final duration immediately.
 
@@ -59,12 +59,12 @@ The registered effect preflights every target before adding its tween. Sequentia
 const timeline = gsap.timeline();
 
 timeline
-  .motionSpring(card, {
+  .spring(card, {
     x: 320,
     from: { x: 0 },
     parameters: { mass: 1, stiffness: 180, damping: 24 }
   })
-  .motionSpring(card, {
+  .spring(card, {
     x: 80,
     from: { x: 320 },
     parameters: { mass: 1, stiffness: 240, damping: 26 }
@@ -74,7 +74,7 @@ timeline
 Ordinary GSAP driver options belong under `tween`. Tensum derives and owns `duration` and `ease`.
 
 ```ts
-timeline.motionSpring(cards, {
+timeline.spring(cards, {
   y: 0,
   from: { y: -24 },
   parameters: springPresets.snappy(),
@@ -93,7 +93,7 @@ Use `createMotionSpringTween(targets, vars)` when another piece of code needs th
 Preflight reads the target when the effect is created. That is correct when the element already has its starting value. If an earlier timeline child will change the target later, pass the future state through `from`.
 
 ```ts
-timeline.motionSpring(card, {
+timeline.spring(card, {
   x: 80,
   from: { x: 320 },
   velocity: { x: -240 },
@@ -232,7 +232,7 @@ The package root groups the public API by job.
 
 | Job | Main exports |
 | --- | --- |
-| GSAP composition | `registerSpringPlugin`, `createMotionSpringTween` |
+| GSAP composition | `TensumPlugin`, `createMotionSpringTween` |
 | Direct controller | `springTo`, `SUPPORTED_PROPERTIES` |
 | Analytical solver | `createSpring`, `createSpringModel`, `createVectorSpring` |
 | Parameter conversion | `springParameters`, `springPresets`, `springCharacteristics` |

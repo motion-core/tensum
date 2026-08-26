@@ -72,8 +72,8 @@
 		>
 			{#snippet visual()}<TimelineIllustration paused={animationsPaused} />{/snippet}
 			{#snippet description()}
-				<code class="font-mono text-sm text-foreground">timeline.motionSpring()</code> resolves settling
-				before GSAP places sequential, staggered, or nested children.
+				<code class="font-mono text-sm text-foreground">timeline.spring()</code> resolves settling before
+				GSAP places sequential, staggered, or nested children.
 			{/snippet}
 		</CapabilityCard>
 

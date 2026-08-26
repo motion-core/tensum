@@ -21,7 +21,7 @@ export const docsNavigation: DocsNavigationGroup[] = [
 	{
 		label: 'GSAP',
 		items: [
-			{ id: 'timelinemotionspring', label: 'timeline.motionSpring()', code: true },
+			{ id: 'timelinespring', label: 'timeline.spring()', code: true },
 			{ id: 'starting-state', label: 'Starting state' },
 			{ id: 'springto', label: 'springTo()', code: true }
 		]

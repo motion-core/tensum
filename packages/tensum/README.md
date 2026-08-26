@@ -14,7 +14,7 @@ same GSAP instance.
 The package is ESM-only:
 
 ```ts
-import { registerSpringPlugin, springTo } from "tensum";
+import { TensumPlugin, springTo } from "tensum";
 ```
 
 CommonJS `require()` is not supported. A CommonJS module can use dynamic
@@ -24,9 +24,9 @@ CommonJS `require()` is not supported. A CommonJS module can use dynamic
 
 ```ts
 import { gsap } from "gsap";
-import { registerSpringPlugin } from "tensum";
+import { TensumPlugin } from "tensum";
 
-registerSpringPlugin(gsap);
+gsap.registerPlugin(TensumPlugin);
 ```
 
 GSAP owns the clock, timeline lifecycle, and context. During each driver render,
@@ -36,7 +36,7 @@ different frame rate does not change the analytical trajectory.
 
 ## Compose derived-duration timelines
 
-Use `timeline.motionSpring()` when spring duration affects the position or
+Use `timeline.spring()` when spring duration affects the position or
 duration of other timeline children. It is a registered GSAP effect with
 `extendTimeline: true`. The effect resolves every spring track before returning
 its tween, so GSAP receives the final duration before it lays out the timeline.
@@ -45,12 +45,12 @@ its tween, so GSAP receives the final duration before it lays out the timeline.
 const timeline = gsap.timeline();
 
 timeline
-  .motionSpring(element, {
+  .spring(element, {
     x: 320,
     from: { x: 0 },
     parameters: { mass: 1, stiffness: 180, damping: 24 },
   })
-  .motionSpring(element, {
+  .spring(element, {
     x: 80,
     from: { x: 320 },
     parameters: { mass: 1, stiffness: 240, damping: 26 },
@@ -66,7 +66,7 @@ Preflight reads each target when the effect is created. Add `from` when an
 earlier timeline child will change that target before the spring starts:
 
 ```ts
-timeline.motionSpring(element, {
+timeline.spring(element, {
   x: 80,
   from: { x: 320 },
   velocity: { x: -240 },
@@ -89,7 +89,7 @@ Pass both `from` and `velocity` when that future state must be exact.
 Put GSAP driver options in `tween`:
 
 ```ts
-const entrance = gsap.timeline().motionSpring(cards, {
+const entrance = gsap.timeline().spring(cards, {
   y: 0,
   from: { y: -24 },
   parameters: { mass: 1, stiffness: 180, damping: 24 },
@@ -216,7 +216,7 @@ Numeric strings may contain one unit, such as `24px`, `30deg`, or `100%`. A unit
 mismatch throws before the animation starts. Use `adapters` when a property
 needs custom read and write behavior.
 
-Starting another `springTo()` animation or constructing a `motionSpring` effect
+Starting another `springTo()` animation or constructing a timeline spring
 on the same target and property performs an automatic velocity-preserving
 handoff from the state available at construction time.
 
@@ -331,9 +331,9 @@ pnpm release:compat
 ```
 
 It installs the exact peer lower bound and the current npm `latest` tag in
-separate temporary consumers, then checks Node ESM, TypeScript, effect
-registration, `springTo()`, and `timeline.motionSpring()`. This command may read
-the npm registry, so it is intentionally separate from `release:check`.
+separate temporary consumers, then checks Node ESM, TypeScript,
+`TensumPlugin` registration, `springTo()`, and `timeline.spring()`. This command
+may read the npm registry, so it is intentionally separate from `release:check`.
 
 ## License
 

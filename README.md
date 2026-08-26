@@ -25,14 +25,14 @@ Both packages are required. GSAP is a peer dependency so an application and the 
 
 ```ts
 import { gsap } from "gsap";
-import { registerSpringPlugin, springPresets } from "tensum";
+import { TensumPlugin, springPresets } from "tensum";
 
-registerSpringPlugin(gsap);
+gsap.registerPlugin(TensumPlugin);
 ```
 
 ## Compose springs in a GSAP timeline
 
-Use the registered `timeline.motionSpring()` effect when a spring's derived
+Use the registered `timeline.spring()` effect when a spring's derived
 duration affects timeline layout. The effect calculates the duration before
 GSAP inserts the tween, so sequential children, staggered targets, and nested
 timelines have their final timing immediately.
@@ -41,12 +41,12 @@ timelines have their final timing immediately.
 const timeline = gsap.timeline();
 
 timeline
-  .motionSpring(element, {
+  .spring(element, {
     x: 320,
     from: { x: 0 },
     parameters: { mass: 1, stiffness: 180, damping: 24 },
   })
-  .motionSpring(element, {
+  .spring(element, {
     x: 80,
     from: { x: 320 },
     parameters: { mass: 1, stiffness: 240, damping: 26 },
@@ -65,7 +65,7 @@ and `yoyo`. An unsettled spring using `continue` owns an infinite driver instead
 it sets `repeat: -1` and samples analytical total time continuously.
 
 ```ts
-const entrance = gsap.timeline().motionSpring(cards, {
+const entrance = gsap.timeline().spring(cards, {
   y: 0,
   from: { y: -24 },
   parameters: springPresets.snappy(),
@@ -107,7 +107,7 @@ animation.resume();
 
 Built-in transform properties are `x`, `y`, `scale`, and `rotation`. Use `targets` for other numeric GSAP properties or `adapters` for custom read/write behavior. Numeric strings may contain one unit, such as `24px` or `30deg`. A unit mismatch throws before animation starts.
 
-Starting another `springTo()` animation or constructing a `motionSpring` effect
+Starting another `springTo()` animation or constructing a timeline spring
 on the same target and property performs an automatic velocity-preserving
 handoff from the state that exists at construction time. Provide `from` and
 `velocity` for a state that will only exist later in the timeline.
