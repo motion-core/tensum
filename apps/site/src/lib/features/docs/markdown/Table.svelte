@@ -17,7 +17,7 @@
 	<ScrollArea
 		orientation="horizontal"
 		class="w-full min-w-0"
-		viewportTabindex={0}
+		viewportTabindex="auto"
 		viewportAriaLabel="Documentation table scroll area"
 	>
 		<table {...restProps} class={cn('w-full min-w-xl border-collapse text-sm', className)}>

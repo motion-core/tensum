@@ -10,7 +10,7 @@
 	<ScrollArea
 		orientation="horizontal"
 		class="w-full min-w-0"
-		viewportTabindex={0}
+		viewportTabindex="auto"
 		viewportAriaLabel="API signature scroll area"
 	>
 		<code
